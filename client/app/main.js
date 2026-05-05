@@ -77,7 +77,7 @@ async function handleSync() {
 // ── CRUD ──────────────────────────────────────────────────
 
 function handleEventClick(event) {
-  openEditEventModal(event, data => saveEvent(event.id, data), id => deleteEvent(id));
+  openEditEventModal(event, data => saveEvent(event.id, data), (ev, scope) => deleteEvent(ev, scope));
 }
 
 function handleEventMove(eventId, day, startMin) {
@@ -114,9 +114,14 @@ async function saveEvent(id, data) {
   }
 }
 
-async function deleteEvent(id) {
+async function deleteEvent(ev, scope) {
   try {
-    const res = await fetch(`/events/${id}`, { method: 'DELETE' });
+    const uid = ev.uid || ev.id || ev;
+    let url = `/events/${uid}`;
+    if (scope && ev.occurrenceDate) {
+      url += '?' + new URLSearchParams({ scope, occurrenceDate: ev.occurrenceDate });
+    }
+    const res = await fetch(url, { method: 'DELETE' });
     if (!res.ok && res.status !== 204) throw new Error('Delete failed');
     await loadEvents();
     render();

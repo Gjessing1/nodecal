@@ -75,6 +75,15 @@ function renderForm(event, defaultDate) {
         ${state.calendars.map(c => `<option value="${esc(c.id)}" ${event?.calendarId === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
       </select>
     </div>
+    ${event?.recurring ? `
+    <div class="modal-field recurring-scope-field">
+      <label>Edit scope</label>
+      <select id="f-scope">
+        <option value="single">This event only</option>
+        <option value="future">This and following</option>
+        <option value="all">All events in series</option>
+      </select>
+    </div>` : ''}
     <div class="modal-field">
       <label>Description</label>
       <textarea id="f-desc">${esc(event?.description || '')}</textarea>
@@ -89,13 +98,19 @@ function renderForm(event, defaultDate) {
   sheet.querySelector('#f-allday').addEventListener('change', e => {
     sheet.querySelector('#time-row').style.display = e.target.checked ? 'none' : '';
   });
-  sheet.querySelector('#f-save').addEventListener('click', handleSave);
+  sheet.querySelector('#f-save').addEventListener('click', () => handleSave(event));
   sheet.querySelector('#f-cancel').addEventListener('click', closeModal);
-  if (!isNew) sheet.querySelector('#f-delete').addEventListener('click', () => { closeModal(); onDeleteCb(event.id); });
+  if (!isNew) {
+    sheet.querySelector('#f-delete').addEventListener('click', () => {
+      const scope = sheet.querySelector('#f-scope')?.value || null;
+      closeModal();
+      onDeleteCb(event, scope);
+    });
+  }
   if (isNew) sheet.querySelector('#f-title').focus();
 }
 
-function handleSave() {
+function handleSave(event) {
   const title = sheet.querySelector('#f-title').value.trim();
   if (!title) { sheet.querySelector('#f-title').focus(); return; }
 
@@ -114,8 +129,15 @@ function handleSave() {
     endDt = new Date(startDt.getTime() + 3600000);
   }
 
+  const data = { title, start: startDt.toISOString(), end: endDt.toISOString(), allDay, calendarId, description };
+  if (event?.recurring) {
+    data.recurringScope = sheet.querySelector('#f-scope')?.value || 'single';
+    data.uid = event.uid;
+    data.occurrenceDate = event.occurrenceDate;
+  }
+
   closeModal();
-  onSaveCb({ title, start: startDt.toISOString(), end: endDt.toISOString(), allDay, calendarId, description });
+  onSaveCb(data);
 }
 
 function esc(str) {

@@ -43,6 +43,18 @@ function getEventsInRange(from, to) {
   return result.sort((a, b) => new Date(a.start) - new Date(b.start));
 }
 
+function getNonRecurringInRange(from, to) {
+  const result = [];
+  for (const ev of events.values()) {
+    if (!ev.rrule && new Date(ev.start) < to && new Date(ev.end) > from) result.push(ev);
+  }
+  return result;
+}
+
+function getRecurringBases() {
+  return Array.from(events.values()).filter(ev => ev.rrule);
+}
+
 function setEvent(event) {
   events.set(event.uid, event);
   flushToDisk();
@@ -68,6 +80,7 @@ loadFromDisk();
 module.exports = {
   getCalendars, setCalendars,
   getEvent, getEventCount, getEventsInRange,
+  getNonRecurringInRange, getRecurringBases,
   setEvent, removeEvent, clearEvents, bulkSetEvents,
   getSyncState, setSyncState,
 };

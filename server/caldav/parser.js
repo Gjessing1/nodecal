@@ -77,6 +77,15 @@ function parseIcs(icsText) {
       endDate = new Date(startInfo.date.getTime() + (startInfo.allDay ? 86400000 : 3600000));
     }
 
+    // Collect EXDATE values (may appear multiple times, may be comma-separated)
+    const exdates = [];
+    for (const line of match[1].split(/\r?\n/).filter(Boolean)) {
+      if (/^EXDATE/i.test(line)) {
+        const prop = parseProperty(line);
+        if (prop) for (const v of prop.value.split(',')) exdates.push(v.trim());
+      }
+    }
+
     events.push({
       uid,
       title: unescapeIcsText(props.SUMMARY?.value || '(No title)'),
@@ -85,6 +94,9 @@ function parseIcs(icsText) {
       allDay: startInfo.allDay,
       description: unescapeIcsText(props.DESCRIPTION?.value || ''),
       location: unescapeIcsText(props.LOCATION?.value || ''),
+      rrule: props.RRULE?.value || null,
+      exdates: exdates.length > 0 ? exdates : null,
+      recurrenceId: props['RECURRENCE-ID']?.value || null,
     });
   }
   return events;
@@ -102,7 +114,8 @@ function formatIcsDate(date, allDay) {
 
 /**
  * Serialize an event object into a full VCALENDAR ICS string.
- * @param {{uid, title, start, end, allDay, description, location}} event
+ * Supports: rrule, exdates, recurrenceId in addition to base fields.
+ * @param {object} event
  * @returns {string}
  */
 function serializeEvent(event) {
@@ -116,10 +129,17 @@ function serializeEvent(event) {
     `DTSTART${event.allDay ? ';VALUE=DATE' : ''}:${formatIcsDate(new Date(event.start), event.allDay)}`,
     `DTEND${event.allDay ? ';VALUE=DATE' : ''}:${formatIcsDate(new Date(event.end), event.allDay)}`,
   ];
+  if (event.rrule) lines.push(`RRULE:${event.rrule}`);
+  if (event.exdates?.length) {
+    for (const ex of event.exdates) lines.push(`EXDATE:${ex}`);
+  }
+  if (event.recurrenceId) {
+    lines.push(`RECURRENCE-ID:${formatIcsDate(new Date(event.recurrenceId), event.allDay)}`);
+  }
   if (event.description) lines.push(`DESCRIPTION:${escapeIcsText(event.description)}`);
   if (event.location) lines.push(`LOCATION:${escapeIcsText(event.location)}`);
   lines.push('END:VEVENT', 'END:VCALENDAR');
   return lines.join(CRLF) + CRLF;
 }
 
-module.exports = { parseIcs, serializeEvent };
+module.exports = { parseIcs, serializeEvent, formatIcsDate };

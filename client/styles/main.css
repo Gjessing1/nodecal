@@ -160,6 +160,7 @@ input, textarea, select {
 .modal-row { display: flex; gap: var(--space-sm); }
 .modal-row .modal-field { flex: 1; }
 .modal-actions { display: flex; gap: var(--space-sm); padding-top: var(--space-sm); }
+.recurring-scope-field { background: var(--color-accent-light); border-radius: var(--radius-sm); padding: var(--space-sm); }
 .btn { padding: var(--space-sm) var(--space-md); border-radius: var(--radius-sm); font-weight: 500; }
 .btn-primary { background: var(--color-accent); color: #fff; flex: 1; }
 .btn-danger { background: var(--color-danger); color: #fff; }
