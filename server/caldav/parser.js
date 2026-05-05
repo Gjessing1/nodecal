@@ -104,9 +104,11 @@ function parseIcs(icsText) {
 
 function formatIcsDate(date, allDay) {
   if (allDay) {
-    const y = date.getUTCFullYear();
-    const m = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const d = String(date.getUTCDate()).padStart(2, '0');
+    // Use LOCAL date parts — the date object was built from local midnight, so UTC
+    // values would be the previous day in positive-offset timezones (e.g. UTC+2).
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
     return `${y}${m}${d}`;
   }
   return date.toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';

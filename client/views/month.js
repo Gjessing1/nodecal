@@ -87,7 +87,9 @@ function buildGrid(year, month, today, onEventClick, onDayClick) {
   });
 
   for (let i = 0; i < 42; i++) {
-    const day = new Date(start.getTime() + i * 86400000);
+    const raw = new Date(start.getTime() + i * 86400000);
+    // Re-anchor to local midnight so DST transitions don't produce 01:00 cells
+    const day = new Date(raw.getFullYear(), raw.getMonth(), raw.getDate());
     grid.appendChild(buildDayCell(day, month, today, monthEvents, onEventClick, onDayClick));
   }
   return grid;

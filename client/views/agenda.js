@@ -15,7 +15,8 @@ export function renderAgenda(container, onEventClick) {
   const fragments = [];
 
   for (let i = 0; i < AGENDA_DAYS; i++) {
-    const day = new Date(today.getTime() + i * DAY_MS);
+    const raw = new Date(today.getTime() + i * DAY_MS);
+    const day = new Date(raw.getFullYear(), raw.getMonth(), raw.getDate());
     const dayEnd = new Date(day.getTime() + DAY_MS);
     const dayEvents = state.events.filter(ev => {
       return new Date(ev.start) < dayEnd && new Date(ev.end) > day;

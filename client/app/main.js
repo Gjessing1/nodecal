@@ -184,7 +184,10 @@ async function init() {
   syncBtn.addEventListener('click', handleSync);
   calBtn.addEventListener('click', openDrawer);
   settingsBtn.addEventListener('click', openSettings);
-  fab.addEventListener('click', () => openNewEventModal(new Date(), data => saveEvent(null, data)));
+  fab.addEventListener('click', () => {
+    // Use the viewed day so tapping + in Saturday's day view opens a Saturday modal
+    openNewEventModal(state.selectedDate || new Date(), data => saveEvent(null, data));
+  });
 
   try {
     await loadAll();
