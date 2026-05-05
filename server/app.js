@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 const config = require('./config');
-const { syncAll } = require('./caldav/sync');
+const { syncIncremental } = require('./caldav/sync');
 const store = require('./cache/store');
 
 const app = express();
@@ -19,16 +19,29 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', version: process.env.npm_package_version, ...store.getSyncState() });
 });
 
+const BACKGROUND_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
 async function start() {
   try {
-    await syncAll();
+    await syncIncremental();
   } catch (err) {
-    console.error('Initial sync failed (will serve cached data):', err.message);
+    console.error('Initial sync failed (serving cached data):', err.message);
     store.setSyncState({ error: err.message });
   }
+
   app.listen(config.app.port, () => {
     console.log(`Nodecal running on port ${config.app.port}`);
   });
+
+  // Background auto-sync — runs every 5 minutes after startup
+  setInterval(async () => {
+    try {
+      await syncIncremental();
+    } catch (err) {
+      console.error('Background sync failed:', err.message);
+      store.setSyncState({ error: err.message });
+    }
+  }, BACKGROUND_INTERVAL_MS);
 }
 
 start();

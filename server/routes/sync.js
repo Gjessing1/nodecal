@@ -1,5 +1,5 @@
 const { Router } = require('express');
-const { syncAll } = require('../caldav/sync');
+const { syncIncremental } = require('../caldav/sync');
 const store = require('../cache/store');
 
 const router = Router();
@@ -10,7 +10,7 @@ router.get('/sync', (req, res) => {
 
 router.post('/sync', async (req, res) => {
   try {
-    const result = await syncAll();
+    const result = await syncIncremental();
     res.json({ ok: true, ...result });
   } catch (err) {
     console.error('POST /sync:', err.message);
