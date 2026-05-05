@@ -1,0 +1,184 @@
+import { state, calendarById } from '../app/state.js';
+import {
+  buildTimeColumn, buildHourLines, buildEventBlock,
+  buildCurrentTimeLine, updateCurrentTimeLine, getTotalHeight, timeToTop,
+} from '../components/timeGrid.js';
+
+let timerId = null;
+
+/** Return the Monday of the week containing `date`. */
+function weekStart(date) {
+  const d = new Date(date);
+  const day = d.getDay(); // 0=Sun
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/**
+ * Render the week view into container.
+ * @param {HTMLElement} container
+ * @param {function(event): void} onEventClick
+ */
+export function renderWeek(container, onEventClick) {
+  if (timerId) { clearInterval(timerId); timerId = null; }
+
+  const wStart = weekStart(state.selectedDate);
+  const wEnd = new Date(wStart.getTime() + 7 * 86400000);
+  const days = Array.from({ length: 7 }, (_, i) => new Date(wStart.getTime() + i * 86400000));
+  const today = new Date();
+
+  container.innerHTML = '';
+
+  // Navigation bar
+  container.appendChild(buildNavBar(wStart, onEventClick));
+
+  // All-day row
+  const allDayEvents = state.events.filter(ev => {
+    if (state.hiddenCalendars.has(ev.calendarId)) return false;
+    return ev.allDay && new Date(ev.start) < wEnd && new Date(ev.end) > wStart;
+  });
+  if (allDayEvents.length > 0) container.appendChild(buildAllDayRow(days, allDayEvents, onEventClick));
+
+  // Day-column headers
+  container.appendChild(buildDayHeaders(days, today));
+
+  // Scrollable time grid
+  const scroll = document.createElement('div');
+  scroll.className = 'grid-scroll';
+  const grid = document.createElement('div');
+  grid.className = 'week-grid';
+  grid.style.height = `${getTotalHeight()}px`;
+
+  grid.appendChild(buildTimeColumn());
+
+  let timeLine = null;
+  for (const day of days) {
+    const col = document.createElement('div');
+    col.className = 'week-day-col';
+    col.style.height = `${getTotalHeight()}px`;
+    col.appendChild(buildHourLines());
+
+    const isToday = day.toDateString() === today.toDateString();
+    if (isToday) {
+      timeLine = buildCurrentTimeLine();
+      col.appendChild(timeLine);
+    }
+
+    const dayEnd = new Date(day.getTime() + 86400000);
+    const dayEvents = state.events.filter(ev => {
+      if (state.hiddenCalendars.has(ev.calendarId)) return false;
+      return !ev.allDay && new Date(ev.start) < dayEnd && new Date(ev.end) > day;
+    });
+
+    for (const ev of dayEvents) {
+      const cal = calendarById(ev.calendarId);
+      col.appendChild(buildEventBlock(ev, cal?.color || '#4a90d9', onEventClick));
+    }
+
+    grid.appendChild(col);
+  }
+
+  scroll.appendChild(grid);
+  container.appendChild(scroll);
+
+  // Scroll to current time
+  requestAnimationFrame(() => {
+    const offset = Math.max(0, timeToTop(today) - 128);
+    scroll.scrollTop = offset;
+  });
+
+  if (timeLine) {
+    timerId = setInterval(() => updateCurrentTimeLine(timeLine), 60000);
+  }
+}
+
+function buildNavBar(wStart, onEventClick) {
+  const wEnd = new Date(wStart.getTime() + 6 * 86400000);
+  const nav = document.createElement('div');
+  nav.className = 'view-nav';
+
+  const prev = document.createElement('button');
+  prev.className = 'nav-arrow';
+  prev.textContent = '‹';
+  prev.addEventListener('click', () => {
+    state.selectedDate = new Date(wStart.getTime() - 7 * 86400000);
+    renderWeek(prev.closest('#view-container'), onEventClick);
+  });
+
+  const fmt = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const title = document.createElement('span');
+  title.className = 'view-nav-title';
+  title.textContent = `${fmt(wStart)} – ${fmt(wEnd)}`;
+
+  const todayBtn = document.createElement('button');
+  todayBtn.className = 'nav-today-btn';
+  todayBtn.textContent = 'Today';
+  const now = new Date();
+  const thisWeek = now >= wStart && now < new Date(wStart.getTime() + 7 * 86400000);
+  todayBtn.hidden = thisWeek;
+  todayBtn.addEventListener('click', () => {
+    state.selectedDate = new Date();
+    renderWeek(prev.closest('#view-container'), onEventClick);
+  });
+
+  const next = document.createElement('button');
+  next.className = 'nav-arrow';
+  next.textContent = '›';
+  next.addEventListener('click', () => {
+    state.selectedDate = new Date(wStart.getTime() + 7 * 86400000);
+    renderWeek(next.closest('#view-container'), onEventClick);
+  });
+
+  nav.appendChild(prev);
+  nav.appendChild(title);
+  nav.appendChild(todayBtn);
+  nav.appendChild(next);
+  return nav;
+}
+
+function buildDayHeaders(days, today) {
+  const row = document.createElement('div');
+  row.className = 'week-day-headers';
+  const spacer = document.createElement('div');
+  spacer.className = 'time-col-spacer';
+  row.appendChild(spacer);
+  for (const day of days) {
+    const cell = document.createElement('div');
+    cell.className = 'week-day-header' + (day.toDateString() === today.toDateString() ? ' today' : '');
+    cell.innerHTML = `<span class="wdh-name">${day.toLocaleDateString('en-US',{weekday:'short'})}</span><span class="wdh-date">${day.getDate()}</span>`;
+    row.appendChild(cell);
+  }
+  return row;
+}
+
+function buildAllDayRow(days, events, onEventClick) {
+  const row = document.createElement('div');
+  row.className = 'week-allday-row';
+  const spacer = document.createElement('div');
+  spacer.className = 'time-col-spacer';
+  row.appendChild(spacer);
+  for (const day of days) {
+    const dayEnd = new Date(day.getTime() + 86400000);
+    const cell = document.createElement('div');
+    cell.className = 'week-allday-cell';
+    for (const ev of events) {
+      if (new Date(ev.start) < dayEnd && new Date(ev.end) > day) {
+        const cal = calendarById(ev.calendarId);
+        const chip = document.createElement('div');
+        chip.className = 'allday-chip';
+        chip.style.background = cal?.color || '#4a90d9';
+        chip.textContent = ev.title;
+        chip.addEventListener('click', () => onEventClick(ev));
+        cell.appendChild(chip);
+      }
+    }
+    row.appendChild(cell);
+  }
+  return row;
+}
+
+export function destroyWeek() {
+  if (timerId) { clearInterval(timerId); timerId = null; }
+}

@@ -1,13 +1,39 @@
 import { state, setCalendars, setEvents, setConfig } from './state.js';
 import { renderAgenda } from '../views/agenda.js';
+import { renderDay, destroyDay } from '../views/day.js';
+import { renderWeek, destroyWeek } from '../views/week.js';
 import { initModal, openNewEventModal, openEditEventModal } from '../components/modalEditor.js';
+import { initCalendarDrawer, openDrawer } from '../components/calendarDrawer.js';
 
 const viewContainer = document.getElementById('view-container');
 const syncBtn = document.getElementById('sync-btn');
 const syncError = document.getElementById('sync-error');
 const fab = document.getElementById('fab');
+const calBtn = document.getElementById('cal-btn');
+const navBtns = document.querySelectorAll('.nav-btn');
 
-async function loadData() {
+// ── View rendering ────────────────────────────────────────
+
+function render() {
+  destroyDay();
+  destroyWeek();
+  if (state.activeView === 'day') renderDay(viewContainer, handleEventClick);
+  else if (state.activeView === 'week') renderWeek(viewContainer, handleEventClick);
+  else renderAgenda(viewContainer, handleEventClick);
+}
+
+function switchView(viewName) {
+  state.activeView = viewName;
+  navBtns.forEach(b => b.classList.toggle('active', b.dataset.view === viewName));
+  render();
+}
+
+// ── Data loading ──────────────────────────────────────────
+
+function rangeFrom() { return new Date(Date.now() - 30 * 86400000).toISOString(); }
+function rangeTo()   { return new Date(Date.now() + 90 * 86400000).toISOString(); }
+
+async function loadAll() {
   const [cfgRes, calRes, evRes] = await Promise.all([
     fetch('/config'),
     fetch('/calendars'),
@@ -18,12 +44,12 @@ async function loadData() {
   setEvents(await evRes.json());
 }
 
-function rangeFrom() { return new Date(Date.now() - 30 * 86400000).toISOString(); }
-function rangeTo()   { return new Date(Date.now() + 90 * 86400000).toISOString(); }
-
-function render() {
-  renderAgenda(viewContainer, handleEventClick);
+async function loadEvents() {
+  const res = await fetch(`/events?from=${rangeFrom()}&to=${rangeTo()}`);
+  setEvents(await res.json());
 }
+
+// ── Sync ──────────────────────────────────────────────────
 
 async function handleSync() {
   syncBtn.classList.add('syncing');
@@ -42,17 +68,10 @@ async function handleSync() {
   }
 }
 
-async function loadEvents() {
-  const res = await fetch(`/events?from=${rangeFrom()}&to=${rangeTo()}`);
-  setEvents(await res.json());
-}
+// ── CRUD ──────────────────────────────────────────────────
 
 function handleEventClick(event) {
-  openEditEventModal(
-    event,
-    data => saveEvent(event.id, data),
-    id => deleteEvent(id),
-  );
+  openEditEventModal(event, data => saveEvent(event.id, data), id => deleteEvent(id));
 }
 
 async function saveEvent(id, data) {
@@ -80,14 +99,19 @@ async function deleteEvent(id) {
   }
 }
 
+// ── Boot ──────────────────────────────────────────────────
+
 async function init() {
   initModal();
+  initCalendarDrawer(render);
+
+  navBtns.forEach(btn => btn.addEventListener('click', () => switchView(btn.dataset.view)));
   syncBtn.addEventListener('click', handleSync);
-  fab.addEventListener('click', () => {
-    openNewEventModal(new Date(), data => saveEvent(null, data));
-  });
+  calBtn.addEventListener('click', openDrawer);
+  fab.addEventListener('click', () => openNewEventModal(new Date(), data => saveEvent(null, data)));
+
   try {
-    await loadData();
+    await loadAll();
     render();
   } catch (err) {
     syncError.textContent = 'Failed to load: ' + err.message;

@@ -123,7 +123,7 @@ input, textarea, select {
 /* ── FAB ────────────────────────────────────────────────── */
 .fab {
   position: fixed;
-  bottom: calc(var(--space-lg) + env(safe-area-inset-bottom));
+  bottom: calc(var(--nav-height) + var(--space-md) + env(safe-area-inset-bottom));
   right: var(--space-lg);
   width: 56px; height: 56px;
   border-radius: 50%;

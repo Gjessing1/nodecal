@@ -1,0 +1,226 @@
+/* ── Bottom navigation ──────────────────────────────────── */
+.bottom-nav {
+  display: flex;
+  height: var(--nav-height);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg);
+  flex-shrink: 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  padding: var(--space-xs) 0;
+}
+.nav-btn.active { color: var(--color-accent); font-weight: 600; }
+.nav-icon { font-size: 18px; line-height: 1; }
+
+/* ── View navigation bar (day/week prev-next) ───────────── */
+.view-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.nav-arrow {
+  font-size: 22px;
+  color: var(--color-accent);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  line-height: 1;
+}
+.view-nav-title { flex: 1; text-align: center; font-weight: 600; font-size: var(--font-size-md); }
+.nav-today-btn {
+  font-size: var(--font-size-sm);
+  color: var(--color-accent);
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+}
+
+/* ── All-day strip (day view) ───────────────────────────── */
+.allday-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.allday-chip {
+  font-size: var(--font-size-sm);
+  color: #fff;
+  padding: 2px var(--space-sm);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+/* ── Time grid shared ───────────────────────────────────── */
+.grid-scroll { flex: 1; overflow-y: auto; }
+
+.day-grid, .week-grid {
+  display: flex;
+  position: relative;
+}
+
+.time-col {
+  width: 44px;
+  flex-shrink: 0;
+  position: relative;
+}
+.hour-label {
+  position: absolute;
+  right: var(--space-xs);
+  font-size: 10px;
+  color: var(--color-text-muted);
+  transform: translateY(-50%);
+  white-space: nowrap;
+}
+
+.events-col, .week-day-col {
+  flex: 1;
+  position: relative;
+}
+.hour-lines { position: absolute; inset: 0; pointer-events: none; }
+.hour-line {
+  position: absolute;
+  left: 0; right: 0;
+  height: 1px;
+  background: var(--color-border);
+}
+
+/* ── Event block (time grid) ────────────────────────────── */
+.event-block {
+  position: absolute;
+  left: 2px; right: 2px;
+  border-radius: var(--radius-sm);
+  padding: 2px var(--space-xs);
+  cursor: pointer;
+  overflow: hidden;
+  opacity: 0.9;
+}
+.event-block:active { opacity: 0.7; }
+.event-block-title {
+  font-size: var(--font-size-sm);
+  color: #fff;
+  font-weight: 500;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Current time indicator ─────────────────────────────── */
+.current-time-line {
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: var(--color-danger);
+  pointer-events: none;
+  z-index: 5;
+}
+.current-time-line::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: -4px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--color-danger);
+}
+
+/* ── Week view headers ──────────────────────────────────── */
+.week-day-headers {
+  display: flex;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+  position: sticky;
+  top: 49px; /* below view-nav */
+  z-index: 9;
+}
+.time-col-spacer { width: 44px; flex-shrink: 0; }
+.week-day-header {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-xs) 0;
+  font-size: var(--font-size-sm);
+}
+.week-day-header.today .wdh-date {
+  background: var(--color-accent);
+  color: #fff;
+  border-radius: 50%;
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+}
+.wdh-name { color: var(--color-text-muted); font-size: 11px; text-transform: uppercase; }
+.wdh-date { font-weight: 600; font-size: var(--font-size-md); }
+
+.week-allday-row {
+  display: flex;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+  min-height: 28px;
+}
+.week-allday-cell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px;
+}
+.week-allday-cell .allday-chip { max-width: 100%; font-size: 10px; }
+
+/* ── Calendar drawer ────────────────────────────────────── */
+.cal-drawer-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 50;
+}
+.cal-drawer {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: min(280px, 85vw);
+  background: var(--color-bg);
+  overflow-y: auto;
+  padding: var(--space-lg) var(--space-md);
+  box-shadow: 4px 0 16px rgba(0,0,0,0.15);
+}
+.cal-drawer h2 { font-size: var(--font-size-lg); margin-bottom: var(--space-md); }
+.cal-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) 0;
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-border);
+}
+.cal-swatch { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+.cal-name { flex: 1; font-size: var(--font-size-md); }
+.cal-checkbox { width: 18px; height: 18px; cursor: pointer; accent-color: var(--color-accent); }
+
+/* ── Header hamburger button ────────────────────────────── */
+.icon-btn {
+  padding: var(--space-sm);
+  border-radius: var(--radius-sm);
+  font-size: 18px;
+  color: var(--color-text-muted);
+  line-height: 1;
+}
+.icon-btn:hover { background: var(--color-surface); }

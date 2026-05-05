@@ -3,8 +3,12 @@ export const state = {
   calendars: [],
   /** @type {Array<{id, title, start, end, allDay, calendarId}>} */
   events: [],
-  /** @type {string} */
+  /** @type {'agenda'|'day'|'week'} */
   activeView: 'agenda',
+  /** @type {Date} - anchor date for day/week views */
+  selectedDate: new Date(),
+  /** @type {Set<string>} - calendarIds currently hidden */
+  hiddenCalendars: new Set(),
   /** @type {{timeFormat: string, weekStart: string, timezone: string}} */
   config: { timeFormat: '24h', weekStart: 'monday', timezone: 'UTC' },
 };
