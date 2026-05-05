@@ -206,6 +206,24 @@ input, textarea, select {
   padding: var(--space-xs) 0;
 }
 
+/* ── Install banner ─────────────────────────────────────── */
+.install-banner {
+  position: fixed;
+  bottom: calc(var(--nav-height) + var(--space-sm) + env(safe-area-inset-bottom));
+  left: var(--space-md);
+  right: var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  z-index: 90;
+}
+.install-text { flex: 1; font-size: var(--font-size-sm); }
+
 /* ── Utilities ──────────────────────────────────────────── */
 .hidden { display: none !important; }
 @keyframes spin { to { transform: rotate(360deg); } }

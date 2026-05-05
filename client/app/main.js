@@ -6,6 +6,7 @@ import { renderMonth } from '../views/month.js';
 import { initModal, openNewEventModal, openEditEventModal } from '../components/modalEditor.js';
 import { initCalendarDrawer, openDrawer } from '../components/calendarDrawer.js';
 import { initSettingsPanel, openSettings } from '../components/settingsPanel.js';
+import { initInstallPrompt } from './installPrompt.js';
 
 const viewContainer = document.getElementById('view-container');
 const syncBtn       = document.getElementById('sync-btn');
@@ -180,6 +181,15 @@ async function init() {
   initModal();
   initCalendarDrawer(render);
   initSettingsPanel(() => { buildNav(); render(); });
+  initInstallPrompt();
+
+  window.addEventListener('offline', () => {
+    syncError.textContent = 'Offline — showing cached events';
+    syncError.classList.remove('hidden');
+  });
+  window.addEventListener('online', () => {
+    syncError.classList.add('hidden');
+  });
 
   syncBtn.addEventListener('click', handleSync);
   calBtn.addEventListener('click', openDrawer);
