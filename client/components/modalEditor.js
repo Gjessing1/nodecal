@@ -46,6 +46,12 @@ function renderForm(event, defaultDate) {
   sheet.innerHTML = `
     <div class="modal-handle"></div>
     <div class="modal-title">${isNew ? 'New Event' : 'Edit Event'}</div>
+    ${isNew ? `
+    <div class="modal-field nlp-field">
+      <label>Quick add</label>
+      <input type="text" id="f-nlp" placeholder="e.g. Team meeting tomorrow 14:00" autocomplete="off" spellcheck="false">
+      <div class="nlp-feedback hidden" id="nlp-fb"></div>
+    </div>` : ''}
     <div class="modal-field">
       <label>Title</label>
       <input type="text" id="f-title" value="${esc(event?.title || '')}" placeholder="Event title" autocomplete="off">
@@ -100,6 +106,15 @@ function renderForm(event, defaultDate) {
   });
   sheet.querySelector('#f-save').addEventListener('click', () => handleSave(event));
   sheet.querySelector('#f-cancel').addEventListener('click', closeModal);
+
+  const nlpInput = sheet.querySelector('#f-nlp');
+  if (nlpInput) {
+    let nlpTimer = null;
+    nlpInput.addEventListener('input', () => {
+      clearTimeout(nlpTimer);
+      nlpTimer = setTimeout(() => applyNlp(nlpInput.value), 320);
+    });
+  }
   if (!isNew) {
     sheet.querySelector('#f-delete').addEventListener('click', () => {
       const scope = sheet.querySelector('#f-scope')?.value || null;
@@ -129,7 +144,9 @@ function handleSave(event) {
     endDt = new Date(startDt.getTime() + 3600000);
   }
 
-  const data = { title, start: startDt.toISOString(), end: endDt.toISOString(), allDay, calendarId, description };
+  const nlpRrule = !event ? (sheet.dataset.nlpRrule || null) : null;
+  const data = { title, start: startDt.toISOString(), end: endDt.toISOString(), allDay, calendarId, description,
+    ...(nlpRrule ? { rrule: nlpRrule } : {}) };
   if (event?.recurring) {
     data.recurringScope = sheet.querySelector('#f-scope')?.value || 'single';
     data.uid = event.uid;
@@ -138,6 +155,46 @@ function handleSave(event) {
 
   closeModal();
   onSaveCb(data);
+}
+
+async function applyNlp(text) {
+  const fb = sheet.querySelector('#nlp-fb');
+  if (!fb || !text.trim()) { if (fb) fb.classList.add('hidden'); return; }
+  try {
+    const res = await fetch('/nlp/parse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    const data = await res.json();
+    if (!data.parsed) { fb.classList.add('hidden'); return; }
+
+    // Update form fields
+    sheet.querySelector('#f-title').value = data.title;
+    const start = new Date(data.start);
+    const end = new Date(data.end);
+    sheet.querySelector('#f-date').value = toDateInputValue(start);
+    if (!data.allDay) {
+      sheet.querySelector('#f-start-time').value = toTimeInputValue(start);
+      sheet.querySelector('#f-end-time').value = toTimeInputValue(end);
+      sheet.querySelector('#f-allday').checked = false;
+      sheet.querySelector('#time-row').style.display = '';
+    } else {
+      sheet.querySelector('#f-allday').checked = true;
+      sheet.querySelector('#time-row').style.display = 'none';
+    }
+
+    // Show feedback
+    const dateStr = start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const timeStr = data.allDay ? 'All day' : `${toTimeInputValue(start)} – ${toTimeInputValue(end)}`;
+    fb.textContent = `📅 ${dateStr} · ${timeStr}${data.rrule ? ' · 🔁 Repeats' : ''}`;
+    fb.classList.remove('hidden');
+
+    // Store rrule if detected so handleSave can include it
+    sheet.dataset.nlpRrule = data.rrule || '';
+  } catch {
+    fb.classList.add('hidden');
+  }
 }
 
 function esc(str) {

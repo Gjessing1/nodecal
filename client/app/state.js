@@ -9,8 +9,8 @@ export const state = {
   selectedDate: new Date(),
   /** @type {Set<string>} - calendarIds currently hidden */
   hiddenCalendars: new Set(),
-  /** @type {{timeFormat: string, weekStart: string, timezone: string}} */
-  config: { timeFormat: '24h', weekStart: 'monday', timezone: 'UTC' },
+  /** @type {{timeFormat, weekStart, timezone, defaultView, enabledViews}} */
+  config: { timeFormat: '24h', weekStart: 'monday', timezone: 'UTC', defaultView: 'agenda', enabledViews: ['agenda', 'day', 'week', 'month'] },
 };
 
 export function setCalendars(cals) { state.calendars = cals; }

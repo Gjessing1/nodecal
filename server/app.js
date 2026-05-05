@@ -12,10 +12,8 @@ app.use('/client', express.static(path.join(__dirname, '../client')));
 app.use(require('./routes/events'));
 app.use(require('./routes/calendars'));
 app.use(require('./routes/sync'));
-
-app.get('/config', (req, res) => {
-  res.json(config.app);
-});
+app.use(require('./routes/settings'));
+app.use(require('./routes/nlp'));
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', version: process.env.npm_package_version, ...store.getSyncState() });

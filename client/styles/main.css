@@ -178,6 +178,34 @@ input, textarea, select {
   .sync-error { background: #2d1515; color: #fca5a5; border-color: #450a0a; }
 }
 
+/* ── Header right cluster ───────────────────────────────── */
+.header-right { display: flex; align-items: center; gap: 2px; }
+
+/* ── Settings panel toggles ─────────────────────────────── */
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) 0;
+  cursor: pointer;
+  font-size: var(--font-size-md);
+}
+.settings-toggle input[type="checkbox"] {
+  width: 18px; height: 18px;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+  border: none; padding: 0;
+}
+
+/* ── NLP quick-add feedback ─────────────────────────────── */
+.nlp-field { border: 1px solid var(--color-accent-light); border-radius: var(--radius-sm); padding: var(--space-sm); }
+.nlp-feedback {
+  font-size: var(--font-size-sm);
+  color: var(--color-accent);
+  margin-top: var(--space-xs);
+  padding: var(--space-xs) 0;
+}
+
 /* ── Utilities ──────────────────────────────────────────── */
 .hidden { display: none !important; }
 @keyframes spin { to { transform: rotate(360deg); } }

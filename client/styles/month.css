@@ -1,0 +1,85 @@
+/* ── Month view ──────────────────────────────────────────── */
+.month-weekday-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+.month-weekday-label {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: var(--space-xs) 0;
+}
+
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(6, 1fr);
+  flex: 1;
+  overflow: hidden;
+}
+
+.month-day {
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  padding: 2px 3px;
+  min-height: 72px;
+  overflow: hidden;
+}
+.month-day:nth-child(7n) { border-right: none; }
+
+.month-day.other-month { opacity: 0.38; }
+
+.month-day-num {
+  text-align: right;
+  margin-bottom: 2px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.month-day-num span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+.month-day.today .month-day-num span {
+  background: var(--color-accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* Event chips inside month cells */
+.month-event-chip {
+  display: block;
+  font-size: 10px;
+  line-height: 1.3;
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: #fff;
+  margin-bottom: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.month-more {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  padding: 0 4px;
+  cursor: pointer;
+}
+
+/* Make the month view fill the scrollable area as a column layout */
+#view-container:has(.month-grid) {
+  display: flex;
+  flex-direction: column;
+}
