@@ -113,8 +113,27 @@
   cursor: pointer;
   overflow: hidden;
   opacity: 0.9;
+  touch-action: none;
+  user-select: none;
 }
 .event-block:active { opacity: 0.7; }
+
+/* ── Resize handle ──────────────────────────────────────── */
+.resize-handle {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 10px;
+  cursor: ns-resize;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+.resize-handle::after {
+  content: '';
+  display: block;
+  width: 24px; height: 3px;
+  background: rgba(255,255,255,0.6);
+  border-radius: 2px;
+  margin: 3px auto 0;
+}
 .event-block-title {
   font-size: var(--font-size-sm);
   color: #fff;

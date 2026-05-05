@@ -14,11 +14,17 @@ const navBtns = document.querySelectorAll('.nav-btn');
 
 // ── View rendering ────────────────────────────────────────
 
+const viewCallbacks = {
+  onEventClick: handleEventClick,
+  onEventMove: handleEventMove,
+  onEventResize: handleEventResize,
+};
+
 function render() {
   destroyDay();
   destroyWeek();
-  if (state.activeView === 'day') renderDay(viewContainer, handleEventClick);
-  else if (state.activeView === 'week') renderWeek(viewContainer, handleEventClick);
+  if (state.activeView === 'day') renderDay(viewContainer, viewCallbacks);
+  else if (state.activeView === 'week') renderWeek(viewContainer, viewCallbacks);
   else renderAgenda(viewContainer, handleEventClick);
 }
 
@@ -72,6 +78,26 @@ async function handleSync() {
 
 function handleEventClick(event) {
   openEditEventModal(event, data => saveEvent(event.id, data), id => deleteEvent(id));
+}
+
+function handleEventMove(eventId, day, startMin) {
+  const ev = state.events.find(e => e.id === eventId);
+  if (!ev) return;
+  const duration = new Date(ev.end) - new Date(ev.start);
+  const newStart = new Date(day);
+  newStart.setHours(Math.floor(startMin / 60), startMin % 60, 0, 0);
+  const newEnd = new Date(newStart.getTime() + duration);
+  saveEvent(eventId, { start: newStart.toISOString(), end: newEnd.toISOString() });
+}
+
+function handleEventResize(eventId, endMin) {
+  const ev = state.events.find(e => e.id === eventId);
+  if (!ev) return;
+  const start = new Date(ev.start);
+  const newEnd = new Date(start);
+  newEnd.setHours(Math.floor(endMin / 60), endMin % 60, 0, 0);
+  if (newEnd - start < 15 * 60000) return;
+  saveEvent(eventId, { end: newEnd.toISOString() });
 }
 
 async function saveEvent(id, data) {

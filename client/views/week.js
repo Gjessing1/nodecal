@@ -2,7 +2,9 @@ import { state, calendarById } from '../app/state.js';
 import {
   buildTimeColumn, buildHourLines, buildEventBlock,
   buildCurrentTimeLine, updateCurrentTimeLine, getTotalHeight, timeToTop,
+  TIME_COL_WIDTH,
 } from '../components/timeGrid.js';
+import { initDnd, initSwipe } from '../components/dnd.js';
 
 let timerId = null;
 
@@ -19,9 +21,10 @@ function weekStart(date) {
 /**
  * Render the week view into container.
  * @param {HTMLElement} container
- * @param {function(event): void} onEventClick
+ * @param {object} callbacks - { onEventClick, onEventMove, onEventResize }
  */
-export function renderWeek(container, onEventClick) {
+export function renderWeek(container, callbacks) {
+  const { onEventClick, onEventMove, onEventResize } = callbacks;
   if (timerId) { clearInterval(timerId); timerId = null; }
 
   const wStart = weekStart(state.selectedDate);
@@ -32,7 +35,7 @@ export function renderWeek(container, onEventClick) {
   container.innerHTML = '';
 
   // Navigation bar
-  container.appendChild(buildNavBar(wStart, onEventClick));
+  container.appendChild(buildNavBar(wStart, callbacks));
 
   // All-day row
   const allDayEvents = state.events.filter(ev => {
@@ -83,6 +86,23 @@ export function renderWeek(container, onEventClick) {
   scroll.appendChild(grid);
   container.appendChild(scroll);
 
+  // Drag-and-drop
+  initDnd(grid, scroll, {
+    getDayFromX(clientX, gridRect) {
+      const x = clientX - gridRect.left - TIME_COL_WIDTH;
+      const colW = (gridRect.width - TIME_COL_WIDTH) / 7;
+      return days[Math.max(0, Math.min(6, Math.floor(x / colW)))];
+    },
+    onMove: onEventMove,
+    onResize: onEventResize,
+  });
+
+  // Swipe navigation
+  initSwipe(scroll,
+    () => { state.selectedDate = new Date(wStart.getTime() - 7 * 86400000); renderWeek(container, callbacks); },
+    () => { state.selectedDate = new Date(wStart.getTime() + 7 * 86400000); renderWeek(container, callbacks); },
+  );
+
   // Scroll to current time
   requestAnimationFrame(() => {
     const offset = Math.max(0, timeToTop(today) - 128);
@@ -94,7 +114,7 @@ export function renderWeek(container, onEventClick) {
   }
 }
 
-function buildNavBar(wStart, onEventClick) {
+function buildNavBar(wStart, callbacks) {
   const wEnd = new Date(wStart.getTime() + 6 * 86400000);
   const nav = document.createElement('div');
   nav.className = 'view-nav';
@@ -104,7 +124,7 @@ function buildNavBar(wStart, onEventClick) {
   prev.textContent = '‹';
   prev.addEventListener('click', () => {
     state.selectedDate = new Date(wStart.getTime() - 7 * 86400000);
-    renderWeek(prev.closest('#view-container'), onEventClick);
+    renderWeek(prev.closest('#view-container'), callbacks);
   });
 
   const fmt = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -120,7 +140,7 @@ function buildNavBar(wStart, onEventClick) {
   todayBtn.hidden = thisWeek;
   todayBtn.addEventListener('click', () => {
     state.selectedDate = new Date();
-    renderWeek(prev.closest('#view-container'), onEventClick);
+    renderWeek(prev.closest('#view-container'), callbacks);
   });
 
   const next = document.createElement('button');

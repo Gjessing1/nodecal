@@ -3,15 +3,17 @@ import {
   buildTimeColumn, buildHourLines, buildEventBlock,
   buildCurrentTimeLine, updateCurrentTimeLine, getTotalHeight, timeToTop,
 } from '../components/timeGrid.js';
+import { initDnd, initSwipe } from '../components/dnd.js';
 
 let timerId = null;
 
 /**
  * Render the day view into container.
  * @param {HTMLElement} container
- * @param {function(event): void} onEventClick
+ * @param {object} callbacks - { onEventClick, onEventMove, onEventResize }
  */
-export function renderDay(container, onEventClick) {
+export function renderDay(container, callbacks) {
+  const { onEventClick, onEventMove, onEventResize } = callbacks;
   if (timerId) { clearInterval(timerId); timerId = null; }
 
   const date = state.selectedDate;
@@ -31,7 +33,7 @@ export function renderDay(container, onEventClick) {
   container.innerHTML = '';
 
   // Navigation bar
-  const nav = buildNavBar(date, onEventClick);
+  const nav = buildNavBar(date, callbacks);
   container.appendChild(nav);
 
   // All-day strip
@@ -67,6 +69,19 @@ export function renderDay(container, onEventClick) {
   scroll.appendChild(wrapper);
   container.appendChild(scroll);
 
+  // Drag-and-drop
+  initDnd(wrapper, scroll, {
+    getDayFromX: () => dayStart,
+    onMove: onEventMove,
+    onResize: onEventResize,
+  });
+
+  // Swipe navigation
+  initSwipe(scroll,
+    () => { state.selectedDate = new Date(dayStart.getTime() - 86400000); renderDay(container, callbacks); },
+    () => { state.selectedDate = new Date(dayStart.getTime() + 86400000); renderDay(container, callbacks); },
+  );
+
   // Scroll to current time (minus 2 hours for context)
   const isToday = dayStart.toDateString() === new Date().toDateString();
   if (isToday) {
@@ -78,7 +93,7 @@ export function renderDay(container, onEventClick) {
   }
 }
 
-function buildNavBar(date, onEventClick) {
+function buildNavBar(date, callbacks) {
   const nav = document.createElement('div');
   nav.className = 'view-nav';
 
@@ -87,7 +102,7 @@ function buildNavBar(date, onEventClick) {
   prev.textContent = '‹';
   prev.addEventListener('click', () => {
     state.selectedDate = new Date(date.getTime() - 86400000);
-    renderDay(prev.closest('#view-container'), onEventClick);
+    renderDay(prev.closest('#view-container'), callbacks);
   });
 
   const title = document.createElement('span');
@@ -101,7 +116,7 @@ function buildNavBar(date, onEventClick) {
   todayBtn.hidden = isToday;
   todayBtn.addEventListener('click', () => {
     state.selectedDate = new Date();
-    renderDay(prev.closest('#view-container'), onEventClick);
+    renderDay(prev.closest('#view-container'), callbacks);
   });
 
   const next = document.createElement('button');
@@ -109,7 +124,7 @@ function buildNavBar(date, onEventClick) {
   next.textContent = '›';
   next.addEventListener('click', () => {
     state.selectedDate = new Date(date.getTime() + 86400000);
-    renderDay(next.closest('#view-container'), onEventClick);
+    renderDay(next.closest('#view-container'), callbacks);
   });
 
   nav.appendChild(prev);

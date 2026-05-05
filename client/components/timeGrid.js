@@ -68,6 +68,10 @@ export function buildEventBlock(ev, color, onClick) {
   title.textContent = ev.title;
   block.appendChild(title);
 
+  const handle = document.createElement('div');
+  handle.className = 'resize-handle';
+  block.appendChild(handle);
+
   block.addEventListener('click', e => { e.stopPropagation(); onClick(ev); });
   return block;
 }
