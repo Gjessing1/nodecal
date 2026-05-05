@@ -1,0 +1,182 @@
+/* ── Tokens ─────────────────────────────────────────────── */
+:root {
+  --color-bg:           #ffffff;
+  --color-surface:      #f5f5f5;
+  --color-border:       #e0e0e0;
+  --color-text:         #1a1a1a;
+  --color-text-muted:   #757575;
+  --color-accent:       #2563eb;
+  --color-accent-light: #dbeafe;
+  --color-danger:       #dc2626;
+  --color-today-bg:     #eff6ff;
+  --color-today-text:   #1d4ed8;
+
+  --space-xs:  4px;
+  --space-sm:  8px;
+  --space-md:  16px;
+  --space-lg:  24px;
+  --space-xl:  40px;
+
+  --font-size-sm:  13px;
+  --font-size-md:  15px;
+  --font-size-lg:  18px;
+
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+
+  --nav-height: 56px;
+  --header-height: 52px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg:           #121212;
+    --color-surface:      #1e1e1e;
+    --color-border:       #2e2e2e;
+    --color-text:         #e8e8e8;
+    --color-text-muted:   #909090;
+    --color-accent:       #3b82f6;
+    --color-accent-light: #1e3a5f;
+    --color-danger:       #f87171;
+    --color-today-bg:     #1e3254;
+    --color-today-text:   #93c5fd;
+  }
+}
+
+/* ── Reset ──────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: var(--font-size-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.5;
+  min-height: 100dvh;
+}
+button { cursor: pointer; border: none; background: none; font: inherit; color: inherit; }
+input, textarea, select {
+  font: inherit;
+  color: inherit;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm) var(--space-md);
+}
+
+/* ── App shell ──────────────────────────────────────────── */
+#app { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--header-height);
+  padding: 0 var(--space-md);
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+.app-header h1 { font-size: var(--font-size-lg); font-weight: 600; }
+.app-header .sync-btn {
+  padding: var(--space-sm);
+  border-radius: var(--radius-sm);
+  font-size: 18px;
+  color: var(--color-text-muted);
+}
+.app-header .sync-btn:hover { background: var(--color-surface); }
+.app-header .sync-btn.syncing { animation: spin 1s linear infinite; }
+
+#view-container { flex: 1; overflow-y: auto; padding-bottom: var(--space-xl); }
+
+/* ── Agenda view ────────────────────────────────────────── */
+.agenda-group { padding: 0 var(--space-md); }
+.agenda-date-header {
+  padding: var(--space-md) 0 var(--space-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-top: 1px solid var(--color-border);
+}
+.agenda-date-header.today { color: var(--color-today-text); }
+.agenda-empty { color: var(--color-text-muted); font-size: var(--font-size-sm); padding: var(--space-sm) 0 var(--space-md); }
+
+/* ── Event card ─────────────────────────────────────────── */
+.event-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-sm);
+  margin-bottom: var(--space-xs);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.event-card:active { background: var(--color-surface); }
+.event-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+.event-info { flex: 1; min-width: 0; }
+.event-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.event-time { font-size: var(--font-size-sm); color: var(--color-text-muted); }
+
+/* ── FAB ────────────────────────────────────────────────── */
+.fab {
+  position: fixed;
+  bottom: calc(var(--space-lg) + env(safe-area-inset-bottom));
+  right: var(--space-lg);
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 28px;
+  line-height: 56px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+
+/* ── Modal ──────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex; align-items: flex-end;
+  z-index: 100;
+}
+.modal-overlay.hidden { display: none; }
+.modal-sheet {
+  background: var(--color-bg);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  width: 100%;
+  max-height: 90dvh;
+  overflow-y: auto;
+  padding: var(--space-md) var(--space-md) calc(var(--space-md) + env(safe-area-inset-bottom));
+}
+.modal-handle { width: 40px; height: 4px; background: var(--color-border); border-radius: 2px; margin: 0 auto var(--space-md); }
+.modal-title { font-size: var(--font-size-lg); font-weight: 600; margin-bottom: var(--space-md); }
+.modal-field { display: flex; flex-direction: column; gap: var(--space-xs); margin-bottom: var(--space-md); }
+.modal-field label { font-size: var(--font-size-sm); color: var(--color-text-muted); font-weight: 500; }
+.modal-field input, .modal-field select, .modal-field textarea { width: 100%; }
+.modal-field textarea { resize: vertical; min-height: 72px; }
+.modal-row { display: flex; gap: var(--space-sm); }
+.modal-row .modal-field { flex: 1; }
+.modal-actions { display: flex; gap: var(--space-sm); padding-top: var(--space-sm); }
+.btn { padding: var(--space-sm) var(--space-md); border-radius: var(--radius-sm); font-weight: 500; }
+.btn-primary { background: var(--color-accent); color: #fff; flex: 1; }
+.btn-danger { background: var(--color-danger); color: #fff; }
+.btn-ghost { color: var(--color-text-muted); }
+
+/* ── Sync error banner ──────────────────────────────────── */
+.sync-error {
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: var(--font-size-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid #fecaca;
+}
+@media (prefers-color-scheme: dark) {
+  .sync-error { background: #2d1515; color: #fca5a5; border-color: #450a0a; }
+}
+
+/* ── Utilities ──────────────────────────────────────────── */
+.hidden { display: none !important; }
+@keyframes spin { to { transform: rotate(360deg); } }

@@ -2,11 +2,29 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Nodecal</title>
   <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/client/styles/main.css">
 </head>
 <body>
-  <p>Nodecal — coming soon</p>
+  <div id="app">
+    <header class="app-header">
+      <h1>Nodecal</h1>
+      <button class="sync-btn" id="sync-btn" title="Sync">↻</button>
+    </header>
+
+    <div id="sync-error" class="sync-error hidden"></div>
+
+    <main id="view-container"></main>
+
+    <button class="fab" id="fab" title="New event">+</button>
+
+    <div id="modal-overlay" class="modal-overlay hidden">
+      <div class="modal-sheet"></div>
+    </div>
+  </div>
+
+  <script type="module" src="/client/app/main.js"></script>
 </body>
 </html>
