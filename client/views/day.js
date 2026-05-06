@@ -7,6 +7,7 @@ import {
 import { initDnd, initSwipe } from '../components/dnd.js';
 
 let timerId = null;
+let _container = null;
 
 /**
  * Render the day view into container.
@@ -14,6 +15,8 @@ let timerId = null;
  * @param {object} callbacks - { onEventClick, onEventMove, onEventResize }
  */
 export function renderDay(container, callbacks) {
+  _container = container;
+  container.classList.add('internal-scroll');
   const { onEventClick, onEventMove, onEventResize } = callbacks;
   if (timerId) { clearInterval(timerId); timerId = null; }
 
@@ -165,4 +168,5 @@ function buildAllDayStrip(events, tasks, onEventClick) {
 
 export function destroyDay() {
   if (timerId) { clearInterval(timerId); timerId = null; }
+  if (_container) { _container.classList.remove('internal-scroll'); _container = null; }
 }

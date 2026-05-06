@@ -70,6 +70,17 @@
   max-width: 180px;
 }
 
+/* ── Day/week internal-scroll mode ─────────────────────── */
+/* When day or week view is active, only the time grid scrolls.
+   The nav, allday-strip, and day-headers stay frozen in place. */
+.internal-scroll {
+  overflow-y: hidden !important;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 0 !important;
+}
+.internal-scroll .grid-scroll { min-height: 0; }
+
 /* ── Time grid shared ───────────────────────────────────── */
 .grid-scroll { flex: 1; overflow-y: auto; }
 

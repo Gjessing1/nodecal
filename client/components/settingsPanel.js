@@ -76,8 +76,16 @@ function renderForm() {
     <div class="modal-section-label">Tasks</div>
 
     <div class="modal-field">
-      <label>Tasks CalDAV URL</label>
-      <input type="url" id="s-tasks-url" value="${esc(cfg.tasksCalDAVUrl || '')}" placeholder="http://…/user/tasks/">
+      <label>Tasks calendar</label>
+      <select id="s-tasks-cal">
+        <option value="">— None —</option>
+        ${state.calendars.map(c => `<option value="${esc(c.id)}" ${cfg.tasksCalDAVUrl === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
+        <option value="__custom__" ${cfg.tasksCalDAVUrl && !state.calendars.find(c => c.id === cfg.tasksCalDAVUrl) ? 'selected' : ''}>Custom URL…</option>
+      </select>
+    </div>
+    <div class="modal-field" id="s-tasks-custom-row" style="${cfg.tasksCalDAVUrl && !state.calendars.find(c => c.id === cfg.tasksCalDAVUrl) ? '' : 'display:none'}">
+      <label>Custom CalDAV URL</label>
+      <input type="url" id="s-tasks-url" value="${esc(cfg.tasksCalDAVUrl || '')}" placeholder="https://…/user/tasks/">
     </div>
 
     <div class="modal-field">
@@ -110,6 +118,11 @@ function renderForm() {
     </div>
   `;
 
+  sheet.querySelector('#s-tasks-cal').addEventListener('change', e => {
+    const customRow = sheet.querySelector('#s-tasks-custom-row');
+    customRow.style.display = e.target.value === '__custom__' ? '' : 'none';
+  });
+
   sheet.querySelector('#s-save').addEventListener('click', handleSave);
   sheet.querySelector('#s-cancel').addEventListener('click', closeSettings);
   if (cfg.authEnabled) {
@@ -141,7 +154,10 @@ async function handleSave() {
   const timeFormat    = sheet.querySelector('#s-timefmt').value;
   const weekStart     = sheet.querySelector('#s-weekstart').value;
   const defaultCalRaw = sheet.querySelector('#s-defcal').value;
-  const tasksCalDAVUrl       = sheet.querySelector('#s-tasks-url').value.trim();
+  const tasksCal = sheet.querySelector('#s-tasks-cal').value;
+  const tasksCalDAVUrl = tasksCal === '__custom__'
+    ? (sheet.querySelector('#s-tasks-url')?.value.trim() || '')
+    : tasksCal;
   const showTasksOnCalendar  = sheet.querySelector('#s-tasks-on-cal').checked;
   const taskSortOrder        = sheet.querySelector('#s-tasks-sort').value;
 

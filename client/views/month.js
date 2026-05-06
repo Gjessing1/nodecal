@@ -123,6 +123,7 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick) {
   numWrap.addEventListener('click', () => onDayClick && onDayClick(new Date(day)));
   cell.appendChild(numWrap);
 
+  const dayStr = localDateStr(day);
   const dayStart = new Date(day);
   const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
   const dayEvs = events
@@ -132,7 +133,6 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick) {
     })
     .sort((a, b) => (a.allDay ? -1 : 1) - (b.allDay ? -1 : 1) || new Date(a.start) - new Date(b.start));
 
-  const dayStr = localDateStr(day);
   const dayTasks = state.config.showTasksOnCalendar
     ? state.tasks.filter(t => t.due === dayStr && t.status !== 'COMPLETED')
     : [];

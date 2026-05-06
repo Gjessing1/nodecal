@@ -8,6 +8,7 @@ import {
 import { initDnd, initSwipe } from '../components/dnd.js';
 
 let timerId = null;
+let _container = null;
 
 /** Return the Monday of the week containing `date`. */
 function weekStart(date) {
@@ -25,6 +26,8 @@ function weekStart(date) {
  * @param {object} callbacks - { onEventClick, onEventMove, onEventResize }
  */
 export function renderWeek(container, callbacks) {
+  _container = container;
+  container.classList.add('internal-scroll');
   const { onEventClick, onEventMove, onEventResize } = callbacks;
   if (timerId) { clearInterval(timerId); timerId = null; }
 
@@ -228,4 +231,5 @@ function buildAllDayRow(days, events, onEventClick) {
 
 export function destroyWeek() {
   if (timerId) { clearInterval(timerId); timerId = null; }
+  if (_container) { _container.classList.remove('internal-scroll'); _container = null; }
 }
