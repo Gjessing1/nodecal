@@ -73,6 +73,36 @@ function renderForm() {
       </select>
     </div>
 
+    <div class="modal-section-label">Tasks</div>
+
+    <div class="modal-field">
+      <label>Tasks CalDAV URL</label>
+      <input type="url" id="s-tasks-url" value="${esc(cfg.tasksCalDAVUrl || '')}" placeholder="http://…/user/tasks/">
+    </div>
+
+    <div class="modal-field">
+      <label class="settings-toggle">
+        <input type="checkbox" id="s-tasks-enable" ${cfg.enableTasksView ? 'checked' : ''}>
+        <span>Enable tasks view (adds Tasks tab)</span>
+      </label>
+    </div>
+
+    <div class="modal-field">
+      <label class="settings-toggle">
+        <input type="checkbox" id="s-tasks-on-cal" ${cfg.showTasksOnCalendar ? 'checked' : ''}>
+        <span>Show tasks on calendar views</span>
+      </label>
+    </div>
+
+    <div class="modal-field">
+      <label>Task sort order</label>
+      <select id="s-tasks-sort">
+        <option value="due"     ${cfg.taskSortOrder === 'due'     ? 'selected' : ''}>Due date</option>
+        <option value="alpha"   ${cfg.taskSortOrder === 'alpha'   ? 'selected' : ''}>Alphabetical</option>
+        <option value="created" ${cfg.taskSortOrder === 'created' ? 'selected' : ''}>Creation date</option>
+      </select>
+    </div>
+
     <div class="modal-actions">
       <button class="btn btn-primary" id="s-save">Save</button>
       <button class="btn btn-ghost" id="s-cancel">Cancel</button>
@@ -98,15 +128,29 @@ function esc(str) {
 
 async function handleSave() {
   const sheet = overlay.querySelector('.modal-sheet');
-  const enabledViews = Array.from(sheet.querySelectorAll('input[name="view"]:checked')).map(c => c.value);
+  const enabledViews    = Array.from(sheet.querySelectorAll('input[name="view"]:checked')).map(c => c.value);
+  const enableTasksView = sheet.querySelector('#s-tasks-enable').checked;
+
   if (!enabledViews.length) { alert('At least one view must be enabled.'); return; }
+  if (enabledViews.length + (enableTasksView ? 1 : 0) > 5) {
+    alert('Maximum 5 navigation tabs allowed. Uncheck a view or disable the tasks tab.');
+    return;
+  }
 
   const defaultView   = sheet.querySelector('#s-default').value;
   const timeFormat    = sheet.querySelector('#s-timefmt').value;
   const weekStart     = sheet.querySelector('#s-weekstart').value;
   const defaultCalRaw = sheet.querySelector('#s-defcal').value;
-  const payload = { enabledViews, defaultView, timeFormat, weekStart };
+  const tasksCalDAVUrl       = sheet.querySelector('#s-tasks-url').value.trim();
+  const showTasksOnCalendar  = sheet.querySelector('#s-tasks-on-cal').checked;
+  const taskSortOrder        = sheet.querySelector('#s-tasks-sort').value;
+
+  const payload = {
+    enabledViews, defaultView, timeFormat, weekStart,
+    enableTasksView, showTasksOnCalendar, taskSortOrder,
+  };
   if (defaultCalRaw) payload.defaultCalendar = defaultCalRaw;
+  if (tasksCalDAVUrl) payload.tasksCalDAVUrl = tasksCalDAVUrl;
 
   try {
     const res = await fetch('/settings', {

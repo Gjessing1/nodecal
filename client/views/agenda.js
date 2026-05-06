@@ -4,6 +4,10 @@ import { formatTime } from '../app/utils.js';
 const DAY_MS = 86400000;
 const AGENDA_DAYS = 90;
 
+function dayString(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 /**
  * Render the agenda view into the given container element.
  * @param {HTMLElement} container
@@ -21,6 +25,10 @@ export function renderAgenda(container, onEventClick) {
     const dayEvents = state.events.filter(ev => {
       return new Date(ev.start) < dayEnd && new Date(ev.end) > day;
     });
+    const str = dayString(day);
+    const dayTasks = state.config.showTasksOnCalendar
+      ? state.tasks.filter(t => t.due === str && t.status !== 'COMPLETED')
+      : [];
 
     const isToday = i === 0;
     const header = document.createElement('div');
@@ -31,7 +39,7 @@ export function renderAgenda(container, onEventClick) {
     dateEl.textContent = formatDayHeader(day, isToday);
     header.appendChild(dateEl);
 
-    if (dayEvents.length === 0) {
+    if (dayEvents.length === 0 && dayTasks.length === 0) {
       const noEvSpan = document.createElement('span');
       noEvSpan.className = 'agenda-empty-inline';
       noEvSpan.textContent = ' — No events';
@@ -39,6 +47,9 @@ export function renderAgenda(container, onEventClick) {
     } else {
       for (const ev of dayEvents) {
         header.appendChild(buildEventCard(ev, onEventClick));
+      }
+      for (const task of dayTasks) {
+        header.appendChild(buildTaskCard(task));
       }
     }
 
@@ -76,6 +87,31 @@ function buildEventCard(ev, onClick) {
   card.appendChild(dot);
   card.appendChild(info);
   card.addEventListener('click', () => onClick(ev));
+  return card;
+}
+
+function buildTaskCard(task) {
+  const card = document.createElement('div');
+  card.className = 'event-card task-agenda-card';
+
+  const dot = document.createElement('div');
+  dot.className = 'event-dot task-dot';
+
+  const info = document.createElement('div');
+  info.className = 'event-info';
+
+  const title = document.createElement('div');
+  title.className = 'event-title';
+  title.textContent = '✓ ' + task.title;
+
+  const time = document.createElement('div');
+  time.className = 'event-time';
+  time.textContent = 'Task';
+
+  info.appendChild(title);
+  info.appendChild(time);
+  card.appendChild(dot);
+  card.appendChild(info);
   return card;
 }
 

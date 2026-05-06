@@ -69,4 +69,48 @@ function parseExdate(str) {
   return new Date(s);
 }
 
-module.exports = { expandRecurring, setRruleUntil, parseExdate };
+/**
+ * Parse an X-RECURRING-INTERVAL string to milliseconds.
+ * Supports: "daily", "weekly", "Nd", "Nw" (e.g. "3d", "2w").
+ * @param {string} interval
+ * @returns {number|null} milliseconds or null if unrecognised
+ */
+function parseXInterval(interval) {
+  if (!interval) return null;
+  if (interval === 'daily')  return 86400000;
+  if (interval === 'weekly') return 7 * 86400000;
+  const nd = interval.match(/^(\d+)d$/i);
+  if (nd) return parseInt(nd[1], 10) * 86400000;
+  const nw = interval.match(/^(\d+)w$/i);
+  if (nw) return parseInt(nw[1], 10) * 7 * 86400000;
+  return null;
+}
+
+/**
+ * Compute the next DUE date for a recurring task after completion.
+ * X-RECURRING wins over RRULE when both are present.
+ *
+ * @param {object} task  - task with .due (YYYY-MM-DD), .rrule, .xRecurringType, .xRecurringInterval
+ * @param {Date}   completionDate
+ * @returns {Date|null}
+ */
+function computeNextDue(task, completionDate) {
+  if (task.xRecurringType === 'after-completion' && task.xRecurringInterval) {
+    const ms = parseXInterval(task.xRecurringInterval);
+    if (ms === null) return null;
+    return new Date(completionDate.getTime() + ms);
+  }
+  if (task.rrule && task.due) {
+    const dueDate = new Date(task.due + 'T00:00:00Z');
+    const dtstart = task.due.replace(/-/g, ''); // YYYYMMDD
+    try {
+      const rule = rrulestr(`DTSTART;VALUE=DATE:${dtstart}\nRRULE:${task.rrule}`);
+      return rule.after(dueDate, false) || null; // strict: after current due
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+module.exports = { expandRecurring, setRruleUntil, parseExdate, computeNextDue, parseXInterval };

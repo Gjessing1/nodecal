@@ -5,6 +5,8 @@ const CACHE_FILE = '/cache/events.json';
 
 /** @type {Map<string, object>} uid → event */
 const events = new Map();
+/** @type {Map<string, object>} uid → task */
+const tasks = new Map();
 let calendars = [];
 let syncState = { lastSync: null, error: null };
 /** @type {Object<string, string>} calendarId → ctag */
@@ -14,11 +16,14 @@ function loadFromDisk() {
   try {
     const raw = fs.readFileSync(CACHE_FILE, 'utf8');
     const data = JSON.parse(raw);
-    // Handle both old format (plain array) and new format ({events, ctags})
+    // Handle plain array (oldest format), {events, ctags}, and {events, tasks, ctags}
     const evList = Array.isArray(data) ? data : (data.events || []);
     for (const ev of evList) events.set(ev.uid, ev);
-    if (!Array.isArray(data)) calendarCtags = data.ctags || {};
-    console.log(`Loaded ${events.size} events from cache`);
+    if (!Array.isArray(data)) {
+      calendarCtags = data.ctags || {};
+      for (const t of (data.tasks || [])) tasks.set(t.uid, t);
+    }
+    console.log(`Loaded ${events.size} events, ${tasks.size} tasks from cache`);
   } catch {
     // No cache file yet — start fresh
   }
@@ -29,10 +34,11 @@ function flushToDisk() {
     fs.mkdirSync(path.dirname(CACHE_FILE), { recursive: true });
     fs.writeFileSync(CACHE_FILE, JSON.stringify({
       events: Array.from(events.values()),
-      ctags: calendarCtags,
+      tasks:  Array.from(tasks.values()),
+      ctags:  calendarCtags,
     }), 'utf8');
   } catch (err) {
-    console.error('Failed to persist event cache:', err.message);
+    console.error('Failed to persist cache:', err.message);
   }
 }
 
@@ -79,15 +85,28 @@ function getEventByHref(href) {
   return null;
 }
 
-// Flush after each write — used for single CRUD operations
 function setEvent(event) { events.set(event.uid, event); flushToDisk(); }
 function removeEvent(uid) { events.delete(uid); flushToDisk(); }
-
-// No flush — used during bulk sync; caller calls flushToDisk() once at the end
 function setEventSilent(event) { events.set(event.uid, event); }
 function removeEventSilent(uid) { events.delete(uid); }
-
 function clearEvents() { events.clear(); }
+
+// ── Tasks ─────────────────────────────────────────────────
+function getTasks() { return Array.from(tasks.values()); }
+function getTask(uid) { return tasks.get(uid) || null; }
+function getTaskCount() { return tasks.size; }
+
+function getTaskByHref(href) {
+  for (const t of tasks.values()) {
+    if (t.href === href) return t;
+  }
+  return null;
+}
+
+function setTask(task) { tasks.set(task.uid, task); flushToDisk(); }
+function removeTask(uid) { tasks.delete(uid); flushToDisk(); }
+function setTaskSilent(task) { tasks.set(task.uid, task); }
+function removeTaskSilent(uid) { tasks.delete(uid); }
 
 // ── Sync state ────────────────────────────────────────────
 function getSyncState() { return syncState; }
@@ -103,5 +122,8 @@ module.exports = {
   getEventsByCalendar, getEventByHref,
   setEvent, removeEvent, clearEvents,
   setEventSilent, removeEventSilent, flushToDisk,
+  getTasks, getTask, getTaskCount, getTaskByHref,
+  setTask, removeTask,
+  setTaskSilent, removeTaskSilent,
   getSyncState, setSyncState,
 };

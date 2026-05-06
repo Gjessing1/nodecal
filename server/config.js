@@ -13,6 +13,7 @@ module.exports = {
     baseUrl,
     username,
     password: process.env.CALDAV_PASSWORD,
+    tasksUrl: process.env.CALDAV_TASKS_URL || null,
   },
   app: {
     port: parseInt(process.env.PORT || '3000', 10),

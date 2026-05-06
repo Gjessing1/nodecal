@@ -31,15 +31,20 @@ export function renderDay(container, callbacks) {
     return ev.allDay && new Date(ev.start) < dayEnd && new Date(ev.end) > dayStart;
   });
 
+  const dayStr = `${dayStart.getFullYear()}-${String(dayStart.getMonth()+1).padStart(2,'0')}-${String(dayStart.getDate()).padStart(2,'0')}`;
+  const dayTasks = state.config.showTasksOnCalendar
+    ? state.tasks.filter(t => t.due === dayStr && t.status !== 'COMPLETED')
+    : [];
+
   container.innerHTML = '';
 
   // Navigation bar
   const nav = buildNavBar(date, isToday, callbacks);
   container.appendChild(nav);
 
-  // All-day strip
-  if (allDayEvents.length > 0) {
-    const strip = buildAllDayStrip(allDayEvents, onEventClick);
+  // All-day strip (events + tasks)
+  if (allDayEvents.length > 0 || dayTasks.length > 0) {
+    const strip = buildAllDayStrip(allDayEvents, dayTasks, onEventClick);
     container.appendChild(strip);
   }
 
@@ -134,7 +139,7 @@ function buildNavBar(date, isToday, callbacks) {
   return nav;
 }
 
-function buildAllDayStrip(events, onEventClick) {
+function buildAllDayStrip(events, tasks, onEventClick) {
   const strip = document.createElement('div');
   strip.className = 'allday-strip';
   for (const ev of events) {
@@ -144,6 +149,12 @@ function buildAllDayStrip(events, onEventClick) {
     chip.style.background = cal?.color || '#4a90d9';
     chip.textContent = ev.title;
     chip.addEventListener('click', () => onEventClick(ev));
+    strip.appendChild(chip);
+  }
+  for (const task of tasks) {
+    const chip = document.createElement('div');
+    chip.className = 'allday-chip task-allday-chip';
+    chip.textContent = '✓ ' + task.title;
     strip.appendChild(chip);
   }
   return strip;

@@ -1,4 +1,7 @@
-const { listCalendars, listEventEtags, fetchEventsByHref } = require('./client');
+const {
+  listCalendars, listEventEtags, fetchEventsByHref,
+  getEffectiveTasksUrl, listTaskEtags, fetchTasksByHref,
+} = require('./client');
 const store = require('../cache/store');
 const config = require('../config');
 
@@ -103,12 +106,67 @@ async function syncIncremental() {
     store.setCalendarCtag(cal.id, cal.ctag);
   }
 
-  if (totalChanged > 0) store.flushToDisk();
+  let tasksChanged = 0;
+  const tasksUrl = getEffectiveTasksUrl();
+  if (tasksUrl) {
+    tasksChanged = await syncTasksIncremental(tasksUrl, now);
+  }
 
-  const result = { calendars: calendars.length, events: store.getEventCount(), changed: totalChanged };
+  if (totalChanged + tasksChanged > 0) store.flushToDisk();
+
+  const result = {
+    calendars: calendars.length,
+    events: store.getEventCount(),
+    tasks: store.getTaskCount(),
+    changed: totalChanged + tasksChanged,
+  };
   store.setSyncState({ lastSync: now.toISOString(), error: null });
-  console.log(`Sync: ${result.calendars} cals, ${result.events} events, ${totalChanged} changed`);
+  console.log(`Sync: ${result.calendars} cals, ${result.events} events, ${result.tasks} tasks, ${result.changed} changed`);
   return result;
 }
 
-module.exports = { syncIncremental, computeSyncDiff, withRetry };
+/**
+ * Incremental task sync against a single VTODO collection.
+ * @param {string} tasksUrl
+ * @param {Date} now
+ * @returns {Promise<number>} number of changes
+ */
+async function syncTasksIncremental(tasksUrl, now) {
+  const serverEtags = await withRetry(() => listTaskEtags(tasksUrl));
+  const cached = store.getTasks();
+  const serverMap = new Map(serverEtags.map(e => [e.href, e.etag]));
+  let changed = 0;
+
+  for (const task of cached) {
+    if (!serverMap.has(task.href)) {
+      store.removeTaskSilent(task.uid);
+      changed++;
+    }
+  }
+
+  const toFetch = [];
+  for (const { href, etag } of serverEtags) {
+    const local = cached.find(t => t.href === href);
+    if (!local || local.etag !== etag) {
+      syncLog(`etag mismatch (task): href=${href} local=${local?.etag || 'none'} server=${etag}`);
+      toFetch.push(href);
+    }
+  }
+
+  if (toFetch.length > 0) {
+    const fetched = await withRetry(() => fetchTasksByHref(tasksUrl, toFetch));
+    for (const task of fetched) {
+      const existing = store.getTask(task.uid);
+      if (existing?.localModifiedAt) {
+        syncLog(`local overwrite applied (task): uid=${task.uid} localModifiedAt=${existing.localModifiedAt}`);
+      }
+      syncLog(`fetched remote change (task): uid=${task.uid}`);
+      store.setTaskSilent({ ...task, lastSyncedAt: now.toISOString() });
+      changed++;
+    }
+  }
+
+  return changed;
+}
+
+module.exports = { syncIncremental, syncTasksIncremental, computeSyncDiff, withRetry };

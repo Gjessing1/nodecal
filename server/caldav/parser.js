@@ -167,4 +167,91 @@ function serializeEvent(event) {
   return lines.join(CRLF) + CRLF;
 }
 
-module.exports = { parseIcs, serializeEvent, formatIcsDate };
+/**
+ * Parse a VCALENDAR ICS string into an array of task objects (VTODO).
+ * @param {string} icsText
+ * @returns {Array}
+ */
+function parseVtodo(icsText) {
+  const unfolded = unfold(icsText);
+  const result = [];
+  const re = /BEGIN:VTODO([\s\S]*?)END:VTODO/g;
+  let match;
+  while ((match = re.exec(unfolded)) !== null) {
+    const props = {};
+    for (const line of match[1].split(/\r?\n/).filter(Boolean)) {
+      const prop = parseProperty(line);
+      if (prop) props[prop.name] = prop;
+    }
+    const uid = props.UID?.value;
+    if (!uid) continue;
+
+    // DUE — prefer date-only; fall back to full datetime truncated to date
+    let due = null;
+    if (props.DUE) {
+      const val = props.DUE.value;
+      if (/^\d{8}$/.test(val)) {
+        due = `${val.slice(0,4)}-${val.slice(4,6)}-${val.slice(6,8)}`;
+      } else {
+        const parsed = parseIcsDate(val, props.DUE.params);
+        if (parsed) due = parsed.date.toISOString().slice(0, 10);
+      }
+    }
+
+    let completed = null;
+    if (props.COMPLETED) {
+      const parsed = parseIcsDate(props.COMPLETED.value, props.COMPLETED.params);
+      if (parsed) completed = parsed.date.toISOString();
+    }
+
+    const categories = props.CATEGORIES?.value
+      ? props.CATEGORIES.value.split(',').map(c => c.trim()).filter(Boolean)
+      : [];
+
+    result.push({
+      uid,
+      type: 'task',
+      title: unescapeIcsText(props.SUMMARY?.value || '(No title)'),
+      description: unescapeIcsText(props.DESCRIPTION?.value || ''),
+      status: props.STATUS?.value || 'NEEDS-ACTION',
+      due,
+      completed,
+      categories,
+      rrule: props.RRULE?.value || null,
+      xRecurringType: props['X-RECURRING-TYPE']?.value || null,
+      xRecurringInterval: props['X-RECURRING-INTERVAL']?.value || null,
+    });
+  }
+  return result;
+}
+
+/**
+ * Serialize a task object into a full VCALENDAR ICS string (VTODO).
+ * @param {object} task
+ * @returns {string}
+ */
+function serializeTask(task) {
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Nodecal//EN',
+    'BEGIN:VTODO',
+    `UID:${task.uid}`,
+    `SUMMARY:${escapeIcsText(task.title || '')}`,
+    `STATUS:${task.status || 'NEEDS-ACTION'}`,
+  ];
+  if (task.due) lines.push(`DUE;VALUE=DATE:${task.due.replace(/-/g, '')}`);
+  if (task.completed) {
+    const dt = new Date(task.completed).toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
+    lines.push(`COMPLETED:${dt}`);
+  }
+  if (task.categories?.length) lines.push(`CATEGORIES:${task.categories.join(',')}`);
+  if (task.rrule) lines.push(`RRULE:${task.rrule}`);
+  if (task.xRecurringType) lines.push(`X-RECURRING-TYPE:${task.xRecurringType}`);
+  if (task.xRecurringInterval) lines.push(`X-RECURRING-INTERVAL:${task.xRecurringInterval}`);
+  if (task.description) lines.push(`DESCRIPTION:${escapeIcsText(task.description)}`);
+  lines.push('END:VTODO', 'END:VCALENDAR');
+  return lines.join(CRLF) + CRLF;
+}
+
+module.exports = { parseIcs, serializeEvent, formatIcsDate, parseVtodo, serializeTask };

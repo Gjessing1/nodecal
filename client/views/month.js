@@ -1,6 +1,10 @@
 import { state, calendarById } from '../app/state.js';
 import { initDayDnd } from '../components/dnd.js';
 
+function dayString(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 /**
  * @param {HTMLElement} container
  * @param {function(event): void} onEventClick
@@ -128,6 +132,12 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick) {
     .filter(ev => new Date(ev.start) < dayEnd && new Date(ev.end) > dayStart)
     .sort((a, b) => (a.allDay ? -1 : 1) - (b.allDay ? -1 : 1) || new Date(a.start) - new Date(b.start));
 
+  // Task pills — show count badge when tasks on calendar is enabled
+  const dayStr = dayString(day);
+  const dayTasks = state.config.showTasksOnCalendar
+    ? state.tasks.filter(t => t.due === dayStr && t.status !== 'COMPLETED')
+    : [];
+
   const MAX = 2;
   for (let i = 0; i < Math.min(dayEvs.length, MAX); i++) {
     cell.appendChild(buildChip(dayEvs[i], onEventClick));
@@ -138,6 +148,12 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick) {
     more.textContent = `+${dayEvs.length - MAX}`;
     more.addEventListener('click', () => onDayClick && onDayClick(new Date(day)));
     cell.appendChild(more);
+  }
+  if (dayTasks.length > 0) {
+    const pill = document.createElement('div');
+    pill.className = 'month-task-pill';
+    pill.textContent = dayTasks.length === 1 ? '1 task' : `${dayTasks.length} tasks`;
+    cell.appendChild(pill);
   }
   return cell;
 }

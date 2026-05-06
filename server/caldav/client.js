@@ -1,8 +1,26 @@
+const fs = require('fs');
 const config = require('../config');
-const { parseIcs } = require('./parser');
+const { parseIcs, parseVtodo } = require('./parser');
 
 function syncLog(msg) {
   if (config.app.debugSync) console.log(`[sync] ${msg}`);
+}
+
+/**
+ * Return the tasks CalDAV URL, preferring a runtime override from settings.json.
+ */
+function getEffectiveTasksUrl() {
+  try {
+    const s = JSON.parse(fs.readFileSync('/config/settings.json', 'utf8'));
+    if (s.tasksCalDAVUrl) return s.tasksCalDAVUrl;
+  } catch { /* no override file */ }
+  return config.caldav.tasksUrl || null;
+}
+
+function fullUrlFromBase(href, base) {
+  if (href.startsWith('http')) return href;
+  const u = new URL(base);
+  return u.origin + href;
 }
 
 function getAuth() {
@@ -179,4 +197,110 @@ async function deleteEvent(eventHref, etag = null) {
   if (!res.ok && res.status !== 404) throw new Error(`DELETE failed: ${res.status}`);
 }
 
-module.exports = { listCalendars, listEventEtags, fetchEventsByHref, putEvent, deleteEvent };
+/**
+ * Fetch href+etag pairs for all VTODOs in the tasks collection.
+ * @param {string} tasksUrl
+ * @returns {Promise<Array<{href, etag}>>}
+ */
+async function listTaskEtags(tasksUrl) {
+  const body = `<?xml version="1.0" encoding="UTF-8"?>
+<cal:calendar-query xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav">
+  <d:prop><d:getetag /></d:prop>
+  <cal:filter>
+    <cal:comp-filter name="VCALENDAR">
+      <cal:comp-filter name="VTODO"/>
+    </cal:comp-filter>
+  </cal:filter>
+</cal:calendar-query>`;
+
+  const res = await davRequest('REPORT', tasksUrl, { 'Depth': '1' }, body);
+  if (res.status === 404) return [];
+  if (!res.ok && res.status !== 207) throw new Error(`task etag REPORT failed: ${res.status}`);
+  const xml = await res.text();
+
+  const results = [];
+  for (const block of extractAllTags(xml, 'response')) {
+    const href = extractTag(block, 'href');
+    const etag = (extractTag(block, 'getetag') || '').replace(/"/g, '');
+    if (href && etag) results.push({ href: fullUrlFromBase(href, tasksUrl), etag });
+  }
+  return results;
+}
+
+/**
+ * Fetch full ICS data for specific task hrefs via calendar-multiget.
+ * @param {string} tasksUrl
+ * @param {string[]} hrefs
+ * @returns {Promise<Array>}
+ */
+async function fetchTasksByHref(tasksUrl, hrefs) {
+  if (!hrefs.length) return [];
+  const hrefLines = hrefs.map(h => `  <d:href>${h}</d:href>`).join('\n');
+  const body = `<?xml version="1.0" encoding="UTF-8"?>
+<cal:calendar-multiget xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav">
+  <d:prop><d:getetag /><cal:calendar-data /></d:prop>
+${hrefLines}
+</cal:calendar-multiget>`;
+
+  const res = await davRequest('REPORT', tasksUrl, { 'Depth': '1' }, body);
+  if (!res.ok && res.status !== 207) throw new Error(`task multiget REPORT failed: ${res.status}`);
+  const xml = await res.text();
+
+  const result = [];
+  for (const block of extractAllTags(xml, 'response')) {
+    const href = extractTag(block, 'href');
+    const etag = (extractTag(block, 'getetag') || '').replace(/"/g, '');
+    const icsData = unescapeXml(extractTag(block, 'calendar-data') || '');
+    if (!icsData) continue;
+    for (const task of parseVtodo(icsData)) {
+      result.push({ ...task, href: fullUrlFromBase(href, tasksUrl), etag });
+    }
+  }
+  return result;
+}
+
+/**
+ * Create or update a task. Last-write-wins on 412.
+ * @param {string} tasksUrl
+ * @param {string} uid
+ * @param {string} icsData
+ * @param {string|null} etag
+ */
+async function putTask(tasksUrl, uid, icsData, etag = null) {
+  const base = tasksUrl.replace(/\/?$/, '/');
+  const url = base + uid + '.ics';
+  const headers = { 'Authorization': getAuth(), 'Content-Type': 'text/calendar; charset=utf-8' };
+  if (etag) headers['If-Match'] = `"${etag}"`;
+  else headers['If-None-Match'] = '*';
+
+  let res = await fetch(url, { method: 'PUT', headers, body: icsData });
+
+  if (res.status === 412 && etag) {
+    console.log(`Conflict on PUT task ${uid}: local etag ${etag} rejected (412) — overwriting with last-write-wins`);
+    syncLog(`etag mismatch detected on PUT task: uid=${uid} local-etag=${etag}`);
+    delete headers['If-Match'];
+    res = await fetch(url, { method: 'PUT', headers, body: icsData });
+    syncLog(`local overwrite applied (task): uid=${uid}`);
+  }
+
+  if (!res.ok) throw new Error(`PUT task failed: ${res.status}`);
+  return { href: url, etag: (res.headers.get('etag') || '').replace(/"/g, '') };
+}
+
+/**
+ * Delete a task from the server.
+ * @param {string} href  full URL of the .ics file
+ * @param {string|null} etag
+ */
+async function deleteTask(href, etag = null) {
+  const headers = { 'Authorization': getAuth() };
+  if (etag) headers['If-Match'] = `"${etag}"`;
+  const res = await fetch(href, { method: 'DELETE', headers });
+  if (!res.ok && res.status !== 404) throw new Error(`DELETE task failed: ${res.status}`);
+}
+
+module.exports = {
+  listCalendars, listEventEtags, fetchEventsByHref, putEvent, deleteEvent,
+  getEffectiveTasksUrl,
+  listTaskEtags, fetchTasksByHref, putTask, deleteTask,
+};

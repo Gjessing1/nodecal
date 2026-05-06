@@ -3,18 +3,31 @@ export const state = {
   calendars: [],
   /** @type {Array<{id, title, start, end, allDay, calendarId}>} */
   events: [],
-  /** @type {'agenda'|'day'|'week'} */
+  /** @type {Array} */
+  tasks: [],
+  /** @type {'agenda'|'day'|'week'|'month'|'tasks'} */
   activeView: 'agenda',
   /** @type {Date} - anchor date for day/week views */
   selectedDate: new Date(),
   /** @type {Set<string>} - calendarIds currently hidden */
   hiddenCalendars: new Set(),
-  /** @type {{timeFormat, weekStart, timezone, defaultView, enabledViews}} */
-  config: { timeFormat: '24h', weekStart: 'monday', timezone: 'UTC', defaultView: 'agenda', enabledViews: ['agenda', 'day', 'week', 'month'] },
+  /** @type {object} */
+  config: {
+    timeFormat: '24h',
+    weekStart: 'monday',
+    timezone: 'UTC',
+    defaultView: 'agenda',
+    enabledViews: ['agenda', 'day', 'week', 'month'],
+    enableTasksView: false,
+    showTasksOnCalendar: false,
+    taskSortOrder: 'due',
+    tasksCalDAVUrl: '',
+  },
 };
 
 export function setCalendars(cals) { state.calendars = cals; }
 export function setEvents(evts) { state.events = evts; }
+export function setTasks(tasks) { state.tasks = tasks; }
 export function setConfig(cfg) { state.config = { ...state.config, ...cfg }; }
 
 export function calendarById(id) {

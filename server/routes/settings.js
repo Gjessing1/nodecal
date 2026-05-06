@@ -15,28 +15,42 @@ function readOverrides() {
 router.get('/settings', (req, res) => {
   const overrides = readOverrides();
   res.json({
-    siteTitle:    config.app.siteTitle,
-    defaultView:  config.app.defaultView,
-    timeFormat:   config.app.timeFormat,
-    weekStart:    config.app.weekStart,
-    timezone:     config.app.timezone,
-    enabledViews: ALL_VIEWS,
-    authEnabled:  !!config.app.appPassword,
+    siteTitle:           config.app.siteTitle,
+    defaultView:         config.app.defaultView,
+    timeFormat:          config.app.timeFormat,
+    weekStart:           config.app.weekStart,
+    timezone:            config.app.timezone,
+    enabledViews:        ALL_VIEWS,
+    authEnabled:         !!config.app.appPassword,
+    enableTasksView:     false,
+    showTasksOnCalendar: false,
+    taskSortOrder:       'due',
+    tasksCalDAVUrl:      config.caldav.tasksUrl || '',
     ...overrides,
   });
 });
 
 router.put('/settings', (req, res) => {
-  const allowed = ['defaultView', 'timeFormat', 'weekStart', 'enabledViews', 'defaultCalendar'];
+  const allowed = [
+    'defaultView', 'timeFormat', 'weekStart', 'enabledViews', 'defaultCalendar',
+    'enableTasksView', 'showTasksOnCalendar', 'taskSortOrder', 'tasksCalDAVUrl',
+  ];
   const toSave = {};
   for (const k of allowed) {
     if (k in req.body) toSave[k] = req.body[k];
   }
 
-  // Ensure enabledViews has at least one entry and defaultView is in it
   if (toSave.enabledViews?.length === 0) {
     return res.status(400).json({ error: 'enabledViews must not be empty' });
   }
+
+  // Enforce max 5 tabs total (calendar views + tasks tab)
+  const calViewCount = toSave.enabledViews?.length ?? (readOverrides().enabledViews?.length ?? ALL_VIEWS.length);
+  const tasksEnabled = 'enableTasksView' in toSave ? toSave.enableTasksView : (readOverrides().enableTasksView ?? false);
+  if (calViewCount + (tasksEnabled ? 1 : 0) > 5) {
+    return res.status(400).json({ error: 'Maximum 5 navigation tabs allowed' });
+  }
+
   if (toSave.enabledViews && toSave.defaultView && !toSave.enabledViews.includes(toSave.defaultView)) {
     toSave.defaultView = toSave.enabledViews[0];
   }

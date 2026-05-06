@@ -1,8 +1,9 @@
-import { state, setCalendars, setEvents, setConfig } from './state.js';
+import { state, setCalendars, setEvents, setTasks, setConfig } from './state.js';
 import { renderAgenda } from '../views/agenda.js';
 import { renderDay, destroyDay } from '../views/day.js';
 import { renderWeek, destroyWeek } from '../views/week.js';
 import { renderMonth } from '../views/month.js';
+import { renderTasks, focusTaskQuickAdd, openTaskModal } from '../views/tasks.js';
 import { initModal, openNewEventModal, openEditEventModal } from '../components/modalEditor.js';
 import { initCalendarDrawer, openDrawer } from '../components/calendarDrawer.js';
 import { initSettingsPanel, openSettings } from '../components/settingsPanel.js';
@@ -22,13 +23,18 @@ const VIEW_META = {
   day:    { icon: '▭', label: 'Day' },
   week:   { icon: '⊞', label: 'Week' },
   month:  { icon: '⊟', label: 'Month' },
+  tasks:  { icon: '✓', label: 'Tasks' },
 };
 
 // ── Navigation ────────────────────────────────────────────
 
 function buildNav() {
   bottomNav.innerHTML = '';
-  for (const viewId of (state.config.enabledViews || Object.keys(VIEW_META))) {
+  const calViews = state.config.enabledViews || ['agenda'];
+  const tabs = [...calViews];
+  if (state.config.enableTasksView) tabs.push('tasks');
+
+  for (const viewId of tabs) {
     const meta = VIEW_META[viewId];
     if (!meta) continue;
     const btn = document.createElement('button');
@@ -41,9 +47,10 @@ function buildNav() {
 }
 
 function switchView(viewName) {
-  const enabled = state.config.enabledViews || Object.keys(VIEW_META);
-  if (!enabled.includes(viewName)) return;
-  // Tapping the active day view resets to today
+  const calViews = state.config.enabledViews || ['agenda'];
+  const tabs = [...calViews];
+  if (state.config.enableTasksView) tabs.push('tasks');
+  if (!tabs.includes(viewName)) return;
   if (viewName === 'day' && state.activeView === 'day') {
     state.selectedDate = new Date();
   }
@@ -60,10 +67,19 @@ const viewCallbacks = {
   onEventResize: handleEventResize,
 };
 
+const taskCallbacks = {
+  onComplete: handleTaskComplete,
+  onStar:     handleTaskStar,
+  onAdd:      handleTaskAdd,
+  onEdit:     handleTaskEdit,
+  onDelete:   handleTaskDelete,
+};
+
 function render() {
   destroyDay();
   destroyWeek();
-  if      (state.activeView === 'day')   renderDay(viewContainer, viewCallbacks);
+  if      (state.activeView === 'tasks') renderTasks(viewContainer, taskCallbacks);
+  else if (state.activeView === 'day')   renderDay(viewContainer, viewCallbacks);
   else if (state.activeView === 'week')  renderWeek(viewContainer, viewCallbacks);
   else if (state.activeView === 'month') renderMonth(viewContainer, handleEventClick, handleDayClick, handleEventMove);
   else                                   renderAgenda(viewContainer, handleEventClick);
@@ -71,7 +87,6 @@ function render() {
 
 function handleDayClick(date) {
   state.selectedDate = date;
-  // Navigate to day view, falling back to the first available timed view
   const enabled = state.config.enabledViews || ['day'];
   const target = ['day', 'week', 'agenda'].find(v => enabled.includes(v)) || enabled[0];
   switchView(target);
@@ -83,21 +98,25 @@ function rangeFrom() { return new Date(Date.now() - 30 * 86400000).toISOString()
 function rangeTo()   { return new Date(Date.now() + 90 * 86400000).toISOString(); }
 
 async function loadAll() {
-  const [settingsRes, calRes, evRes] = await Promise.all([
+  const fetches = [
     fetch('/settings'),
     fetch('/calendars'),
     fetch(`/events?from=${rangeFrom()}&to=${rangeTo()}`),
-  ]);
+    fetch('/tasks'),
+  ];
+  const [settingsRes, calRes, evRes, tasksRes] = await Promise.all(fetches);
   if (settingsRes.status === 401) { showLogin(); return false; }
+
   const settings = await settingsRes.json();
   setConfig(settings);
   setCalendars(await calRes.json());
   setEvents(await evRes.json());
-  // Set initial view from config if not already navigated
+  if (tasksRes.ok) setTasks(await tasksRes.json());
+
   if (!state._viewInitialized) {
-    const enabled = settings.enabledViews || ['agenda'];
-    const def = settings.defaultView || enabled[0];
-    state.activeView = enabled.includes(def) ? def : enabled[0];
+    const calViews = settings.enabledViews || ['agenda'];
+    const def = settings.defaultView || calViews[0];
+    state.activeView = calViews.includes(def) ? def : calViews[0];
     state._viewInitialized = true;
   }
   return true;
@@ -106,6 +125,11 @@ async function loadAll() {
 async function loadEvents() {
   const res = await fetch(`/events?from=${rangeFrom()}&to=${rangeTo()}`);
   setEvents(await res.json());
+}
+
+async function loadTasks() {
+  const res = await fetch('/tasks');
+  if (res.ok) setTasks(await res.json());
 }
 
 // ── Sync ──────────────────────────────────────────────────
@@ -117,7 +141,7 @@ async function handleSync() {
     const res = await fetch('/sync', { method: 'POST' });
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
-    await loadEvents();
+    await Promise.all([loadEvents(), loadTasks()]);
     render();
   } catch (err) {
     syncError.textContent = 'Sync failed: ' + err.message;
@@ -127,7 +151,7 @@ async function handleSync() {
   }
 }
 
-// ── CRUD ──────────────────────────────────────────────────
+// ── Event CRUD ────────────────────────────────────────────
 
 function handleEventClick(event) {
   openEditEventModal(event, data => saveEvent(event.id, data), (ev, scope) => deleteEvent(ev, scope));
@@ -176,6 +200,85 @@ async function deleteEvent(ev, scope) {
     const res = await fetch(url, { method: 'DELETE' });
     if (!res.ok && res.status !== 204) throw new Error('Delete failed');
     await loadEvents();
+    render();
+  } catch (err) {
+    alert('Delete failed: ' + err.message);
+  }
+}
+
+// ── Task CRUD ─────────────────────────────────────────────
+
+async function handleTaskComplete(task) {
+  try {
+    const res = await fetch(`/tasks/${task.id}/complete`, { method: 'POST' });
+    if (!res.ok) throw new Error((await res.json()).error);
+    await loadTasks();
+    render();
+  } catch (err) {
+    alert('Could not complete task: ' + err.message);
+  }
+}
+
+async function handleTaskStar(task) {
+  const categories = task.important
+    ? (task.categories || []).filter(c => c !== 'important')
+    : [...(task.categories || []), 'important'];
+  try {
+    const res = await fetch(`/tasks/${task.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ categories }),
+    });
+    if (!res.ok) throw new Error((await res.json()).error);
+    await loadTasks();
+    render();
+  } catch (err) {
+    alert('Could not update task: ' + err.message);
+  }
+}
+
+async function handleTaskAdd({ title, due }) {
+  try {
+    const res = await fetch('/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, due }),
+    });
+    if (!res.ok) throw new Error((await res.json()).error);
+    await loadTasks();
+    render();
+  } catch (err) {
+    alert('Could not add task: ' + err.message);
+  }
+}
+
+function handleTaskEdit(task) {
+  openTaskModal(task, {
+    onSave:   data => saveTask(task.id, data),
+    onDelete: t    => handleTaskDelete(t),
+  });
+}
+
+async function saveTask(id, data) {
+  try {
+    const res = await fetch(`/tasks/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error((await res.json()).error);
+    await loadTasks();
+    render();
+  } catch (err) {
+    alert('Save failed: ' + err.message);
+  }
+}
+
+async function handleTaskDelete(task) {
+  try {
+    const res = await fetch(`/tasks/${task.id}`, { method: 'DELETE' });
+    if (!res.ok && res.status !== 204) throw new Error('Delete failed');
+    await loadTasks();
     render();
   } catch (err) {
     alert('Delete failed: ' + err.message);
@@ -236,7 +339,10 @@ async function init() {
   calBtn.addEventListener('click', openDrawer);
   settingsBtn.addEventListener('click', openSettings);
   fab.addEventListener('click', () => {
-    // Use the viewed day so tapping + in Saturday's day view opens a Saturday modal
+    if (state.activeView === 'tasks') {
+      focusTaskQuickAdd();
+      return;
+    }
     openNewEventModal(state.selectedDate || new Date(), data => saveEvent(null, data));
   });
 
