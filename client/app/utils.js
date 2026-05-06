@@ -13,6 +13,18 @@ export function formatTime(date, format = '24h') {
 }
 
 /**
+ * Return the local calendar date as 'YYYY-MM-DD'.
+ * Use this to label a day cell in views — never convert all-day event Dates through this.
+ * @param {Date} date - a local-midnight Date (e.g. new Date(year, month, day))
+ */
+export function localDateStr(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
  * Format a Date to YYYY-MM-DD for use in <input type="date">.
  * @param {Date} date
  */

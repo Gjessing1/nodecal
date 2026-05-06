@@ -1,4 +1,5 @@
 import { state, calendarById } from '../app/state.js';
+import { localDateStr } from '../app/utils.js';
 import {
   buildTimeColumn, buildHourLines, buildEventBlock,
   buildCurrentTimeLine, updateCurrentTimeLine, getTotalHeight, timeToTop,
@@ -26,12 +27,13 @@ export function renderDay(container, callbacks) {
     return !ev.allDay && new Date(ev.start) < dayEnd && new Date(ev.end) > dayStart;
   });
 
+  const dayStr = localDateStr(dayStart);
   const allDayEvents = state.events.filter(ev => {
     if (state.hiddenCalendars.has(ev.calendarId)) return false;
-    return ev.allDay && new Date(ev.start) < dayEnd && new Date(ev.end) > dayStart;
+    if (!ev.allDay) return false;
+    return ev.start.slice(0, 10) <= dayStr && ev.end.slice(0, 10) > dayStr;
   });
 
-  const dayStr = `${dayStart.getFullYear()}-${String(dayStart.getMonth()+1).padStart(2,'0')}-${String(dayStart.getDate()).padStart(2,'0')}`;
   const dayTasks = state.config.showTasksOnCalendar
     ? state.tasks.filter(t => t.due === dayStr && t.status !== 'COMPLETED')
     : [];

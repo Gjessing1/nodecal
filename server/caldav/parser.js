@@ -41,7 +41,9 @@ function floatingToUtc(dateStr, timezone) {
 
 function parseIcsDate(value, params = {}, fallbackTz = 'UTC') {
   if (/^\d{8}$/.test(value)) {
-    return { date: new Date(`${value.slice(0,4)}-${value.slice(4,6)}-${value.slice(6,8)}T00:00:00`), allDay: true };
+    // All-day dates are stored as UTC midnight so the date string is unambiguous
+    // in all browser timezones. Never use local midnight here.
+    return { date: new Date(`${value.slice(0,4)}-${value.slice(4,6)}-${value.slice(6,8)}T00:00:00Z`), allDay: true };
   }
   const m = value.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z?)$/);
   if (!m) return null;
@@ -127,11 +129,10 @@ function parseIcs(icsText, { timezone = 'UTC' } = {}) {
 
 function formatIcsDate(date, allDay) {
   if (allDay) {
-    // Use LOCAL date parts — the date object was built from local midnight, so UTC
-    // values would be the previous day in positive-offset timezones (e.g. UTC+2).
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
+    // All-day dates are stored as UTC midnight — read UTC parts to recover the correct calendar date.
+    const y = date.getUTCFullYear();
+    const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(date.getUTCDate()).padStart(2, '0');
     return `${y}${m}${d}`;
   }
   return date.toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';

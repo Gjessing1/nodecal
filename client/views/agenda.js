@@ -1,12 +1,8 @@
 import { state, calendarById } from '../app/state.js';
-import { formatTime } from '../app/utils.js';
+import { formatTime, localDateStr } from '../app/utils.js';
 
 const DAY_MS = 86400000;
 const AGENDA_DAYS = 90;
-
-function dayString(d) {
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
 
 /**
  * Render the agenda view into the given container element.
@@ -22,10 +18,11 @@ export function renderAgenda(container, onEventClick) {
     const raw = new Date(today.getTime() + i * DAY_MS);
     const day = new Date(raw.getFullYear(), raw.getMonth(), raw.getDate());
     const dayEnd = new Date(day.getTime() + DAY_MS);
+    const str = localDateStr(day);
     const dayEvents = state.events.filter(ev => {
+      if (ev.allDay) return ev.start.slice(0, 10) <= str && ev.end.slice(0, 10) > str;
       return new Date(ev.start) < dayEnd && new Date(ev.end) > day;
     });
-    const str = dayString(day);
     const dayTasks = state.config.showTasksOnCalendar
       ? state.tasks.filter(t => t.due === str && t.status !== 'COMPLETED')
       : [];

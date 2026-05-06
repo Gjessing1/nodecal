@@ -1,4 +1,5 @@
 import { state, calendarById } from '../app/state.js';
+import { localDateStr } from '../app/utils.js';
 import {
   buildTimeColumn, buildHourLines, buildEventBlock,
   buildCurrentTimeLine, updateCurrentTimeLine, getTotalHeight, timeToTop,
@@ -190,16 +191,27 @@ function buildAllDayRow(days, events, onEventClick) {
   row.appendChild(spacer);
   for (let i = 0; i < days.length; i++) {
     const day = days[i];
+    const dayStr = localDateStr(day);
     const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
     const cell = document.createElement('div');
     cell.className = 'week-allday-cell';
     for (const ev of events) {
-      const evStart = new Date(ev.start);
-      const evEnd = new Date(ev.end);
-      if (evEnd <= day || evStart >= dayEnd) continue;
-      // Show chip only on the first visible day (event start day, or Monday if event started before the week)
-      const isFirstVisible = i === 0 ? true : evStart >= day;
-      if (!isFirstVisible) continue;
+      // All-day: compare by date string (avoids UTC-offset off-by-one)
+      // Timed: compare by Date object
+      let onDay, isFirst;
+      if (ev.allDay) {
+        const s = ev.start.slice(0, 10);
+        const e = ev.end.slice(0, 10);
+        onDay = e > dayStr && s <= dayStr;
+        // Show chip on the start day, or on Monday if the series started before this week
+        isFirst = i === 0 ? true : s >= dayStr;
+      } else {
+        const evStart = new Date(ev.start);
+        const evEnd = new Date(ev.end);
+        onDay = evEnd > day && evStart < dayEnd;
+        isFirst = i === 0 ? true : evStart >= day;
+      }
+      if (!onDay || !isFirst) continue;
       const cal = calendarById(ev.calendarId);
       const chip = document.createElement('div');
       chip.className = 'allday-chip';

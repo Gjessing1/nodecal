@@ -1,9 +1,6 @@
 import { state, calendarById } from '../app/state.js';
 import { initDayDnd } from '../components/dnd.js';
-
-function dayString(d) {
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
+import { localDateStr } from '../app/utils.js';
 
 /**
  * @param {HTMLElement} container
@@ -129,11 +126,13 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick) {
   const dayStart = new Date(day);
   const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
   const dayEvs = events
-    .filter(ev => new Date(ev.start) < dayEnd && new Date(ev.end) > dayStart)
+    .filter(ev => {
+      if (ev.allDay) return ev.start.slice(0, 10) <= dayStr && ev.end.slice(0, 10) > dayStr;
+      return new Date(ev.start) < dayEnd && new Date(ev.end) > dayStart;
+    })
     .sort((a, b) => (a.allDay ? -1 : 1) - (b.allDay ? -1 : 1) || new Date(a.start) - new Date(b.start));
 
-  // Task pills — show count badge when tasks on calendar is enabled
-  const dayStr = dayString(day);
+  const dayStr = localDateStr(day);
   const dayTasks = state.config.showTasksOnCalendar
     ? state.tasks.filter(t => t.due === dayStr && t.status !== 'COMPLETED')
     : [];

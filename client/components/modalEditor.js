@@ -120,6 +120,8 @@ function renderForm(event, defaultDate) {
   const isNew = !event;
   const start = event ? new Date(event.start) : (defaultDate || new Date());
   const end = event ? new Date(event.end) : new Date(start.getTime() + 3600000);
+  // For all-day events, slice the UTC date string directly — never convert through local timezone.
+  const allDayDateVal = event?.allDay ? event.start.slice(0, 10) : toDateInputValue(start);
   const is24h = state.config.timeFormat === '24h';
 
   // Default calendar: prefer event's calendar, then settings default, then first available
@@ -144,7 +146,7 @@ function renderForm(event, defaultDate) {
     </div>
     <div class="modal-field" id="allday-date-row"${!event?.allDay ? ' style="display:none"' : ''}>
       <label>Date</label>
-      <input type="date" id="f-date" value="${toDateInputValue(start)}">
+      <input type="date" id="f-date" value="${allDayDateVal}">
     </div>
     <div class="modal-datetime-row" id="time-row"${event?.allDay ? ' style="display:none"' : ''}>
       <div class="datetime-col">
@@ -259,7 +261,7 @@ function handleSave(event) {
   let startDt, endDt;
   if (allDay) {
     const dateVal = sheet.querySelector('#f-date').value;
-    startDt = new Date(`${dateVal}T00:00`);
+    startDt = new Date(`${dateVal}T00:00:00Z`); // UTC midnight — keeps date string unambiguous
     endDt = new Date(startDt.getTime() + 86400000);
   } else {
     const startDateVal = sheet.querySelector('#f-start-date').value;
