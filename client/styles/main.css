@@ -199,6 +199,33 @@ input, textarea, select {
 .btn-danger { background: var(--color-danger); color: #fff; }
 .btn-ghost { color: var(--color-text-muted); }
 
+/* ── Event modal datetime row (start → end) ────────────── */
+.modal-datetime-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+.datetime-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+.datetime-col input[type="date"] { width: 100%; }
+.datetime-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+.datetime-arrow {
+  color: var(--color-text-muted);
+  font-size: 20px;
+  padding-top: 26px; /* align with inputs after label */
+  flex-shrink: 0;
+}
+
 /* ── Sync error banner ──────────────────────────────────── */
 .sync-error {
   background: #fef2f2;

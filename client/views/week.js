@@ -28,8 +28,12 @@ export function renderWeek(container, callbacks) {
   if (timerId) { clearInterval(timerId); timerId = null; }
 
   const wStart = weekStart(state.selectedDate);
-  const wEnd = new Date(wStart.getTime() + 7 * 86400000);
-  const days = Array.from({ length: 7 }, (_, i) => new Date(wStart.getTime() + i * 86400000));
+  const wEnd = new Date(wStart.getFullYear(), wStart.getMonth(), wStart.getDate() + 7);
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(wStart);
+    d.setDate(d.getDate() + i);
+    return d;
+  });
   const today = new Date();
 
   container.innerHTML = '';
@@ -69,7 +73,7 @@ export function renderWeek(container, callbacks) {
       col.appendChild(timeLine);
     }
 
-    const dayEnd = new Date(day.getTime() + 86400000);
+    const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
     const dayEvents = state.events.filter(ev => {
       if (state.hiddenCalendars.has(ev.calendarId)) return false;
       return !ev.allDay && new Date(ev.start) < dayEnd && new Date(ev.end) > day;
@@ -184,20 +188,25 @@ function buildAllDayRow(days, events, onEventClick) {
   const spacer = document.createElement('div');
   spacer.className = 'time-col-spacer';
   row.appendChild(spacer);
-  for (const day of days) {
-    const dayEnd = new Date(day.getTime() + 86400000);
+  for (let i = 0; i < days.length; i++) {
+    const day = days[i];
+    const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
     const cell = document.createElement('div');
     cell.className = 'week-allday-cell';
     for (const ev of events) {
-      if (new Date(ev.start) < dayEnd && new Date(ev.end) > day) {
-        const cal = calendarById(ev.calendarId);
-        const chip = document.createElement('div');
-        chip.className = 'allday-chip';
-        chip.style.background = cal?.color || '#4a90d9';
-        chip.textContent = ev.title;
-        chip.addEventListener('click', () => onEventClick(ev));
-        cell.appendChild(chip);
-      }
+      const evStart = new Date(ev.start);
+      const evEnd = new Date(ev.end);
+      if (evEnd <= day || evStart >= dayEnd) continue;
+      // Show chip only on the first visible day (event start day, or Monday if event started before the week)
+      const isFirstVisible = i === 0 ? true : evStart >= day;
+      if (!isFirstVisible) continue;
+      const cal = calendarById(ev.calendarId);
+      const chip = document.createElement('div');
+      chip.className = 'allday-chip';
+      chip.style.background = cal?.color || '#4a90d9';
+      chip.textContent = ev.title;
+      chip.addEventListener('click', () => onEventClick(ev));
+      cell.appendChild(chip);
     }
     row.appendChild(cell);
   }

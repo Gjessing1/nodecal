@@ -142,19 +142,20 @@ function renderForm(event, defaultDate) {
       <label for="f-allday">All day</label>
       <input type="checkbox" id="f-allday" ${event?.allDay ? 'checked' : ''}>
     </div>
-    <div class="modal-row">
-      <div class="modal-field">
-        <label>Date</label>
-        <input type="date" id="f-date" value="${toDateInputValue(start)}">
-      </div>
+    <div class="modal-field" id="allday-date-row"${!event?.allDay ? ' style="display:none"' : ''}>
+      <label>Date</label>
+      <input type="date" id="f-date" value="${toDateInputValue(start)}">
     </div>
-    <div class="modal-row" id="time-row" ${event?.allDay ? 'style="display:none"' : ''}>
-      <div class="modal-field">
-        <label>Start</label>
+    <div class="modal-datetime-row" id="time-row"${event?.allDay ? ' style="display:none"' : ''}>
+      <div class="datetime-col">
+        <label class="datetime-label">From</label>
+        <input type="date" id="f-start-date" value="${toDateInputValue(start)}">
         <div id="f-start-time-wrap"></div>
       </div>
-      <div class="modal-field">
-        <label>End</label>
+      <span class="datetime-arrow">→</span>
+      <div class="datetime-col">
+        <label class="datetime-label">To</label>
+        <input type="date" id="f-end-date" value="${toDateInputValue(end)}">
         <div id="f-end-time-wrap"></div>
       </div>
     </div>
@@ -196,8 +197,36 @@ function renderForm(event, defaultDate) {
   }
 
   sheet.querySelector('#f-allday').addEventListener('change', e => {
-    sheet.querySelector('#time-row').style.display = e.target.checked ? 'none' : '';
+    const checked = e.target.checked;
+    sheet.querySelector('#allday-date-row').style.display = checked ? '' : 'none';
+    sheet.querySelector('#time-row').style.display = checked ? 'none' : '';
+    if (checked) {
+      const sd = sheet.querySelector('#f-start-date');
+      if (sd) sheet.querySelector('#f-date').value = sd.value;
+    } else {
+      const fd = sheet.querySelector('#f-date');
+      if (fd) {
+        sheet.querySelector('#f-start-date').value = fd.value;
+        sheet.querySelector('#f-end-date').value = fd.value;
+      }
+    }
   });
+
+  // When start date changes, shift end date by the same delta
+  const startDateEl = sheet.querySelector('#f-start-date');
+  if (startDateEl) {
+    let prevStartVal = startDateEl.value;
+    startDateEl.addEventListener('change', () => {
+      const prev = new Date(prevStartVal + 'T00:00');
+      const next = new Date(startDateEl.value + 'T00:00');
+      const delta = next.getTime() - prev.getTime();
+      const endDateEl = sheet.querySelector('#f-end-date');
+      const shifted = new Date(new Date(endDateEl.value + 'T00:00').getTime() + delta);
+      endDateEl.value = toDateInputValue(shifted);
+      prevStartVal = startDateEl.value;
+    });
+  }
+
   sheet.querySelector('#f-save').addEventListener('click', () => handleSave(event));
   sheet.querySelector('#f-cancel').addEventListener('click', closeModal);
 
@@ -224,18 +253,24 @@ function handleSave(event) {
   if (!title) { sheet.querySelector('#f-title').focus(); return; }
 
   const allDay = sheet.querySelector('#f-allday').checked;
-  const dateVal = sheet.querySelector('#f-date').value;
-  const startTime = allDay ? '00:00' : sheet.querySelector('#f-start-time').value;
-  const endTime = allDay ? '00:00' : sheet.querySelector('#f-end-time').value;
   const calendarId = sheet.querySelector('#f-calendar').value;
   const description = sheet.querySelector('#f-desc').value.trim();
 
-  const startDt = new Date(`${dateVal}T${startTime}`);
-  let endDt = new Date(`${dateVal}T${endTime}`);
+  let startDt, endDt;
   if (allDay) {
+    const dateVal = sheet.querySelector('#f-date').value;
+    startDt = new Date(`${dateVal}T00:00`);
     endDt = new Date(startDt.getTime() + 86400000);
-  } else if (endDt <= startDt) {
-    endDt = new Date(startDt.getTime() + 3600000);
+  } else {
+    const startDateVal = sheet.querySelector('#f-start-date').value;
+    const endDateVal = sheet.querySelector('#f-end-date').value;
+    const startTime = sheet.querySelector('#f-start-time').value;
+    const endTime = sheet.querySelector('#f-end-time').value;
+    startDt = new Date(`${startDateVal}T${startTime}`);
+    endDt = new Date(`${endDateVal}T${endTime}`);
+    if (endDt <= startDt) {
+      endDt = new Date(startDt.getTime() + 3600000);
+    }
   }
 
   const nlpRrule = !event ? (sheet.dataset.nlpRrule || null) : null;
@@ -267,14 +302,18 @@ async function applyNlp(text) {
     sheet.querySelector('#f-title').value = data.title;
     const start = new Date(data.start);
     const end = new Date(data.end);
-    sheet.querySelector('#f-date').value = toDateInputValue(start);
     if (!data.allDay) {
+      sheet.querySelector('#f-start-date').value = toDateInputValue(start);
+      sheet.querySelector('#f-end-date').value = toDateInputValue(end);
       sheet.querySelector('#f-start-time').value = toTimeInputValue(start);
       sheet.querySelector('#f-end-time').value = toTimeInputValue(end);
       sheet.querySelector('#f-allday').checked = false;
+      sheet.querySelector('#allday-date-row').style.display = 'none';
       sheet.querySelector('#time-row').style.display = '';
     } else {
+      sheet.querySelector('#f-date').value = toDateInputValue(start);
       sheet.querySelector('#f-allday').checked = true;
+      sheet.querySelector('#allday-date-row').style.display = '';
       sheet.querySelector('#time-row').style.display = 'none';
     }
 

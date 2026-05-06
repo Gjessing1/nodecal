@@ -147,9 +147,13 @@ export function initDayDnd(containerEl, { chipSelector, daySelector, onMove }) {
 
     function handleUp(ev) {
       clearTimeout(timer);
-      if (active && targetEl?.dataset.day) {
-        const day = new Date(targetEl.dataset.day + 'T00:00:00');
-        onMove(id, day, startMin);
+      if (active) {
+        // Suppress the click event that fires immediately after pointerup
+        chip.addEventListener('click', e => e.stopImmediatePropagation(), { capture: true, once: true });
+        if (targetEl?.dataset.day) {
+          const day = new Date(targetEl.dataset.day + 'T00:00:00');
+          onMove(id, day, startMin);
+        }
       }
       cleanup();
     }

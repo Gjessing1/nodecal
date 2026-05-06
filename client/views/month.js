@@ -123,7 +123,7 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick) {
   cell.appendChild(numWrap);
 
   const dayStart = new Date(day);
-  const dayEnd = new Date(day.getTime() + 86400000);
+  const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
   const dayEvs = events
     .filter(ev => new Date(ev.start) < dayEnd && new Date(ev.end) > dayStart)
     .sort((a, b) => (a.allDay ? -1 : 1) - (b.allDay ? -1 : 1) || new Date(a.start) - new Date(b.start));

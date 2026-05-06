@@ -17,6 +17,7 @@ export function renderDay(container, callbacks) {
   if (timerId) { clearInterval(timerId); timerId = null; }
 
   const date = state.selectedDate;
+  const isToday = date.toDateString() === new Date().toDateString();
   const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const dayEnd = new Date(dayStart.getTime() + 86400000);
 
