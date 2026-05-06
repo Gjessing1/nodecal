@@ -1,6 +1,84 @@
 import { state } from '../app/state.js';
 import { toDateInputValue, toTimeInputValue } from '../app/utils.js';
 
+const WHEEL_ITEM_H = 40;
+
+function buildTimeWheel(id, date) {
+  const hidden = document.createElement('input');
+  hidden.type = 'hidden';
+  hidden.id = id;
+
+  let hVal = date.getHours();
+  let mVal = Math.round(date.getMinutes() / 5) * 5 % 60;
+  hidden.value = `${String(hVal).padStart(2, '0')}:${String(mVal).padStart(2, '0')}`;
+
+  function sync() {
+    hidden.value = `${String(hVal).padStart(2, '0')}:${String(mVal).padStart(2, '0')}`;
+  }
+
+  function makeWheel(items, initial, onChange) {
+    const outer = document.createElement('div');
+    outer.className = 'time-wheel';
+
+    const indicator = document.createElement('div');
+    indicator.className = 'time-wheel-selection';
+    outer.appendChild(indicator);
+
+    const scroller = document.createElement('div');
+    scroller.className = 'time-wheel-scroller';
+
+    const padTop = document.createElement('div');
+    padTop.className = 'time-wheel-pad-item';
+    scroller.appendChild(padTop);
+
+    for (const v of items) {
+      const item = document.createElement('div');
+      item.className = 'time-wheel-item';
+      item.textContent = String(v).padStart(2, '0');
+      scroller.appendChild(item);
+    }
+
+    const padBot = document.createElement('div');
+    padBot.className = 'time-wheel-pad-item';
+    scroller.appendChild(padBot);
+
+    outer.appendChild(scroller);
+
+    requestAnimationFrame(() => {
+      scroller.scrollTop = items.indexOf(initial) * WHEEL_ITEM_H;
+    });
+
+    let t;
+    scroller.addEventListener('scroll', () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        const idx = Math.round(scroller.scrollTop / WHEEL_ITEM_H);
+        onChange(items[Math.max(0, Math.min(idx, items.length - 1))]);
+      }, 80);
+    }, { passive: true });
+
+    return outer;
+  }
+
+  const pair = document.createElement('div');
+  pair.className = 'time-wheel-pair';
+  pair.appendChild(hidden);
+
+  const hours = Array.from({ length: 24 }, (_, i) => i);
+  const mins = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+
+  const hWheel = makeWheel(hours, hVal, v => { hVal = v; sync(); });
+  const sep = document.createElement('span');
+  sep.className = 'time-wheel-sep';
+  sep.textContent = ':';
+  const mWheel = makeWheel(mins, mVal, v => { mVal = v; sync(); });
+
+  pair.appendChild(hWheel);
+  pair.appendChild(sep);
+  pair.appendChild(mWheel);
+  return pair;
+}
+
 let overlay, sheet, onSaveCb, onDeleteCb;
 
 export function initModal() {
@@ -42,6 +120,10 @@ function renderForm(event, defaultDate) {
   const isNew = !event;
   const start = event ? new Date(event.start) : (defaultDate || new Date());
   const end = event ? new Date(event.end) : new Date(start.getTime() + 3600000);
+  const is24h = state.config.timeFormat === '24h';
+
+  // Default calendar: prefer event's calendar, then settings default, then first available
+  const defaultCalId = event?.calendarId || state.config.defaultCalendar || state.calendars[0]?.id;
 
   sheet.innerHTML = `
     <div class="modal-handle"></div>
@@ -56,8 +138,9 @@ function renderForm(event, defaultDate) {
       <label>Title</label>
       <input type="text" id="f-title" value="${esc(event?.title || '')}" placeholder="Event title" autocomplete="off">
     </div>
-    <div class="modal-field">
-      <label><input type="checkbox" id="f-allday" ${event?.allDay ? 'checked' : ''}> All day</label>
+    <div class="modal-field modal-toggle-field">
+      <label for="f-allday">All day</label>
+      <input type="checkbox" id="f-allday" ${event?.allDay ? 'checked' : ''}>
     </div>
     <div class="modal-row">
       <div class="modal-field">
@@ -68,17 +151,17 @@ function renderForm(event, defaultDate) {
     <div class="modal-row" id="time-row" ${event?.allDay ? 'style="display:none"' : ''}>
       <div class="modal-field">
         <label>Start</label>
-        <input type="time" id="f-start-time" value="${toTimeInputValue(start)}">
+        <div id="f-start-time-wrap"></div>
       </div>
       <div class="modal-field">
         <label>End</label>
-        <input type="time" id="f-end-time" value="${toTimeInputValue(end)}">
+        <div id="f-end-time-wrap"></div>
       </div>
     </div>
     <div class="modal-field">
       <label>Calendar</label>
       <select id="f-calendar">
-        ${state.calendars.map(c => `<option value="${esc(c.id)}" ${event?.calendarId === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
+        ${state.calendars.map(c => `<option value="${esc(c.id)}" ${defaultCalId === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
       </select>
     </div>
     ${event?.recurring ? `
@@ -100,6 +183,17 @@ function renderForm(event, defaultDate) {
       <button class="btn btn-ghost" id="f-cancel">Cancel</button>
     </div>
   `;
+
+  // Insert time widgets after innerHTML so DOM elements can be appended
+  const startWrap = sheet.querySelector('#f-start-time-wrap');
+  const endWrap = sheet.querySelector('#f-end-time-wrap');
+  if (is24h) {
+    startWrap.appendChild(buildTimeWheel('f-start-time', start));
+    endWrap.appendChild(buildTimeWheel('f-end-time', end));
+  } else {
+    startWrap.innerHTML = `<input type="time" id="f-start-time" value="${toTimeInputValue(start)}" style="width:100%">`;
+    endWrap.innerHTML = `<input type="time" id="f-end-time" value="${toTimeInputValue(end)}" style="width:100%">`;
+  }
 
   sheet.querySelector('#f-allday').addEventListener('change', e => {
     sheet.querySelector('#time-row').style.display = e.target.checked ? 'none' : '';

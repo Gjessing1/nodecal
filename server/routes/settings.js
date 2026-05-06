@@ -21,12 +21,13 @@ router.get('/settings', (req, res) => {
     weekStart:    config.app.weekStart,
     timezone:     config.app.timezone,
     enabledViews: ALL_VIEWS,
+    authEnabled:  !!config.app.appPassword,
     ...overrides,
   });
 });
 
 router.put('/settings', (req, res) => {
-  const allowed = ['defaultView', 'timeFormat', 'weekStart', 'enabledViews'];
+  const allowed = ['defaultView', 'timeFormat', 'weekStart', 'enabledViews', 'defaultCalendar'];
   const toSave = {};
   for (const k of allowed) {
     if (k in req.body) toSave[k] = req.body[k];

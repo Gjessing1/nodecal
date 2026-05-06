@@ -19,16 +19,38 @@ function parseProperty(line) {
   return { name, params, value };
 }
 
-function parseIcsDate(value, params = {}) {
+/**
+ * Convert a floating local datetime string ("YYYY-MM-DDTHH:MM:SS") to a UTC Date
+ * by computing the offset for `timezone` at that approximate instant.
+ */
+function floatingToUtc(dateStr, timezone) {
+  const asUtc = new Date(dateStr + 'Z');
+  const parts = {};
+  for (const p of new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false,
+  }).formatToParts(asUtc)) {
+    parts[p.type] = p.value;
+  }
+  const h = parts.hour === '24' ? '00' : parts.hour;
+  const shownAsUtc = new Date(`${parts.year}-${parts.month}-${parts.day}T${h}:${parts.minute}:${parts.second}Z`);
+  return new Date(asUtc.getTime() + (asUtc - shownAsUtc));
+}
+
+function parseIcsDate(value, params = {}, fallbackTz = 'UTC') {
   if (/^\d{8}$/.test(value)) {
     return { date: new Date(`${value.slice(0,4)}-${value.slice(4,6)}-${value.slice(6,8)}T00:00:00`), allDay: true };
   }
   const m = value.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z?)$/);
   if (!m) return null;
-  return {
-    date: new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}${m[7] ? 'Z' : ''}`),
-    allDay: false,
-  };
+  if (m[7]) {
+    return { date: new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`), allDay: false };
+  }
+  // Floating or TZID-local time — convert to UTC using TZID param or fallback timezone
+  const tz = params.TZID || fallbackTz;
+  return { date: floatingToUtc(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`, tz), allDay: false };
 }
 
 function parseDuration(dur) {
@@ -50,9 +72,10 @@ function escapeIcsText(text) {
 /**
  * Parse a VCALENDAR ICS string into an array of event objects.
  * @param {string} icsText
+ * @param {{ timezone?: string }} [opts]
  * @returns {Array<{uid, title, start, end, allDay, description, location}>}
  */
-function parseIcs(icsText) {
+function parseIcs(icsText, { timezone = 'UTC' } = {}) {
   const unfolded = unfold(icsText);
   const events = [];
   const veventRe = /BEGIN:VEVENT([\s\S]*?)END:VEVENT/g;
@@ -65,12 +88,12 @@ function parseIcs(icsText) {
     }
     const uid = props.UID?.value;
     if (!uid) continue;
-    const startInfo = props.DTSTART ? parseIcsDate(props.DTSTART.value, props.DTSTART.params) : null;
+    const startInfo = props.DTSTART ? parseIcsDate(props.DTSTART.value, props.DTSTART.params, timezone) : null;
     if (!startInfo) continue;
 
     let endDate = null;
     if (props.DTEND) {
-      endDate = parseIcsDate(props.DTEND.value, props.DTEND.params)?.date;
+      endDate = parseIcsDate(props.DTEND.value, props.DTEND.params, timezone)?.date;
     } else if (props.DURATION) {
       endDate = new Date(startInfo.date.getTime() + parseDuration(props.DURATION.value));
     } else {

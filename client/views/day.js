@@ -33,7 +33,7 @@ export function renderDay(container, callbacks) {
   container.innerHTML = '';
 
   // Navigation bar
-  const nav = buildNavBar(date, callbacks);
+  const nav = buildNavBar(date, isToday, callbacks);
   container.appendChild(nav);
 
   // All-day strip
@@ -82,18 +82,17 @@ export function renderDay(container, callbacks) {
     () => { state.selectedDate = new Date(dayStart.getTime() + 86400000); renderDay(container, callbacks); },
   );
 
-  // Scroll to current time (minus 2 hours for context)
-  const isToday = dayStart.toDateString() === new Date().toDateString();
+  // Always scroll to a useful time: current time for today, 8 AM for other days
+  requestAnimationFrame(() => {
+    const scrollTarget = isToday ? new Date() : new Date(dayStart.getTime() + 8 * 3600000);
+    scroll.scrollTop = Math.max(0, timeToTop(scrollTarget) - 128);
+  });
   if (isToday) {
-    requestAnimationFrame(() => {
-      const offset = Math.max(0, timeToTop(new Date()) - 128);
-      scroll.scrollTop = offset;
-    });
     timerId = setInterval(() => updateCurrentTimeLine(timeLine), 60000);
   }
 }
 
-function buildNavBar(date, callbacks) {
+function buildNavBar(date, isToday, callbacks) {
   const nav = document.createElement('div');
   nav.className = 'view-nav';
 
@@ -105,10 +104,10 @@ function buildNavBar(date, callbacks) {
     renderDay(prev.closest('#view-container'), callbacks);
   });
 
+  const fmt = d => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   const title = document.createElement('span');
   title.className = 'view-nav-title';
-  const isToday = date.toDateString() === new Date().toDateString();
-  title.textContent = isToday ? 'Today' : date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  title.textContent = isToday ? 'Today · ' + fmt(date) : fmt(date);
 
   const todayBtn = document.createElement('button');
   todayBtn.className = 'nav-today-btn';

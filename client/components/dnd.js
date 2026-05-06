@@ -94,6 +94,83 @@ export function initDnd(gridEl, scrollEl, opts) {
 }
 
 /**
+ * Enable drag-to-move for event chips in a month or agenda grid.
+ * Chips must have data-id and data-start-min attributes.
+ * Day drop targets must have a data-day="YYYY-MM-DD" attribute.
+ *
+ * @param {HTMLElement} containerEl
+ * @param {{ chipSelector: string, daySelector: string, onMove: function }} opts
+ */
+export function initDayDnd(containerEl, { chipSelector, daySelector, onMove }) {
+  containerEl.addEventListener('pointerdown', e => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+
+    const chip = e.target.closest(chipSelector);
+    if (!chip) return;
+
+    e.preventDefault();
+    const id = chip.dataset.id;
+    const startMin = parseInt(chip.dataset.startMin || '0', 10);
+    const chipRect = chip.getBoundingClientRect();
+
+    let active = false;
+    let ghost = null;
+    let targetEl = null;
+
+    const timer = setTimeout(activate, LONG_PRESS_MS);
+
+    function activate() {
+      active = true;
+      chip.style.opacity = '0.3';
+      ghost = chip.cloneNode(true);
+      ghost.style.cssText = `position:fixed;width:${chipRect.width}px;height:${chipRect.height}px;` +
+        `left:${chipRect.left}px;top:${chipRect.top}px;` +
+        `opacity:0.85;pointer-events:none;z-index:200;box-shadow:0 4px 12px rgba(0,0,0,0.3);`;
+      document.body.appendChild(ghost);
+    }
+
+    function handleMove(ev) {
+      if (!active) {
+        if (Math.abs(ev.clientX - e.clientX) > 5 || Math.abs(ev.clientY - e.clientY) > 5) {
+          clearTimeout(timer);
+          activate();
+        }
+      }
+      if (!ghost) return;
+      ghost.style.left = `${ev.clientX - chipRect.width / 2}px`;
+      ghost.style.top = `${ev.clientY - chipRect.height / 2}px`;
+
+      if (targetEl) targetEl.classList.remove('dnd-over');
+      targetEl = document.elementFromPoint(ev.clientX, ev.clientY)?.closest(daySelector);
+      if (targetEl) targetEl.classList.add('dnd-over');
+    }
+
+    function handleUp(ev) {
+      clearTimeout(timer);
+      if (active && targetEl?.dataset.day) {
+        const day = new Date(targetEl.dataset.day + 'T00:00:00');
+        onMove(id, day, startMin);
+      }
+      cleanup();
+    }
+
+    function cleanup() {
+      chip.removeEventListener('pointermove', handleMove);
+      chip.removeEventListener('pointerup', handleUp);
+      chip.removeEventListener('pointercancel', cleanup);
+      if (ghost) { ghost.remove(); ghost = null; }
+      if (targetEl) { targetEl.classList.remove('dnd-over'); targetEl = null; }
+      chip.style.opacity = '';
+    }
+
+    chip.setPointerCapture(e.pointerId);
+    chip.addEventListener('pointermove', handleMove);
+    chip.addEventListener('pointerup', handleUp);
+    chip.addEventListener('pointercancel', cleanup);
+  });
+}
+
+/**
  * Detect horizontal swipe on a scroll container.
  * Only triggers if horizontal motion dominates and vertical scroll didn't happen.
  */

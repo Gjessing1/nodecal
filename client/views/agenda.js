@@ -32,10 +32,10 @@ export function renderAgenda(container, onEventClick) {
     header.appendChild(dateEl);
 
     if (dayEvents.length === 0) {
-      const empty = document.createElement('div');
-      empty.className = 'agenda-empty';
-      empty.textContent = 'No events';
-      header.appendChild(empty);
+      const noEvSpan = document.createElement('span');
+      noEvSpan.className = 'agenda-empty-inline';
+      noEvSpan.textContent = ' — No events';
+      dateEl.appendChild(noEvSpan);
     } else {
       for (const ev of dayEvents) {
         header.appendChild(buildEventCard(ev, onEventClick));

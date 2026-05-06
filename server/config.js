@@ -21,5 +21,6 @@ module.exports = {
     timezone: process.env.TIMEZONE || 'UTC',
     timeFormat: process.env.TIME_FORMAT || '24h',
     weekStart: process.env.WEEK_START || 'monday',
+    appPassword: process.env.APP_PASSWORD || null,
   },
 };

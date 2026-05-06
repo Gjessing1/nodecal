@@ -3,7 +3,7 @@ services:
     image: ghcr.io/gjessing1/nodecal:latest
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3042:3000"
     env_file: .env
     volumes:
       - /mnt/data/nodecal/config:/config

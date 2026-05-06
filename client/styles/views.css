@@ -95,6 +95,7 @@
 .events-col, .week-day-col {
   flex: 1;
   position: relative;
+  border-left: 1px solid var(--color-border);
 }
 .hour-lines { position: absolute; inset: 0; pointer-events: none; }
 .hour-line {
@@ -190,6 +191,12 @@
 }
 .wdh-name { color: var(--color-text-muted); font-size: 11px; text-transform: uppercase; }
 .wdh-date { font-weight: 600; font-size: var(--font-size-md); }
+.wdh-dot {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  margin: 2px auto 0;
+}
 
 .week-allday-row {
   display: flex;
@@ -205,6 +212,13 @@
   padding: 2px;
 }
 .week-allday-cell .allday-chip { max-width: 100%; font-size: 10px; }
+
+/* ── Month DnD drop target ──────────────────────────────── */
+.month-day.dnd-over {
+  background: var(--color-accent-light);
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
 
 /* ── Calendar drawer ────────────────────────────────────── */
 .cal-drawer-overlay {

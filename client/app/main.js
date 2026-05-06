@@ -7,6 +7,7 @@ import { initModal, openNewEventModal, openEditEventModal } from '../components/
 import { initCalendarDrawer, openDrawer } from '../components/calendarDrawer.js';
 import { initSettingsPanel, openSettings } from '../components/settingsPanel.js';
 import { initInstallPrompt } from './installPrompt.js';
+import { initTheme } from './theme.js';
 
 const viewContainer = document.getElementById('view-container');
 const syncBtn       = document.getElementById('sync-btn');
@@ -42,6 +43,10 @@ function buildNav() {
 function switchView(viewName) {
   const enabled = state.config.enabledViews || Object.keys(VIEW_META);
   if (!enabled.includes(viewName)) return;
+  // Tapping the active day view resets to today
+  if (viewName === 'day' && state.activeView === 'day') {
+    state.selectedDate = new Date();
+  }
   state.activeView = viewName;
   buildNav();
   render();
@@ -60,7 +65,7 @@ function render() {
   destroyWeek();
   if      (state.activeView === 'day')   renderDay(viewContainer, viewCallbacks);
   else if (state.activeView === 'week')  renderWeek(viewContainer, viewCallbacks);
-  else if (state.activeView === 'month') renderMonth(viewContainer, handleEventClick, handleDayClick);
+  else if (state.activeView === 'month') renderMonth(viewContainer, handleEventClick, handleDayClick, handleEventMove);
   else                                   renderAgenda(viewContainer, handleEventClick);
 }
 
@@ -83,6 +88,7 @@ async function loadAll() {
     fetch('/calendars'),
     fetch(`/events?from=${rangeFrom()}&to=${rangeTo()}`),
   ]);
+  if (settingsRes.status === 401) { showLogin(); return false; }
   const settings = await settingsRes.json();
   setConfig(settings);
   setCalendars(await calRes.json());
@@ -94,6 +100,7 @@ async function loadAll() {
     state.activeView = enabled.includes(def) ? def : enabled[0];
     state._viewInitialized = true;
   }
+  return true;
 }
 
 async function loadEvents() {
@@ -175,9 +182,43 @@ async function deleteEvent(ev, scope) {
   }
 }
 
+// ── Login ─────────────────────────────────────────────────
+
+function showLogin() {
+  document.getElementById('login-overlay').classList.remove('hidden');
+}
+
+function initLogin() {
+  const overlay = document.getElementById('login-overlay');
+  const form    = document.getElementById('login-form');
+  const errEl   = document.getElementById('login-error');
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    errEl.classList.add('hidden');
+    const password = document.getElementById('login-password').value;
+    try {
+      const res = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      if (!res.ok) { errEl.classList.remove('hidden'); return; }
+      overlay.classList.add('hidden');
+      state._viewInitialized = false;
+      const loaded = await loadAll();
+      if (loaded) { buildNav(); render(); }
+    } catch {
+      errEl.classList.remove('hidden');
+    }
+  });
+}
+
 // ── Boot ──────────────────────────────────────────────────
 
 async function init() {
+  initTheme();
+  initLogin();
   initModal();
   initCalendarDrawer(render);
   initSettingsPanel(() => { buildNav(); render(); });
@@ -200,7 +241,8 @@ async function init() {
   });
 
   try {
-    await loadAll();
+    const loaded = await loadAll();
+    if (!loaded) return;
     buildNav();
     render();
   } catch (err) {

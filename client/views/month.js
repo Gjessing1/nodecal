@@ -1,11 +1,13 @@
 import { state, calendarById } from '../app/state.js';
+import { initDayDnd } from '../components/dnd.js';
 
 /**
  * @param {HTMLElement} container
  * @param {function(event): void} onEventClick
- * @param {function(Date): void} onDayClick  - called when a day number is tapped
+ * @param {function(Date): void} onDayClick
+ * @param {function(id, day, startMin): void} onEventMove
  */
-export function renderMonth(container, onEventClick, onDayClick) {
+export function renderMonth(container, onEventClick, onDayClick, onEventMove) {
   const anchor = state.selectedDate;
   const year = anchor.getFullYear();
   const month = anchor.getMonth();
@@ -14,7 +16,16 @@ export function renderMonth(container, onEventClick, onDayClick) {
   container.innerHTML = '';
   container.appendChild(buildNavBar(year, month, onEventClick, onDayClick));
   container.appendChild(buildWeekDayHeader());
-  container.appendChild(buildGrid(year, month, today, onEventClick, onDayClick));
+  const grid = buildGrid(year, month, today, onEventClick, onDayClick);
+  container.appendChild(grid);
+
+  if (onEventMove) {
+    initDayDnd(grid, {
+      chipSelector: '.month-event-chip',
+      daySelector: '.month-day',
+      onMove: onEventMove,
+    });
+  }
 }
 
 function buildNavBar(year, month, onEventClick, onDayClick) {
@@ -101,6 +112,7 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick) {
 
   const cell = document.createElement('div');
   cell.className = 'month-day' + (isToday ? ' today' : '') + (isOther ? ' other-month' : '');
+  cell.dataset.day = `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
 
   const numWrap = document.createElement('div');
   numWrap.className = 'month-day-num';
@@ -135,9 +147,12 @@ function buildChip(ev, onClick) {
   const chip = document.createElement('div');
   chip.className = 'month-event-chip';
   chip.style.background = cal?.color || '#4a90d9';
+  chip.dataset.id = ev.id;
+  const start = new Date(ev.start);
+  chip.dataset.startMin = String(start.getHours() * 60 + start.getMinutes());
   if (!ev.allDay) {
-    const h = new Date(ev.start).getHours();
-    const m = String(new Date(ev.start).getMinutes()).padStart(2, '0');
+    const h = start.getHours();
+    const m = String(start.getMinutes()).padStart(2, '0');
     chip.textContent = `${h}:${m} ${ev.title}`;
   } else {
     chip.textContent = ev.title;

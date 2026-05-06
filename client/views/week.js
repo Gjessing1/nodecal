@@ -148,7 +148,7 @@ function buildNavBar(wStart, callbacks) {
   next.textContent = '›';
   next.addEventListener('click', () => {
     state.selectedDate = new Date(wStart.getTime() + 7 * 86400000);
-    renderWeek(next.closest('#view-container'), onEventClick);
+    renderWeek(next.closest('#view-container'), callbacks);
   });
 
   nav.appendChild(prev);
@@ -165,9 +165,14 @@ function buildDayHeaders(days, today) {
   spacer.className = 'time-col-spacer';
   row.appendChild(spacer);
   for (const day of days) {
+    const dayEnd = new Date(day.getTime() + 86400000);
+    const hasEvents = state.events.some(ev =>
+      !state.hiddenCalendars.has(ev.calendarId) &&
+      new Date(ev.start) < dayEnd && new Date(ev.end) > day
+    );
     const cell = document.createElement('div');
     cell.className = 'week-day-header' + (day.toDateString() === today.toDateString() ? ' today' : '');
-    cell.innerHTML = `<span class="wdh-name">${day.toLocaleDateString('en-US',{weekday:'short'})}</span><span class="wdh-date">${day.getDate()}</span>`;
+    cell.innerHTML = `<span class="wdh-name">${day.toLocaleDateString('en-US',{weekday:'short'})}</span><span class="wdh-date">${day.getDate()}</span>${hasEvents ? '<span class="wdh-dot"></span>' : ''}`;
     row.appendChild(cell);
   }
   return row;

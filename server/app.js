@@ -3,12 +3,16 @@ const path = require('path');
 const config = require('./config');
 const { syncIncremental } = require('./caldav/sync');
 const store = require('./cache/store');
+const { authMiddleware } = require('./middleware/auth');
 
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 app.use('/client', express.static(path.join(__dirname, '../client')));
 
+// Auth middleware runs after static files so the login form always loads
+app.use(authMiddleware);
+app.use(require('./routes/auth'));
 app.use(require('./routes/events'));
 app.use(require('./routes/calendars'));
 app.use(require('./routes/sync'));

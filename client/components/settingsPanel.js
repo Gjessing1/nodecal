@@ -65,14 +65,35 @@ function renderForm() {
       </select>
     </div>
 
+    <div class="modal-field">
+      <label>Default calendar for new events</label>
+      <select id="s-defcal">
+        <option value="">First available</option>
+        ${state.calendars.map(c => `<option value="${esc(c.id)}" ${cfg.defaultCalendar === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
+      </select>
+    </div>
+
     <div class="modal-actions">
       <button class="btn btn-primary" id="s-save">Save</button>
       <button class="btn btn-ghost" id="s-cancel">Cancel</button>
+      ${cfg.authEnabled ? '<button class="btn btn-ghost" id="s-logout" style="color:var(--color-danger)">Log out</button>' : ''}
     </div>
   `;
 
   sheet.querySelector('#s-save').addEventListener('click', handleSave);
   sheet.querySelector('#s-cancel').addEventListener('click', closeSettings);
+  if (cfg.authEnabled) {
+    sheet.querySelector('#s-logout').addEventListener('click', handleLogout);
+  }
+}
+
+async function handleLogout() {
+  await fetch('/logout', { method: 'POST' });
+  window.location.reload();
+}
+
+function esc(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 async function handleSave() {
@@ -80,10 +101,12 @@ async function handleSave() {
   const enabledViews = Array.from(sheet.querySelectorAll('input[name="view"]:checked')).map(c => c.value);
   if (!enabledViews.length) { alert('At least one view must be enabled.'); return; }
 
-  const defaultView = sheet.querySelector('#s-default').value;
-  const timeFormat  = sheet.querySelector('#s-timefmt').value;
-  const weekStart   = sheet.querySelector('#s-weekstart').value;
+  const defaultView   = sheet.querySelector('#s-default').value;
+  const timeFormat    = sheet.querySelector('#s-timefmt').value;
+  const weekStart     = sheet.querySelector('#s-weekstart').value;
+  const defaultCalRaw = sheet.querySelector('#s-defcal').value;
   const payload = { enabledViews, defaultView, timeFormat, weekStart };
+  if (defaultCalRaw) payload.defaultCalendar = defaultCalRaw;
 
   try {
     const res = await fetch('/settings', {
@@ -92,7 +115,7 @@ async function handleSave() {
       body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error((await res.json()).error);
-    setConfig(payload);
+    setConfig({ ...payload, defaultCalendar: defaultCalRaw || null });
     closeSettings();
     onChangeCb();
   } catch (err) {
