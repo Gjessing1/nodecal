@@ -31,12 +31,16 @@ function loadFromDisk() {
 
 function flushToDisk() {
   try {
-    fs.mkdirSync(path.dirname(CACHE_FILE), { recursive: true });
-    fs.writeFileSync(CACHE_FILE, JSON.stringify({
+    const dir = path.dirname(CACHE_FILE);
+    fs.mkdirSync(dir, { recursive: true });
+    const payload = JSON.stringify({
       events: Array.from(events.values()),
       tasks:  Array.from(tasks.values()),
       ctags:  calendarCtags,
-    }), 'utf8');
+    });
+    const tmp = CACHE_FILE + '.tmp';
+    fs.writeFileSync(tmp, payload, 'utf8');
+    fs.renameSync(tmp, CACHE_FILE); // atomic on same filesystem — no partial writes on crash
   } catch (err) {
     console.error('Failed to persist cache:', err.message);
   }

@@ -68,9 +68,10 @@ export function renderWeek(container, callbacks) {
     col.style.height = `${getTotalHeight()}px`;
     col.appendChild(buildHourLines());
 
+    const tz = state.config.timezone;
     const isToday = day.toDateString() === today.toDateString();
     if (isToday) {
-      timeLine = buildCurrentTimeLine();
+      timeLine = buildCurrentTimeLine(tz);
       col.appendChild(timeLine);
     }
 
@@ -82,7 +83,7 @@ export function renderWeek(container, callbacks) {
 
     for (const ev of dayEvents) {
       const cal = calendarById(ev.calendarId);
-      col.appendChild(buildEventBlock(ev, cal?.color || '#4a90d9', onEventClick));
+      col.appendChild(buildEventBlock(ev, cal?.color || '#4a90d9', onEventClick, tz));
     }
 
     grid.appendChild(col);
@@ -110,12 +111,12 @@ export function renderWeek(container, callbacks) {
 
   // Scroll to current time
   requestAnimationFrame(() => {
-    const offset = Math.max(0, timeToTop(today) - 128);
+    const offset = Math.max(0, timeToTop(today, state.config.timezone) - 128);
     scroll.scrollTop = offset;
   });
 
   if (timeLine) {
-    timerId = setInterval(() => updateCurrentTimeLine(timeLine), 60000);
+    timerId = setInterval(() => updateCurrentTimeLine(timeLine, state.config.timezone), 60000);
   }
 }
 

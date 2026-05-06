@@ -64,12 +64,13 @@ export function renderDay(container, callbacks) {
   eventsCol.style.height = `${getTotalHeight()}px`;
   eventsCol.appendChild(buildHourLines());
 
-  const timeLine = buildCurrentTimeLine();
+  const tz = state.config.timezone;
+  const timeLine = buildCurrentTimeLine(tz);
   eventsCol.appendChild(timeLine);
 
   for (const ev of dayEvents) {
     const cal = calendarById(ev.calendarId);
-    eventsCol.appendChild(buildEventBlock(ev, cal?.color || '#4a90d9', onEventClick));
+    eventsCol.appendChild(buildEventBlock(ev, cal?.color || '#4a90d9', onEventClick, tz));
   }
 
   wrapper.appendChild(timeCol);
@@ -93,10 +94,10 @@ export function renderDay(container, callbacks) {
   // Always scroll to a useful time: current time for today, 8 AM for other days
   requestAnimationFrame(() => {
     const scrollTarget = isToday ? new Date() : new Date(dayStart.getTime() + 8 * 3600000);
-    scroll.scrollTop = Math.max(0, timeToTop(scrollTarget) - 128);
+    scroll.scrollTop = Math.max(0, timeToTop(scrollTarget, tz) - 128);
   });
   if (isToday) {
-    timerId = setInterval(() => updateCurrentTimeLine(timeLine), 60000);
+    timerId = setInterval(() => updateCurrentTimeLine(timeLine, tz), 60000);
   }
 }
 

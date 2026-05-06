@@ -1,15 +1,19 @@
 /**
- * Format a Date to a time string respecting the configured time format.
+ * Format a Date to a time string in the configured timezone.
  * @param {Date} date
  * @param {'24h'|'12h'} format
+ * @param {string} timezone - IANA timezone, e.g. 'Europe/Oslo'
  */
-export function formatTime(date, format = '24h') {
+export function formatTime(date, format = '24h', timezone = 'UTC') {
   if (format === '12h') {
-    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: timezone });
   }
-  const h = String(date.getHours()).padStart(2, '0');
-  const m = String(date.getMinutes()).padStart(2, '0');
-  return `${h}:${m}`;
+  const parts = new Intl.DateTimeFormat('en-US', {
+    hour: '2-digit', minute: '2-digit', hour12: false, timeZone: timezone,
+  }).formatToParts(date);
+  const h = parts.find(p => p.type === 'hour').value;
+  const m = parts.find(p => p.type === 'minute').value;
+  return `${h === '24' ? '00' : h}:${m}`;
 }
 
 /**
@@ -25,20 +29,55 @@ export function localDateStr(date) {
 }
 
 /**
- * Format a Date to YYYY-MM-DD for use in <input type="date">.
+ * Format a Date to YYYY-MM-DD for use in <input type="date">,
+ * reading the date in the configured timezone.
  * @param {Date} date
+ * @param {string} timezone
  */
-export function toDateInputValue(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+export function toDateInputValue(date, timezone = 'UTC') {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    year: 'numeric', month: '2-digit', day: '2-digit', timeZone: timezone,
+  }).formatToParts(date);
+  const y = parts.find(p => p.type === 'year').value;
+  const mo = parts.find(p => p.type === 'month').value;
+  const d = parts.find(p => p.type === 'day').value;
+  return `${y}-${mo}-${d}`;
 }
 
 /**
- * Format a Date to HH:MM for use in <input type="time">.
+ * Format a Date to HH:MM for use in <input type="time">,
+ * reading the time in the configured timezone.
  * @param {Date} date
+ * @param {string} timezone
  */
-export function toTimeInputValue(date) {
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+export function toTimeInputValue(date, timezone = 'UTC') {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    hour: '2-digit', minute: '2-digit', hour12: false, timeZone: timezone,
+  }).formatToParts(date);
+  const h = parts.find(p => p.type === 'hour').value;
+  const m = parts.find(p => p.type === 'minute').value;
+  return `${h === '24' ? '00' : h}:${m}`;
+}
+
+/**
+ * Convert a date + time string entered in a given timezone to a UTC Date.
+ * Mirrors the server-side floatingToUtc but runs in the browser.
+ * @param {string} dateStr - 'YYYY-MM-DD'
+ * @param {string} timeStr - 'HH:MM'
+ * @param {string} timezone - IANA timezone
+ * @returns {Date}
+ */
+export function localToUTC(dateStr, timeStr, timezone) {
+  // Treat the naive datetime as UTC to parse it, then compute the real offset.
+  const naive = new Date(`${dateStr}T${timeStr}:00Z`);
+  const parts = {};
+  for (const p of new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false,
+  }).formatToParts(naive)) parts[p.type] = p.value;
+  const h = parts.hour === '24' ? '00' : parts.hour;
+  const asUtc = new Date(`${parts.year}-${parts.month}-${parts.day}T${h}:${parts.minute}:${parts.second}Z`);
+  return new Date(naive.getTime() + (naive.getTime() - asUtc.getTime()));
 }

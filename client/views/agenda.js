@@ -77,7 +77,7 @@ function buildEventCard(ev, onClick) {
 
   const time = document.createElement('div');
   time.className = 'event-time';
-  time.textContent = ev.allDay ? 'All day' : formatTime(new Date(ev.start), state.config.timeFormat) + ' – ' + formatTime(new Date(ev.end), state.config.timeFormat);
+  time.textContent = ev.allDay ? 'All day' : formatTime(new Date(ev.start), state.config.timeFormat, state.config.timezone) + ' – ' + formatTime(new Date(ev.end), state.config.timeFormat, state.config.timezone);
 
   info.appendChild(title);
   info.appendChild(time);

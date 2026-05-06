@@ -1,15 +1,19 @@
 import { state } from '../app/state.js';
-import { toDateInputValue, toTimeInputValue } from '../app/utils.js';
+import { toDateInputValue, toTimeInputValue, localToUTC } from '../app/utils.js';
 
 const WHEEL_ITEM_H = 40;
 
-function buildTimeWheel(id, date) {
+function buildTimeWheel(id, date, timezone = 'UTC') {
   const hidden = document.createElement('input');
   hidden.type = 'hidden';
   hidden.id = id;
 
-  let hVal = date.getHours();
-  let mVal = Math.round(date.getMinutes() / 5) * 5 % 60;
+  // Read h/m in the configured timezone, not browser local time
+  const parts = new Intl.DateTimeFormat('en-US', {
+    hour: '2-digit', minute: '2-digit', hour12: false, timeZone: timezone,
+  }).formatToParts(date);
+  let hVal = parseInt(parts.find(p => p.type === 'hour').value) % 24;
+  let mVal = Math.round(parseInt(parts.find(p => p.type === 'minute').value) / 5) * 5 % 60;
   hidden.value = `${String(hVal).padStart(2, '0')}:${String(mVal).padStart(2, '0')}`;
 
   function sync() {
@@ -120,8 +124,9 @@ function renderForm(event, defaultDate) {
   const isNew = !event;
   const start = event ? new Date(event.start) : (defaultDate || new Date());
   const end = event ? new Date(event.end) : new Date(start.getTime() + 3600000);
+  const tz = state.config.timezone;
   // For all-day events, slice the UTC date string directly — never convert through local timezone.
-  const allDayDateVal = event?.allDay ? event.start.slice(0, 10) : toDateInputValue(start);
+  const allDayDateVal = event?.allDay ? event.start.slice(0, 10) : toDateInputValue(start, tz);
   const is24h = state.config.timeFormat === '24h';
 
   // Default calendar: prefer event's calendar, then settings default, then first available
@@ -151,13 +156,13 @@ function renderForm(event, defaultDate) {
     <div class="modal-datetime-row" id="time-row"${event?.allDay ? ' style="display:none"' : ''}>
       <div class="datetime-col">
         <label class="datetime-label">From</label>
-        <input type="date" id="f-start-date" value="${toDateInputValue(start)}">
+        <input type="date" id="f-start-date" value="${toDateInputValue(start, tz)}">
         <div id="f-start-time-wrap"></div>
       </div>
       <span class="datetime-arrow">→</span>
       <div class="datetime-col">
         <label class="datetime-label">To</label>
-        <input type="date" id="f-end-date" value="${toDateInputValue(end)}">
+        <input type="date" id="f-end-date" value="${toDateInputValue(end, tz)}">
         <div id="f-end-time-wrap"></div>
       </div>
     </div>
@@ -191,11 +196,11 @@ function renderForm(event, defaultDate) {
   const startWrap = sheet.querySelector('#f-start-time-wrap');
   const endWrap = sheet.querySelector('#f-end-time-wrap');
   if (is24h) {
-    startWrap.appendChild(buildTimeWheel('f-start-time', start));
-    endWrap.appendChild(buildTimeWheel('f-end-time', end));
+    startWrap.appendChild(buildTimeWheel('f-start-time', start, tz));
+    endWrap.appendChild(buildTimeWheel('f-end-time', end, tz));
   } else {
-    startWrap.innerHTML = `<input type="time" id="f-start-time" value="${toTimeInputValue(start)}" style="width:100%">`;
-    endWrap.innerHTML = `<input type="time" id="f-end-time" value="${toTimeInputValue(end)}" style="width:100%">`;
+    startWrap.innerHTML = `<input type="time" id="f-start-time" value="${toTimeInputValue(start, tz)}" style="width:100%">`;
+    endWrap.innerHTML = `<input type="time" id="f-end-time" value="${toTimeInputValue(end, tz)}" style="width:100%">`;
   }
 
   sheet.querySelector('#f-allday').addEventListener('change', e => {
@@ -268,8 +273,9 @@ function handleSave(event) {
     const endDateVal = sheet.querySelector('#f-end-date').value;
     const startTime = sheet.querySelector('#f-start-time').value;
     const endTime = sheet.querySelector('#f-end-time').value;
-    startDt = new Date(`${startDateVal}T${startTime}`);
-    endDt = new Date(`${endDateVal}T${endTime}`);
+    const tz = state.config.timezone;
+    startDt = localToUTC(startDateVal, startTime, tz);
+    endDt = localToUTC(endDateVal, endTime, tz);
     if (endDt <= startDt) {
       endDt = new Date(startDt.getTime() + 3600000);
     }

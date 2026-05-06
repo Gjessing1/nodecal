@@ -18,14 +18,15 @@ const RECURRENCE = [
  * Parse a natural language event description into structured fields.
  * @param {string} text
  * @param {Date} [refDate]
+ * @param {string} [timezone] - IANA timezone name, e.g. 'Europe/Oslo'
  * @returns {{ parsed, title, start, end, allDay, parsedText, rrule }}
  */
-function parse(text, refDate = new Date()) {
+function parse(text, refDate = new Date(), timezone = 'UTC') {
   const trimmed = text.trim();
   if (!trimmed) return { parsed: false };
 
   const rrule = detectRrule(trimmed);
-  const results = chrono.parse(trimmed, refDate, { forwardDate: true });
+  const results = chrono.parse(trimmed, refDate, { forwardDate: true, timezone });
 
   if (!results.length) {
     return { parsed: false, title: trimmed, rrule };
