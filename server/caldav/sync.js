@@ -1,5 +1,10 @@
 const { listCalendars, listEventEtags, fetchEventsByHref } = require('./client');
 const store = require('../cache/store');
+const config = require('../config');
+
+function syncLog(msg) {
+  if (config.app.debugSync) console.log(`[sync] ${msg}`);
+}
 
 const RANGE_PAST_DAYS   = 30;
 const RANGE_FUTURE_DAYS = 90;
@@ -23,7 +28,10 @@ function computeSyncDiff(serverEtags, cached) {
 
   for (const { href, etag } of serverEtags) {
     const local = cached.find(ev => ev.href === href);
-    if (!local || local.etag !== etag) toFetch.push(href);
+    if (!local || local.etag !== etag) {
+      syncLog(`etag mismatch: href=${href} local=${local?.etag || 'none'} server=${etag}`);
+      toFetch.push(href);
+    }
   }
 
   return { toFetch, toDelete };
@@ -82,7 +90,12 @@ async function syncIncremental() {
     if (toFetch.length > 0) {
       const fetched = await withRetry(() => fetchEventsByHref(cal.href, toFetch));
       for (const ev of fetched) {
-        store.setEventSilent({ ...ev, calendarId: cal.id });
+        const existing = store.getEvent(ev.uid);
+        if (existing?.localModifiedAt) {
+          syncLog(`local overwrite applied: uid=${ev.uid} localModifiedAt=${existing.localModifiedAt}`);
+        }
+        syncLog(`fetched remote change: uid=${ev.uid} href=${ev.href}`);
+        store.setEventSilent({ ...ev, calendarId: cal.id, lastSyncedAt: now.toISOString() });
         totalChanged++;
       }
     }

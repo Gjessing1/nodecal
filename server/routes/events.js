@@ -33,11 +33,12 @@ router.post('/events', async (req, res) => {
     if (!calendarId || !title || !start) return res.status(400).json({ error: 'calendarId, title, start required' });
 
     const uid = crypto.randomUUID();
+    const now = new Date().toISOString();
     const event = { uid, calendarId, title, start, end: end || start, allDay: !!allDay,
       description: description || '', location: location || '', rrule: rrule || null };
     const ics = serializeEvent(event);
     const { href, etag } = await putEvent(calendarId, uid, ics);
-    const stored = { ...event, href, etag };
+    const stored = { ...event, href, etag, localModifiedAt: now, lastSyncedAt: now };
     store.setEvent(stored);
     res.status(201).json(toApiShape(stored));
   } catch (err) {
@@ -67,7 +68,8 @@ router.put('/events/:id', async (req, res) => {
     const updated = { ...existing, ...filterChanges(changes) };
     const ics = serializeEvent(updated);
     const { href, etag } = await putEvent(existing.calendarId, existing.uid, ics, existing.etag);
-    const stored = { ...updated, href, etag };
+    const now = new Date().toISOString();
+    const stored = { ...updated, href, etag, localModifiedAt: now, lastSyncedAt: now };
     store.setEvent(stored);
     res.json(toApiShape(stored));
   } catch (err) {
@@ -117,12 +119,13 @@ router.delete('/events/:id', async (req, res) => {
 // ── Recurring helpers ─────────────────────────────────────
 
 async function handleSingleOccurrenceEdit(base, changes, occurrenceDate, res) {
+  const now = new Date().toISOString();
   // 1. Add EXDATE to the base series so this occurrence is skipped
   const exdateStr = formatIcsDate(new Date(occurrenceDate), base.allDay);
   const updatedBase = { ...base, exdates: [...(base.exdates || []), exdateStr] };
   const baseIcs = serializeEvent(updatedBase);
   const { href: bHref, etag: bEtag } = await putEvent(base.calendarId, base.uid, baseIcs, base.etag);
-  store.setEvent({ ...updatedBase, href: bHref, etag: bEtag });
+  store.setEvent({ ...updatedBase, href: bHref, etag: bEtag, localModifiedAt: now, lastSyncedAt: now });
 
   // 2. Create a standalone exception event for this occurrence
   const excUid = crypto.randomUUID();
@@ -134,18 +137,19 @@ async function handleSingleOccurrenceEdit(base, changes, occurrenceDate, res) {
   };
   const excIcs = serializeEvent(exc);
   const { href: eHref, etag: eEtag } = await putEvent(base.calendarId, excUid, excIcs);
-  const stored = { ...exc, href: eHref, etag: eEtag };
+  const stored = { ...exc, href: eHref, etag: eEtag, localModifiedAt: now, lastSyncedAt: now };
   store.setEvent(stored);
   res.status(201).json(toApiShape(stored));
 }
 
 async function handleFutureEdit(base, changes, occurrenceDate, res) {
+  const now = new Date().toISOString();
   // 1. Trim the base series UNTIL to just before this occurrence
   const until = new Date(new Date(occurrenceDate).getTime() - 1000);
   const updatedBase = { ...base, rrule: setRruleUntil(base.rrule, until) };
   const baseIcs = serializeEvent(updatedBase);
   const { href: bHref, etag: bEtag } = await putEvent(base.calendarId, base.uid, baseIcs, base.etag);
-  store.setEvent({ ...updatedBase, href: bHref, etag: bEtag });
+  store.setEvent({ ...updatedBase, href: bHref, etag: bEtag, localModifiedAt: now, lastSyncedAt: now });
 
   // 2. Create a new recurring series from this occurrence onward
   const newUid = crypto.randomUUID();
@@ -158,7 +162,7 @@ async function handleFutureEdit(base, changes, occurrenceDate, res) {
   };
   const newIcs = serializeEvent(newEvent);
   const { href: nHref, etag: nEtag } = await putEvent(base.calendarId, newUid, newIcs);
-  const stored = { ...newEvent, href: nHref, etag: nEtag };
+  const stored = { ...newEvent, href: nHref, etag: nEtag, localModifiedAt: now, lastSyncedAt: now };
   store.setEvent(stored);
   res.status(201).json(toApiShape(stored));
 }

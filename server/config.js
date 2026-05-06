@@ -22,5 +22,6 @@ module.exports = {
     timeFormat: process.env.TIME_FORMAT || '24h',
     weekStart: process.env.WEEK_START || 'monday',
     appPassword: process.env.APP_PASSWORD || null,
+    debugSync: process.env.DEBUG_SYNC === 'true',
   },
 };

@@ -1,6 +1,10 @@
 const config = require('../config');
 const { parseIcs } = require('./parser');
 
+function syncLog(msg) {
+  if (config.app.debugSync) console.log(`[sync] ${msg}`);
+}
+
 function getAuth() {
   return 'Basic ' + Buffer.from(`${config.caldav.username}:${config.caldav.password}`).toString('base64');
 }
@@ -153,9 +157,11 @@ async function putEvent(calendarHref, uid, icsData, etag = null) {
 
   if (res.status === 412 && etag) {
     // Concurrent edit — last-write-wins: force-overwrite without etag guard
-    console.log(`Conflict on PUT ${uid} — overwriting (last-write-wins)`);
+    console.log(`Conflict on PUT ${uid}: local etag ${etag} rejected by server (412) — overwriting with last-write-wins`);
+    syncLog(`etag mismatch detected on PUT: uid=${uid} local-etag=${etag}`);
     delete headers['If-Match'];
     res = await fetch(url, { method: 'PUT', headers, body: icsData });
+    syncLog(`local overwrite applied: uid=${uid}`);
   }
 
   if (!res.ok) throw new Error(`PUT event failed: ${res.status}`);
