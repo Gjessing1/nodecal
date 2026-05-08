@@ -1,5 +1,5 @@
 import { state, calendarById } from '../app/state.js';
-import { initDayDnd, initLongPressCreate } from '../components/dnd.js';
+import { initDayDnd, initLongPressCreate, initSwipe } from '../components/dnd.js';
 import { localDateStr } from '../app/utils.js';
 
 /**
@@ -29,6 +29,12 @@ export function renderMonth(container, onEventClick, onDayClick, onEventMove, on
       onMove: onEventMove,
     });
   }
+
+  // Swipe left/right to navigate months
+  initSwipe(grid,
+    () => { state.selectedDate = new Date(year, month - 1, 1); renderMonth(container, onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress); },
+    () => { state.selectedDate = new Date(year, month + 1, 1); renderMonth(container, onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress); },
+  );
 }
 
 function buildNavBar(year, month, onEventClick, onDayClick) {

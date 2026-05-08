@@ -132,9 +132,27 @@ function buildNavBar(date, isToday, callbacks) {
   });
 
   const fmt = d => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+  // Tap on title opens date picker
+  const titleWrap = document.createElement('span');
+  titleWrap.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer';
   const title = document.createElement('span');
   title.className = 'view-nav-title';
   title.textContent = isToday ? 'Today · ' + fmt(date) : fmt(date);
+  const pickerInput = document.createElement('input');
+  pickerInput.type = 'date';
+  pickerInput.style.cssText = 'position:absolute;opacity:0;pointer-events:none;width:1px;height:1px';
+  const y = date.getFullYear(), m = String(date.getMonth()+1).padStart(2,'0'), d = String(date.getDate()).padStart(2,'0');
+  pickerInput.value = `${y}-${m}-${d}`;
+  pickerInput.addEventListener('change', () => {
+    if (!pickerInput.value) return;
+    const [py, pm, pd] = pickerInput.value.split('-').map(Number);
+    state.selectedDate = new Date(py, pm - 1, pd);
+    renderDay(prev.closest('#view-container'), callbacks);
+  });
+  titleWrap.appendChild(title);
+  titleWrap.appendChild(pickerInput);
+  titleWrap.addEventListener('click', () => pickerInput.showPicker?.() || pickerInput.click());
 
   const todayBtn = document.createElement('button');
   todayBtn.className = 'nav-today-btn';
@@ -154,7 +172,7 @@ function buildNavBar(date, isToday, callbacks) {
   });
 
   nav.appendChild(prev);
-  nav.appendChild(title);
+  nav.appendChild(titleWrap);
   nav.appendChild(todayBtn);
   nav.appendChild(next);
   return nav;
