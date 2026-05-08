@@ -6,6 +6,7 @@
  */
 import { state } from '../app/state.js';
 import { visibleCategories } from '../app/taskUtils.js';
+import { formatShortDate } from '../app/utils.js';
 
 export function buildTaskItem(task, { onComplete, onStar, onClick }) {
   const li = document.createElement('li');
@@ -92,9 +93,8 @@ function formatDue(due) {
   const tomorrow = tomorrowString();
   if (due === today) return 'Today';
   if (due === tomorrow) return 'Tomorrow';
-  // YYYY-MM-DD → short date
   const d = new Date(due + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return formatShortDate(d, state.config.dateFormat || 'dmy');
 }
 
 function todayString() {

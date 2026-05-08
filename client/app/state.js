@@ -29,6 +29,7 @@ export const state = {
     defaultEventTime: '09:00',
     defaultEventDuration: 60,
     showWeekNumbers: false,
+    dateFormat: 'dmy',
   },
 };
 

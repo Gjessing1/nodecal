@@ -1,6 +1,7 @@
 import { state } from '../app/state.js';
 import { buildTaskItem } from '../components/taskItem.js';
 import { parseTagsFromTitle, getAllCategories, visibleCategories, groupTasksByCategory } from '../app/taskUtils.js';
+import { formatShortDate } from '../app/utils.js';
 
 let _callbacks = null;
 
@@ -648,7 +649,8 @@ function localDateString(d) {
 
 function formatDateHeader(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
+  return `${weekday} ${formatShortDate(d, state.config.dateFormat || 'dmy')}`;
 }
 
 function buildWeeklyRrule(due) {

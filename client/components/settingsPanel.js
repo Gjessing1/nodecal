@@ -67,6 +67,15 @@ function renderForm() {
     </div>
 
     <div class="modal-field">
+      <label>Date format</label>
+      <select id="s-datefmt">
+        <option value="dmy" ${(cfg.dateFormat || 'dmy') === 'dmy' ? 'selected' : ''}>dd/mm/yyyy (10 May 2025)</option>
+        <option value="mdy" ${cfg.dateFormat === 'mdy' ? 'selected' : ''}>mm/dd/yyyy (May 10, 2025)</option>
+        <option value="iso" ${cfg.dateFormat === 'iso' ? 'selected' : ''}>ISO (2025-05-10)</option>
+      </select>
+    </div>
+
+    <div class="modal-field">
       <label>Default calendar for new events</label>
       <select id="s-defcal">
         <option value="">First available</option>
@@ -308,6 +317,7 @@ async function handleSave() {
   const defaultEventTime     = sheet.querySelector('#s-default-event-time').value || '09:00';
   const defaultEventDuration = parseInt(sheet.querySelector('#s-default-event-dur').value) || 60;
   const showWeekNumbers      = sheet.querySelector('#s-weeknums').checked;
+  const dateFormat           = sheet.querySelector('#s-datefmt').value;
 
   const payload = {
     enabledViews, defaultView, timeFormat, weekStart,
@@ -315,7 +325,7 @@ async function handleSave() {
     hiddenCategories: state.config.hiddenCategories || [],
     taskSources: state.taskSources || [],
     defaultTaskSource: state.config.defaultTaskSource || '',
-    defaultEventTime, defaultEventDuration, showWeekNumbers,
+    defaultEventTime, defaultEventDuration, showWeekNumbers, dateFormat,
   };
   if (defaultCalRaw) payload.defaultCalendar = defaultCalRaw;
 

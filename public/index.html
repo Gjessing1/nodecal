@@ -31,9 +31,10 @@
     <div class="login-card">
       <h1>Nodecal</h1>
       <form id="login-form" autocomplete="on">
+        <input type="text" name="username" id="login-username" value="nodecal" autocomplete="username" style="display:none" aria-hidden="true">
         <div class="modal-field">
           <label for="login-password">Password</label>
-          <input type="password" id="login-password" autocomplete="current-password" placeholder="Enter password">
+          <input type="password" id="login-password" name="password" autocomplete="current-password" placeholder="Enter password">
         </div>
         <div id="login-error" class="login-error hidden">Wrong password — try again</div>
         <button type="submit" class="btn btn-primary" style="width:100%">Sign in</button>

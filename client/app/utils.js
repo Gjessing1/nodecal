@@ -68,6 +68,31 @@ export function toTimeInputValue(date, timezone = 'UTC') {
  * @returns {Date}
  */
 /**
+ * Format a date for display according to the user's date format preference.
+ * @param {Date} date  - a local Date object
+ * @param {'dmy'|'mdy'|'iso'} format
+ * @param {boolean} [includeYear]
+ * @returns {string}  e.g. "10 May", "May 10", "05-10"
+ */
+export function formatShortDate(date, format = 'dmy', includeYear = false) {
+  const d  = date.getDate();
+  const m  = date.getMonth() + 1;
+  const y  = date.getFullYear();
+  const mm = String(m).padStart(2, '0');
+  const dd = String(d).padStart(2, '0');
+  const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+
+  if (format === 'iso') {
+    return includeYear ? `${y}-${mm}-${dd}` : `${mm}-${dd}`;
+  }
+  if (format === 'mdy') {
+    return includeYear ? `${monthName} ${d}, ${y}` : `${monthName} ${d}`;
+  }
+  // 'dmy' (default)
+  return includeYear ? `${d} ${monthName} ${y}` : `${d} ${monthName}`;
+}
+
+/**
  * ISO 8601 week number for a given date.
  * @param {Date} date
  * @returns {number}
