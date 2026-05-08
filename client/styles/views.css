@@ -214,16 +214,19 @@
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
   min-height: 28px;
+  overflow: hidden;
 }
 .week-allday-cell {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
   padding: 2px;
   border-left: 1px solid var(--color-border);
+  overflow: hidden;
 }
-.week-allday-cell .allday-chip { width: 100%; box-sizing: border-box; font-size: 10px; }
+.week-allday-cell .allday-chip { width: 100%; box-sizing: border-box; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ── Weather badges ─────────────────────────────────────── */
 .wdh-weather {

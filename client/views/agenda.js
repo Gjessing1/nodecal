@@ -14,16 +14,6 @@ export function renderAgenda(container, onEventClick, onTaskClick) {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const fragments = [];
-  let emptyRun = 0; // consecutive days with nothing scheduled
-
-  function flushEmptyRun() {
-    if (!emptyRun) return;
-    const gap = document.createElement('div');
-    gap.className = 'agenda-gap';
-    gap.textContent = emptyRun === 1 ? '— 1 day with no events' : `— ${emptyRun} days with no events`;
-    fragments.push(gap);
-    emptyRun = 0;
-  }
 
   for (let i = 0; i < AGENDA_DAYS; i++) {
     const raw = new Date(today.getTime() + i * DAY_MS);
@@ -39,30 +29,6 @@ export function renderAgenda(container, onEventClick, onTaskClick) {
       : [];
 
     const isToday = i === 0;
-
-    if (dayEvents.length === 0 && dayTasks.length === 0) {
-      // Always show today even if empty
-      if (isToday) {
-        flushEmptyRun();
-        const header = document.createElement('div');
-        header.className = 'agenda-group';
-        const dateEl = document.createElement('div');
-        dateEl.className = 'agenda-date-header today';
-        dateEl.textContent = formatDayHeader(day, true);
-        const noEvSpan = document.createElement('span');
-        noEvSpan.className = 'agenda-empty-inline';
-        noEvSpan.textContent = ' — Nothing scheduled';
-        dateEl.appendChild(noEvSpan);
-        header.appendChild(dateEl);
-        fragments.push(header);
-      } else {
-        emptyRun++;
-      }
-      continue;
-    }
-
-    flushEmptyRun();
-
     const header = document.createElement('div');
     header.className = 'agenda-group';
 
@@ -71,11 +37,18 @@ export function renderAgenda(container, onEventClick, onTaskClick) {
     dateEl.textContent = formatDayHeader(day, isToday);
     header.appendChild(dateEl);
 
-    for (const ev of dayEvents) {
-      header.appendChild(buildEventCard(ev, onEventClick));
-    }
-    for (const task of dayTasks) {
-      header.appendChild(buildTaskCard(task, onTaskClick));
+    if (dayEvents.length === 0 && dayTasks.length === 0) {
+      const noEvSpan = document.createElement('span');
+      noEvSpan.className = 'agenda-empty-inline';
+      noEvSpan.textContent = ' — Nothing scheduled';
+      dateEl.appendChild(noEvSpan);
+    } else {
+      for (const ev of dayEvents) {
+        header.appendChild(buildEventCard(ev, onEventClick));
+      }
+      for (const task of dayTasks) {
+        header.appendChild(buildTaskCard(task, onTaskClick));
+      }
     }
 
     fragments.push(header);

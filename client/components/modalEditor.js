@@ -7,7 +7,7 @@ const WHEEL_ITEM_H = 40;
  * Wraps buildTimeWheel with a tap-to-reveal button.
  * Shows a text display of the time; tapping it opens the scroll wheel.
  */
-function buildTimeButton(id, date, timezone = 'UTC') {
+function buildTimeButton(id, date, timezone = 'UTC', onTimeChange) {
   const wrap = document.createElement('div');
   wrap.className = 'time-btn-wrap';
 
@@ -18,17 +18,36 @@ function buildTimeButton(id, date, timezone = 'UTC') {
   const wheelPanel = document.createElement('div');
   wheelPanel.className = 'time-wheel-panel hidden';
 
-  const pair = buildTimeWheel(id, date, timezone, val => { btn.textContent = val; });
+  const pair = buildTimeWheel(id, date, timezone, val => {
+    btn.textContent = val;
+    if (onTimeChange) onTimeChange(val);
+  });
   const hidden = pair.querySelector(`#${id}`);
   btn.textContent = hidden.value;
   wheelPanel.appendChild(pair);
 
-  btn.addEventListener('click', () => {
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
     const isOpen = !wheelPanel.classList.contains('hidden');
     document.querySelectorAll('.time-wheel-panel').forEach(p => {
-      if (p !== wheelPanel) p.classList.add('hidden');
+      if (p !== wheelPanel) {
+        p.classList.add('hidden');
+        p.previousElementSibling?.classList.remove('active');
+      }
     });
     wheelPanel.classList.toggle('hidden', isOpen);
+    btn.classList.toggle('active', !isOpen);
+    if (!isOpen) {
+      // Close on next outside click
+      const closeOnOutside = ev => {
+        if (!wheelPanel.contains(ev.target)) {
+          wheelPanel.classList.add('hidden');
+          btn.classList.remove('active');
+          document.removeEventListener('click', closeOnOutside);
+        }
+      };
+      setTimeout(() => document.addEventListener('click', closeOnOutside), 0);
+    }
   });
 
   wrap.appendChild(btn);
@@ -240,7 +259,7 @@ function renderForm(event, defaultDate) {
     </div>
     <div class="modal-field">
       <label>Description</label>
-      <textarea id="f-desc">${esc(event?.description || '')}</textarea>
+      <textarea id="f-desc" rows="5">${esc(event?.description || '')}</textarea>
     </div>
     <div class="modal-actions">
       <button class="btn btn-primary" id="f-save">Save</button>
@@ -253,12 +272,40 @@ function renderForm(event, defaultDate) {
   // Insert time widgets after innerHTML so DOM elements can be appended
   const startWrap = sheet.querySelector('#f-start-time-wrap');
   const endWrap = sheet.querySelector('#f-end-time-wrap');
+
+  // Helper: shift end time by same delta when start changes
+  function shiftEnd(prevStartVal, newStartVal) {
+    const [ph, pm] = prevStartVal.split(':').map(Number);
+    const [nh, nm] = newStartVal.split(':').map(Number);
+    const deltaMin = (nh * 60 + nm) - (ph * 60 + pm);
+    const endEl = sheet.querySelector('#f-end-time');
+    if (!endEl) return;
+    const [eh, em] = endEl.value.split(':').map(Number);
+    const newEndMin = Math.max(0, Math.min(1439, (eh * 60 + em) + deltaMin));
+    const newEndVal = `${String(Math.floor(newEndMin / 60)).padStart(2,'0')}:${String(newEndMin % 60).padStart(2,'0')}`;
+    endEl.value = newEndVal;
+    // Update button text if 24h wheel
+    const endBtn = sheet.querySelector('#f-end-time-wrap .time-display-btn');
+    if (endBtn) endBtn.textContent = newEndVal;
+  }
+
   if (is24h) {
-    startWrap.appendChild(buildTimeButton('f-start-time', start, tz));
+    let prevStartVal = toTimeInputValue(start, tz);
+    startWrap.appendChild(buildTimeButton('f-start-time', start, tz, newVal => {
+      shiftEnd(prevStartVal, newVal);
+      prevStartVal = newVal;
+    }));
     endWrap.appendChild(buildTimeButton('f-end-time', end, tz));
   } else {
     startWrap.innerHTML = `<input type="time" id="f-start-time" value="${toTimeInputValue(start, tz)}" style="width:100%">`;
     endWrap.innerHTML = `<input type="time" id="f-end-time" value="${toTimeInputValue(end, tz)}" style="width:100%">`;
+    // For 12h: shift end when start changes
+    const startEl = sheet.querySelector('#f-start-time');
+    let prevStart12 = startEl.value;
+    startEl.addEventListener('change', () => {
+      shiftEnd(prevStart12, startEl.value);
+      prevStart12 = startEl.value;
+    });
   }
 
   sheet.querySelector('#f-allday').addEventListener('change', e => {

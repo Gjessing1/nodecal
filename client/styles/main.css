@@ -368,7 +368,10 @@ input, textarea, select {
   font-size: var(--font-size-sm);
   color: var(--color-accent);
   margin-top: var(--space-xs);
-  padding: var(--space-xs) 0;
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--color-accent-light);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--color-accent);
 }
 
 /* ── Time wheel (24h mode) ──────────────────────────────── */
@@ -443,8 +446,19 @@ input, textarea, select {
   cursor: pointer;
   color: var(--color-text);
 }
-.time-display-btn:hover { background: var(--color-surface); }
-.time-wheel-panel { margin-top: var(--space-sm); }
+.time-display-btn:hover, .time-display-btn.active { background: var(--color-accent-light); border-color: var(--color-accent); }
+.time-wheel-panel {
+  position: fixed;
+  left: 50%;
+  bottom: 30%;
+  transform: translateX(-50%);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  z-index: 300;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+}
 .time-wheel-panel.hidden { display: none; }
 
 /* ── Agenda compact ─────────────────────────────────────── */
