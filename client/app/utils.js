@@ -93,16 +93,44 @@ export function formatShortDate(date, format = 'dmy', includeYear = false) {
 }
 
 /**
- * Return a compact weather badge string for a given date from state.weather.
- * Returns '' if no weather data is available for that date.
+ * Return weather data for a date if it's within the configured weatherDays window.
  * @param {string} dateStr - 'YYYY-MM-DD'
  * @param {object|null} weather - state.weather
- * @returns {string}  e.g. "⛅ 14°"
+ * @param {number} [maxDays] - how many days ahead to show weather for
+ * @returns {{ emoji, tempMax }|null}
  */
-export function weatherBadge(dateStr, weather) {
-  if (!weather?.daily?.[dateStr]) return '';
-  const d = weather.daily[dateStr];
+function weatherForDate(dateStr, weather, maxDays = 6) {
+  if (!weather?.daily?.[dateStr]) return null;
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  const diffDays = (new Date(dateStr + 'T00:00:00') - new Date(todayStr + 'T00:00:00')) / 86400000;
+  if (diffDays < 0 || diffDays >= maxDays) return null;
+  return weather.daily[dateStr];
+}
+
+/**
+ * Icon + temperature badge for Day view header. Returns '' if no data.
+ * @param {string} dateStr
+ * @param {object|null} weather
+ * @param {number} [maxDays]
+ * @returns {string} e.g. "⛅ 14°"
+ */
+export function weatherBadge(dateStr, weather, maxDays = 6) {
+  const d = weatherForDate(dateStr, weather, maxDays);
+  if (!d) return '';
   return `${d.emoji} ${d.tempMax}°`;
+}
+
+/**
+ * Icon-only weather for Month view. Returns '' if no data.
+ * @param {string} dateStr
+ * @param {object|null} weather
+ * @param {number} [maxDays]
+ * @returns {string} e.g. "⛅"
+ */
+export function weatherIcon(dateStr, weather, maxDays = 6) {
+  const d = weatherForDate(dateStr, weather, maxDays);
+  return d ? d.emoji : '';
 }
 
 /**

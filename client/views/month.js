@@ -1,6 +1,6 @@
 import { state, calendarById } from '../app/state.js';
 import { initDayDnd, initLongPressCreate, initSwipe } from '../components/dnd.js';
-import { localDateStr, getISOWeek, weatherBadge } from '../app/utils.js';
+import { localDateStr, getISOWeek, weatherIcon } from '../app/utils.js';
 
 /**
  * @param {HTMLElement} container
@@ -143,7 +143,7 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, on
   const numSpan = document.createElement('span');
   numSpan.textContent = day.getDate();
   numWrap.appendChild(numSpan);
-  const wx = weatherBadge(localDateStr(day), state.weather);
+  const wx = weatherIcon(localDateStr(day), state.weather, state.config.weatherDays ?? 6);
   if (wx && !isOther) {
     const wxEl = document.createElement('span');
     wxEl.className = 'month-weather';
@@ -201,19 +201,27 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, on
 
 function buildChip(ev, onClick) {
   const cal = calendarById(ev.calendarId);
+  const color = cal?.color || '#4a90d9';
   const chip = document.createElement('div');
-  chip.className = 'month-event-chip';
-  chip.style.background = cal?.color || '#4a90d9';
   chip.dataset.id = ev.id;
   const start = new Date(ev.start);
   chip.dataset.startMin = String(start.getHours() * 60 + start.getMinutes());
-  if (!ev.allDay) {
+
+  if (ev.allDay) {
+    // All-day events: solid color fill (high visibility)
+    chip.className = 'month-event-chip';
+    chip.style.background = color;
+    chip.textContent = ev.title;
+  } else {
+    // Timed events: colored left border + light background, show time
+    chip.className = 'month-event-chip month-event-timed';
+    chip.style.borderLeftColor = color;
+    chip.style.color = color;
     const h = start.getHours();
     const m = String(start.getMinutes()).padStart(2, '0');
     chip.textContent = `${h}:${m} ${ev.title}`;
-  } else {
-    chip.textContent = ev.title;
   }
+
   chip.addEventListener('click', e => { e.stopPropagation(); onClick(ev); });
   return chip;
 }

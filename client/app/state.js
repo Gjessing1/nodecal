@@ -34,6 +34,7 @@ export const state = {
     dateFormat: 'dmy',
     weatherLat: '',
     weatherLon: '',
+    weatherDays: 6,
   },
 };
 

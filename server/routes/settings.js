@@ -37,7 +37,7 @@ router.put('/settings', (req, res) => {
     'enableTasksView', 'showTasksOnCalendar', 'taskSortOrder', 'tasksCalDAVUrl',
     'hiddenCategories', 'taskSources', 'defaultTaskSource',
     'defaultEventTime', 'defaultEventDuration', 'showWeekNumbers', 'dateFormat',
-    'weatherLat', 'weatherLon',
+    'weatherLat', 'weatherLon', 'weatherDays',
   ];
   const toSave = {};
   for (const k of allowed) {
@@ -61,7 +61,10 @@ router.put('/settings', (req, res) => {
 
   try {
     fs.mkdirSync(path.dirname(SETTINGS_FILE), { recursive: true });
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(toSave, null, 2), 'utf8');
+    // Merge with existing overrides so unrelated keys are preserved
+    const existing = readOverrides();
+    const merged = { ...existing, ...toSave };
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(merged, null, 2), 'utf8');
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

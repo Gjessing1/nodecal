@@ -141,6 +141,10 @@ function renderForm() {
       </div>
       <button type="button" id="s-weather-detect" class="btn btn-ghost" style="margin-top:var(--space-xs);font-size:var(--font-size-sm)">📍 Detect my location</button>
     </div>
+    <div class="modal-field">
+      <label>Show weather for (days ahead)</label>
+      <input type="number" id="s-weather-days" value="${cfg.weatherDays ?? 6}" min="1" max="14" step="1">
+    </div>
 
     <div class="modal-actions">
       <button class="btn btn-primary" id="s-save">Save</button>
@@ -273,12 +277,12 @@ function renderTaskSourcesSection(sheet, cfg) {
 
   sources.forEach((src, i) => addRow(src, i));
 
-  // If no sources configured yet and calendars exist, show a hint to add one
+  // If no sources configured, auto-show one row with the first calendar pre-selected
   if (!sources.length && calOptions.length) {
-    const hint = document.createElement('p');
-    hint.style.cssText = 'font-size:var(--font-size-sm);color:var(--color-text-muted);margin:0 0 8px';
-    hint.textContent = 'No task source configured. Add one below.';
-    section.appendChild(hint);
+    const firstCal = calOptions[0];
+    sources.push({ url: firstCal.value, name: firstCal.label });
+    state.taskSources = [...sources];
+    addRow(sources[0], 0);
   }
 
   const addBtn = document.createElement('button');
@@ -383,6 +387,7 @@ async function handleSave() {
   const dateFormat           = sheet.querySelector('#s-datefmt').value;
   const weatherLat           = sheet.querySelector('#s-weather-lat').value.trim();
   const weatherLon           = sheet.querySelector('#s-weather-lon').value.trim();
+  const weatherDays          = parseInt(sheet.querySelector('#s-weather-days').value) || 6;
 
   const payload = {
     enabledViews, defaultView, timeFormat, weekStart,
@@ -391,7 +396,7 @@ async function handleSave() {
     taskSources: state.taskSources || [],
     defaultTaskSource: state.config.defaultTaskSource || '',
     defaultEventTime, defaultEventDuration, showWeekNumbers, dateFormat,
-    weatherLat, weatherLon,
+    weatherLat, weatherLon, weatherDays,
   };
   if (defaultCalRaw) payload.defaultCalendar = defaultCalRaw;
 

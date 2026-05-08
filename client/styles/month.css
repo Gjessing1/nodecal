@@ -92,6 +92,13 @@
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
+/* Timed events: outlined style, no solid fill */
+.month-event-timed {
+  background: transparent !important;
+  border-left: 3px solid;
+  border-radius: 0 3px 3px 0;
+  padding-left: 3px;
+}
 .month-more {
   font-size: 10px;
   color: var(--color-text-muted);

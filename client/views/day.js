@@ -133,7 +133,7 @@ function buildNavBar(date, isToday, callbacks) {
 
   const fmt = d => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   const weekTag = state.config.showWeekNumbers ? ` · W${getISOWeek(date)}` : '';
-  const wx = weatherBadge(localDateStr(date), state.weather);
+  const wx = weatherBadge(localDateStr(date), state.weather, state.config.weatherDays ?? 6);
   const wxTag = wx ? ` · ${wx}` : '';
 
   // Tap on title opens date picker

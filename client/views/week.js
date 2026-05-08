@@ -201,8 +201,8 @@ function buildDayHeaders(days, today) {
     );
     const cell = document.createElement('div');
     cell.className = 'week-day-header' + (day.toDateString() === today.toDateString() ? ' today' : '');
-    const wx = weatherBadge(localDateStr(day), state.weather);
-    cell.innerHTML = `<span class="wdh-name">${day.toLocaleDateString('en-US',{weekday:'short'})}</span><span class="wdh-date">${day.getDate()}</span>${hasEvents ? '<span class="wdh-dot"></span>' : ''}${wx ? `<span class="wdh-weather">${wx}</span>` : ''}`;
+    const wx = weatherBadge(localDateStr(day), state.weather, state.config.weatherDays ?? 6);
+    cell.innerHTML = `<span class="wdh-name">${day.toLocaleDateString('en-US',{weekday:'short'})}</span><span class="wdh-date">${day.getDate()}</span>${wx ? `<span class="wdh-weather">${wx}</span>` : ''}`;
     row.appendChild(cell);
   }
   return row;

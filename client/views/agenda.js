@@ -1,5 +1,5 @@
 import { state, calendarById } from '../app/state.js';
-import { formatTime, localDateStr, getISOWeek } from '../app/utils.js';
+import { formatTime, localDateStr, getISOWeek, weatherBadge } from '../app/utils.js';
 
 const DAY_MS = 86400000;
 const AGENDA_DAYS = 90;
@@ -111,9 +111,14 @@ function buildTaskCard(task, onTaskClick) {
 }
 
 function formatDayHeader(date, isToday) {
-  const wn = state.config.showWeekNumbers ? ` · W${getISOWeek(date)}` : '';
+  // Week number: only on Mondays (ISO weekday 1)
+  const isMonday = date.getDay() === 1;
+  const wn = (state.config.showWeekNumbers && isMonday) ? ` · W${getISOWeek(date)}` : '';
+  // Weather: only for today
+  const wx = isToday ? weatherBadge(localDateStr(date), state.weather, state.config.weatherDays ?? 6) : '';
+  const wxTag = wx ? ` · ${wx}` : '';
   const long = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  if (isToday) return 'Today — ' + long + wn;
+  if (isToday) return 'Today — ' + long + wn + wxTag;
   const tomorrow = new Date(Date.now() + DAY_MS);
   if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow — ' + long + wn;
   return long + wn;
