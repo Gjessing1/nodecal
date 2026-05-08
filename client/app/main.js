@@ -271,12 +271,18 @@ async function handleTaskStar(task) {
   }
 }
 
-async function handleTaskAdd({ title, due, categories, source }) {
+async function handleTaskAdd({ title, due, categories, source, rrule, xRecurringType, xRecurringInterval }) {
   try {
+    const body = { title, due };
+    if (categories?.length) body.categories = categories;
+    if (source) body.source = source;
+    if (rrule) body.rrule = rrule;
+    if (xRecurringType) body.xRecurringType = xRecurringType;
+    if (xRecurringInterval) body.xRecurringInterval = xRecurringInterval;
     const res = await fetch('/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, due, ...(categories?.length ? { categories } : {}), ...(source ? { source } : {}) }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error((await res.json()).error);
     await loadTasks();

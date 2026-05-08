@@ -5,6 +5,16 @@ import { formatShortDate } from '../app/utils.js';
 
 let _callbacks = null;
 
+// Persist filter state across renders so toggling a task doesn't reset UI state
+const _persist = {
+  showDone: false,
+  starredOnly: false,
+  groupBy: 'date',
+  filterCat: '',
+  filterSource: '',
+  sortOrder: null,  // null means use state.config.taskSortOrder
+};
+
 /**
  * Render the tasks view.
  * @param {HTMLElement} container
@@ -17,9 +27,9 @@ export function renderTasks(container, callbacks) {
   const wrap = document.createElement('div');
   wrap.className = 'tasks-view';
 
-  const filterState = { showDone: false, starredOnly: false };
-  let currentGroupBy  = 'date';
-  let currentFilterCat = '';
+  const filterState = { showDone: _persist.showDone, starredOnly: _persist.starredOnly };
+  let currentGroupBy   = _persist.groupBy;
+  let currentFilterCat = _persist.filterCat;
 
   // ── Controls row ───────────────────────────────────────────
   const controls = document.createElement('div');
@@ -32,8 +42,9 @@ export function renderTasks(container, callbacks) {
   showDoneLabel.className = 'tasks-show-done';
   const showDoneCheck = document.createElement('input');
   showDoneCheck.type = 'checkbox';
+  showDoneCheck.checked = _persist.showDone;
   showDoneCheck.addEventListener('change', () => {
-    filterState.showDone = showDoneCheck.checked;
+    filterState.showDone = _persist.showDone = showDoneCheck.checked;
     rerender();
   });
   showDoneLabel.appendChild(showDoneCheck);
@@ -43,12 +54,14 @@ export function renderTasks(container, callbacks) {
   starredOnlyLabel.className = 'tasks-show-done';
   const starredOnlyCheck = document.createElement('input');
   starredOnlyCheck.type = 'checkbox';
+  starredOnlyCheck.checked = _persist.starredOnly;
   starredOnlyCheck.addEventListener('change', () => {
-    filterState.starredOnly = starredOnlyCheck.checked;
+    filterState.starredOnly = _persist.starredOnly = starredOnlyCheck.checked;
     rerender();
   });
   starredOnlyLabel.appendChild(starredOnlyCheck);
-  starredOnlyLabel.appendChild(document.createTextNode(' Starred'));
+  starredOnlyLabel.appendChild(document.createTextNode(' ★ Starred'));
+  starredOnlyLabel.title = 'Show starred tasks from all sources';
 
   leftFilters.appendChild(showDoneLabel);
   leftFilters.appendChild(starredOnlyLabel);
@@ -63,7 +76,7 @@ export function renderTasks(container, callbacks) {
     <option value="category">Group: Category</option>
   `;
   groupSel.addEventListener('change', () => {
-    currentGroupBy = groupSel.value;
+    currentGroupBy = _persist.groupBy = groupSel.value;
     rerender();
   });
 
@@ -75,8 +88,9 @@ export function renderTasks(container, callbacks) {
     <option value="alpha">Sort: A–Z</option>
     <option value="created">Sort: Created</option>
   `;
-  sortSel.value = state.config.taskSortOrder || 'due';
-  sortSel.addEventListener('change', () => rerender());
+  groupSel.value = _persist.groupBy;
+  sortSel.value = _persist.sortOrder || state.config.taskSortOrder || 'due';
+  sortSel.addEventListener('change', () => { _persist.sortOrder = sortSel.value; rerender(); });
 
   rightControls.appendChild(groupSel);
   rightControls.appendChild(sortSel);
@@ -84,7 +98,7 @@ export function renderTasks(container, callbacks) {
   controls.appendChild(rightControls);
 
   // ── Source filter (only when multiple sources) ──────────────
-  let currentSourceFilter = '';
+  let currentSourceFilter = _persist.filterSource;
   const sourceFilterRow = document.createElement('div');
   sourceFilterRow.className = 'tasks-cat-filter-row';
 
@@ -101,7 +115,7 @@ export function renderTasks(container, callbacks) {
     const allChip = document.createElement('button');
     allChip.className = 'tasks-cat-chip-filter' + (!currentSourceFilter ? ' active' : '');
     allChip.textContent = 'All';
-    allChip.addEventListener('click', () => { currentSourceFilter = ''; buildSourceFilter(); rerender(); });
+    allChip.addEventListener('click', () => { currentSourceFilter = _persist.filterSource = ''; buildSourceFilter(); rerender(); });
     sourceFilterRow.appendChild(allChip);
 
     for (const src of sources) {
@@ -109,7 +123,7 @@ export function renderTasks(container, callbacks) {
       chip.className = 'tasks-cat-chip-filter' + (currentSourceFilter === src.url ? ' active' : '');
       chip.textContent = src.name || src.url;
       chip.addEventListener('click', () => {
-        currentSourceFilter = currentSourceFilter === src.url ? '' : src.url;
+        currentSourceFilter = _persist.filterSource = (currentSourceFilter === src.url ? '' : src.url);
         buildSourceFilter();
         rerender();
       });
@@ -136,7 +150,7 @@ export function renderTasks(container, callbacks) {
     const allChip = document.createElement('button');
     allChip.className = 'tasks-cat-chip-filter' + (!currentFilterCat ? ' active' : '');
     allChip.textContent = 'All';
-    allChip.addEventListener('click', () => { currentFilterCat = ''; buildCatFilter(); rerender(); });
+    allChip.addEventListener('click', () => { currentFilterCat = _persist.filterCat = ''; buildCatFilter(); rerender(); });
     catFilterRow.appendChild(allChip);
 
     for (const cat of allCats) {
@@ -144,7 +158,7 @@ export function renderTasks(container, callbacks) {
       chip.className = 'tasks-cat-chip-filter' + (currentFilterCat === cat ? ' active' : '');
       chip.textContent = cat;
       chip.addEventListener('click', () => {
-        currentFilterCat = currentFilterCat === cat ? '' : cat;
+        currentFilterCat = _persist.filterCat = (currentFilterCat === cat ? '' : cat);
         buildCatFilter();
         rerender();
       });
@@ -189,7 +203,8 @@ function renderList(container, filterState, sortOrder, groupBy, filterCat, filte
   let tasks = state.tasks.filter(t => filterState.showDone || t.status !== 'COMPLETED');
   if (filterState.starredOnly) tasks = tasks.filter(t => t.important);
   if (filterCat) tasks = tasks.filter(t => (t.categories || []).includes(filterCat));
-  if (filterSource) tasks = tasks.filter(t => t.source === filterSource);
+  // Starred view shows all sources — ignore source filter when starred is active
+  if (filterSource && !filterState.starredOnly) tasks = tasks.filter(t => t.source === filterSource);
   tasks = sortTasks(tasks, sortOrder);
 
   if (groupBy === 'category') {
@@ -315,7 +330,7 @@ function buildQuickAdd(callbacks) {
   input.type = 'text';
   input.id = 'task-quick-add-input';
   input.className = 'tasks-quickadd-input';
-  input.placeholder = 'Add a task… use #tag for categories';
+  input.placeholder = 'Add a task… e.g. "buy milk tomorrow #groceries"';
 
   const autocompleteList = document.createElement('ul');
   autocompleteList.className = 'tasks-autocomplete';
@@ -442,14 +457,46 @@ function buildQuickAdd(callbacks) {
   async function submit() {
     const raw = input.value.trim();
     if (!raw) return;
-    const { title, tags } = parseTagsFromTitle(raw);
-    if (!title) { input.value = ''; return; }
+    const { title: rawTitle, tags } = parseTagsFromTitle(raw);
+    if (!rawTitle) { input.value = ''; return; }
     input.value = '';
-    const due = selectedDue;
+    const source = selectedSource || undefined;
+
+    // If user has selected a specific due date, use it and skip NLP date parsing
+    if (selectedDue) {
+      const due = selectedDue;
+      selectedDue = null;
+      updateActive();
+      await callbacks.onAdd({ title: rawTitle, due, categories: tags.length ? tags : undefined, source });
+      return;
+    }
     selectedDue = null;
     updateActive();
-    const source = selectedSource || undefined;
-    await callbacks.onAdd({ title, due, categories: tags.length ? tags : undefined, source });
+
+    // Run NLP to extract date and recurrence from the title
+    try {
+      const res = await fetch('/nlp/parse-task', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: rawTitle }),
+      });
+      const nlp = await res.json();
+      if (nlp.parsed) {
+        await callbacks.onAdd({
+          title: nlp.title || rawTitle,
+          due: nlp.due || null,
+          categories: tags.length ? tags : undefined,
+          rrule: nlp.rrule || undefined,
+          xRecurringType: nlp.xRecurringType || undefined,
+          xRecurringInterval: nlp.xRecurringInterval || undefined,
+          source,
+        });
+      } else {
+        await callbacks.onAdd({ title: rawTitle, due: null, categories: tags.length ? tags : undefined, source });
+      }
+    } catch {
+      await callbacks.onAdd({ title: rawTitle, due: null, categories: tags.length ? tags : undefined, source });
+    }
   }
 
   const submitBtn = document.createElement('button');
