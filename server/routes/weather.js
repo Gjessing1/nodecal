@@ -7,53 +7,68 @@ const router = Router();
 const cache = new Map();
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-// Full met.no symbol code → emoji mapping (no thermometer fallback)
+// Complete met.no symbol_code → emoji mapping.
+// Source: https://github.com/metno/weathericons — filename (minus extension) = symbol_code base.
+// Variant suffixes (_day, _night, _polartwilight) are stripped before lookup.
+// Unknown codes return '' (show nothing rather than a wrong icon).
 const SYMBOL_EMOJI = {
-  clearsky:                    '☀️',
-  fair:                        '🌤️',
-  partlycloudy:                '⛅',
-  cloudy:                      '☁️',
-  fog:                         '🌫️',
+  // Clear / fair / cloudy
+  clearsky:                          '☀️',
+  fair:                              '🌤️',
+  partlycloudy:                      '⛅',
+  cloudy:                            '☁️',
+  fog:                               '🌫️',
+  // Light rain
+  lightrain:                         '🌦️',
+  lightrainshowers:                  '🌦️',
+  lightrainandthunder:               '⛈️',
+  lightrainshowersandthunder:        '⛈️',
   // Rain
-  lightrain:                   '🌦️',
-  rain:                        '🌧️',
-  heavyrain:                   '🌧️',
-  lightrainshowers:            '🌦️',
-  rainshowers:                 '🌧️',
-  heavyrainshowers:            '🌧️',
+  rain:                              '🌧️',
+  rainshowers:                       '🌧️',
+  rainandthunder:                    '⛈️',
+  rainshowersandthunder:             '⛈️',
+  // Heavy rain
+  heavyrain:                         '🌧️',
+  heavyrainshowers:                  '🌧️',
+  heavyrainandthunder:               '⛈️',
+  heavyrainshowersandthunder:        '⛈️',
+  // Light sleet
+  lightsleet:                        '🌧️',
+  lightsleetshowers:                 '🌧️',
+  lightsleetandthunder:              '⛈️',
+  lightssleetshowersandthunder:      '⛈️', // met.no typo variant (double s)
+  // Sleet
+  sleet:                             '🌧️',
+  sleetshowers:                      '🌧️',
+  sleetandthunder:                   '⛈️',
+  sleetshowersandthunder:            '⛈️',
+  // Heavy sleet
+  heavysleet:                        '🌧️',
+  heavysleetshowers:                 '🌧️',
+  heavysleetandthunder:              '⛈️',
+  heavysleetshowersandthunder:       '⛈️',
+  // Light snow
+  lightsnow:                         '🌨️',
+  lightsnowshowers:                  '🌨️',
+  lightsnowandthunder:               '⛈️',
+  lightssnowshowersandthunder:       '⛈️', // met.no typo variant (double s)
   // Snow
-  lightsnow:                   '🌨️',
-  snow:                        '❄️',
-  heavysnow:                   '❄️',
-  lightsnowshowers:            '🌨️',
-  snowshowers:                 '🌨️',
-  heavysnowshowers:            '❄️',
-  // Sleet (mix of rain and snow)
-  lightsleet:                  '🌧️',
-  sleet:                       '🌧️',
-  heavysleet:                  '🌧️',
-  lightsleetshowers:           '🌧️',
-  sleetshowers:                '🌧️',
-  heavysleetshowers:           '🌧️',
-  // Thunder
-  thunder:                     '⛈️',
-  lightrainandthunder:         '⛈️',
-  rainandthunder:              '⛈️',
-  heavyrainandthunder:         '⛈️',
-  lightrainshowersandthunder:  '⛈️',
-  rainshowersandthunder:       '⛈️',
-  heavyrainshowersandthunder:  '⛈️',
-  lightsnowandthunder:         '⛈️',
-  snowandthunder:              '⛈️',
-  lightsleetandthunder:        '⛈️',
-  sleetandthunder:             '⛈️',
+  snow:                              '❄️',
+  snowshowers:                       '🌨️',
+  snowandthunder:                    '⛈️',
+  snowshowersandthunder:             '⛈️',
+  // Heavy snow
+  heavysnow:                         '❄️',
+  heavysnowshowers:                  '❄️',
+  heavysnowandthunder:               '⛈️',
+  heavysnowshowersandthunder:        '⛈️',
 };
 
 function symbolToEmoji(code) {
   if (!code) return '';
   const base = code.replace(/_day$|_night$|_polartwilight$/, '').toLowerCase();
-  // Return matched emoji or fall back to cloudy (safe default)
-  return SYMBOL_EMOJI[base] || '☁️';
+  return SYMBOL_EMOJI[base] || ''; // unknown code → show nothing
 }
 
 function fetchFromMet(lat, lon) {
