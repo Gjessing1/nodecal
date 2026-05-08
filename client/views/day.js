@@ -17,7 +17,7 @@ let _container = null;
 export function renderDay(container, callbacks) {
   _container = container;
   container.classList.add('internal-scroll');
-  const { onEventClick, onEventMove, onEventResize } = callbacks;
+  const { onEventClick, onEventMove, onEventResize, onTaskClick } = callbacks;
   if (timerId) { clearInterval(timerId); timerId = null; }
 
   const date = state.selectedDate;
@@ -49,7 +49,7 @@ export function renderDay(container, callbacks) {
 
   // All-day strip (events + tasks)
   if (allDayEvents.length > 0 || dayTasks.length > 0) {
-    const strip = buildAllDayStrip(allDayEvents, dayTasks, onEventClick);
+    const strip = buildAllDayStrip(allDayEvents, dayTasks, onEventClick, onTaskClick);
     container.appendChild(strip);
   }
 
@@ -145,7 +145,7 @@ function buildNavBar(date, isToday, callbacks) {
   return nav;
 }
 
-function buildAllDayStrip(events, tasks, onEventClick) {
+function buildAllDayStrip(events, tasks, onEventClick, onTaskClick) {
   const strip = document.createElement('div');
   strip.className = 'allday-strip';
   for (const ev of events) {
@@ -160,7 +160,9 @@ function buildAllDayStrip(events, tasks, onEventClick) {
   for (const task of tasks) {
     const chip = document.createElement('div');
     chip.className = 'allday-chip task-allday-chip';
+    chip.style.cursor = 'pointer';
     chip.textContent = '✓ ' + task.title;
+    if (onTaskClick) chip.addEventListener('click', () => onTaskClick(task));
     strip.appendChild(chip);
   }
   return strip;

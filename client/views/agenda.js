@@ -8,8 +8,9 @@ const AGENDA_DAYS = 90;
  * Render the agenda view into the given container element.
  * @param {HTMLElement} container
  * @param {function(event): void} onEventClick
+ * @param {function(task): void} [onTaskClick]
  */
-export function renderAgenda(container, onEventClick) {
+export function renderAgenda(container, onEventClick, onTaskClick) {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const fragments = [];
@@ -46,7 +47,7 @@ export function renderAgenda(container, onEventClick) {
         header.appendChild(buildEventCard(ev, onEventClick));
       }
       for (const task of dayTasks) {
-        header.appendChild(buildTaskCard(task));
+        header.appendChild(buildTaskCard(task, onTaskClick));
       }
     }
 
@@ -87,9 +88,11 @@ function buildEventCard(ev, onClick) {
   return card;
 }
 
-function buildTaskCard(task) {
+function buildTaskCard(task, onTaskClick) {
   const card = document.createElement('div');
   card.className = 'event-card task-agenda-card';
+  card.style.cursor = 'pointer';
+  if (onTaskClick) card.addEventListener('click', () => onTaskClick(task));
 
   const dot = document.createElement('div');
   dot.className = 'event-dot task-dot';

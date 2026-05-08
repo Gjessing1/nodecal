@@ -7,8 +7,9 @@ import { localDateStr } from '../app/utils.js';
  * @param {function(event): void} onEventClick
  * @param {function(Date): void} onDayClick
  * @param {function(id, day, startMin): void} onEventMove
+ * @param {function(): void} [onTasksClick] - called when "N tasks" pill is clicked
  */
-export function renderMonth(container, onEventClick, onDayClick, onEventMove) {
+export function renderMonth(container, onEventClick, onDayClick, onEventMove, onTasksClick) {
   const anchor = state.selectedDate;
   const year = anchor.getFullYear();
   const month = anchor.getMonth();
@@ -17,7 +18,7 @@ export function renderMonth(container, onEventClick, onDayClick, onEventMove) {
   container.innerHTML = '';
   container.appendChild(buildNavBar(year, month, onEventClick, onDayClick));
   container.appendChild(buildWeekDayHeader());
-  const grid = buildGrid(year, month, today, onEventClick, onDayClick);
+  const grid = buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick);
   container.appendChild(grid);
 
   if (onEventMove) {
@@ -82,7 +83,7 @@ function buildWeekDayHeader() {
   return row;
 }
 
-function buildGrid(year, month, today, onEventClick, onDayClick) {
+function buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick) {
   const grid = document.createElement('div');
   grid.className = 'month-grid';
 
@@ -102,12 +103,12 @@ function buildGrid(year, month, today, onEventClick, onDayClick) {
     const raw = new Date(start.getTime() + i * 86400000);
     // Re-anchor to local midnight so DST transitions don't produce 01:00 cells
     const day = new Date(raw.getFullYear(), raw.getMonth(), raw.getDate());
-    grid.appendChild(buildDayCell(day, month, today, monthEvents, onEventClick, onDayClick));
+    grid.appendChild(buildDayCell(day, month, today, monthEvents, onEventClick, onDayClick, onTasksClick));
   }
   return grid;
 }
 
-function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick) {
+function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, onTasksClick) {
   const isToday = day.toDateString() === today.toDateString();
   const isOther = day.getMonth() !== curMonth;
 
@@ -152,6 +153,10 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick) {
     const pill = document.createElement('div');
     pill.className = 'month-task-pill';
     pill.textContent = dayTasks.length === 1 ? '1 task' : `${dayTasks.length} tasks`;
+    if (onTasksClick) {
+      pill.style.cursor = 'pointer';
+      pill.addEventListener('click', e => { e.stopPropagation(); onTasksClick(); });
+    }
     cell.appendChild(pill);
   }
   return cell;

@@ -65,6 +65,7 @@ const viewCallbacks = {
   onEventClick:  handleEventClick,
   onEventMove:   handleEventMove,
   onEventResize: handleEventResize,
+  onTaskClick:   handleTaskEdit,
 };
 
 const taskCallbacks = {
@@ -81,8 +82,8 @@ function render() {
   if      (state.activeView === 'tasks') renderTasks(viewContainer, taskCallbacks);
   else if (state.activeView === 'day')   renderDay(viewContainer, viewCallbacks);
   else if (state.activeView === 'week')  renderWeek(viewContainer, viewCallbacks);
-  else if (state.activeView === 'month') renderMonth(viewContainer, handleEventClick, handleDayClick, handleEventMove);
-  else                                   renderAgenda(viewContainer, handleEventClick);
+  else if (state.activeView === 'month') renderMonth(viewContainer, handleEventClick, handleDayClick, handleEventMove, () => switchView('tasks'));
+  else                                   renderAgenda(viewContainer, handleEventClick, handleTaskEdit);
 }
 
 function handleDayClick(date) {
