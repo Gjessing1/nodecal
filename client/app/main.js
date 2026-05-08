@@ -210,12 +210,21 @@ async function deleteEvent(ev, scope) {
 
 async function handleTaskComplete(task) {
   try {
-    const res = await fetch(`/tasks/${task.id}/complete`, { method: 'POST' });
-    if (!res.ok) throw new Error((await res.json()).error);
+    if (task.status === 'COMPLETED') {
+      const res = await fetch(`/tasks/${task.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'NEEDS-ACTION', completed: null }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+    } else {
+      const res = await fetch(`/tasks/${task.id}/complete`, { method: 'POST' });
+      if (!res.ok) throw new Error((await res.json()).error);
+    }
     await loadTasks();
     render();
   } catch (err) {
-    alert('Could not complete task: ' + err.message);
+    alert('Could not update task: ' + err.message);
   }
 }
 

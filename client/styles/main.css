@@ -172,6 +172,9 @@ input, textarea, select {
 .modal-field label { font-size: var(--font-size-sm); color: var(--color-text-muted); font-weight: 500; }
 .modal-field input, .modal-field select, .modal-field textarea { width: 100%; }
 .modal-field textarea { resize: vertical; min-height: 72px; }
+.modal-field-checkbox { flex-direction: row; align-items: center; gap: var(--space-sm); }
+.modal-field-checkbox label { display: flex; align-items: center; gap: var(--space-sm); color: var(--color-text); font-size: var(--font-size-md); }
+.modal-field-checkbox input[type="checkbox"] { width: auto; }
 .modal-row { display: flex; gap: var(--space-sm); }
 .modal-row .modal-field { flex: 1; }
 .modal-actions { display: flex; gap: var(--space-sm); padding-top: var(--space-sm); }

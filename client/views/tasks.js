@@ -17,42 +17,60 @@ export function renderTasks(container, callbacks) {
   const wrap = document.createElement('div');
   wrap.className = 'tasks-view';
 
-  // Controls row: show-completed toggle + sort selector
+  // Controls row: show-completed toggle, starred-only toggle, sort selector
   const controls = document.createElement('div');
   controls.className = 'tasks-controls';
+
+  const filterState = { showDone: false, starredOnly: false };
+
+  const leftFilters = document.createElement('div');
+  leftFilters.className = 'tasks-filters';
 
   const showDoneLabel = document.createElement('label');
   showDoneLabel.className = 'tasks-show-done';
   const showDoneCheck = document.createElement('input');
   showDoneCheck.type = 'checkbox';
   showDoneCheck.id = 'tasks-show-done';
-  const doneState = { show: false };
   showDoneCheck.addEventListener('change', () => {
-    doneState.show = showDoneCheck.checked;
-    renderList(list, doneState.show, sortSel.value, callbacks);
+    filterState.showDone = showDoneCheck.checked;
+    renderList(list, filterState, sortSel.value, callbacks);
   });
   showDoneLabel.appendChild(showDoneCheck);
-  showDoneLabel.appendChild(document.createTextNode(' Show completed'));
+  showDoneLabel.appendChild(document.createTextNode(' Done'));
+
+  const starredOnlyLabel = document.createElement('label');
+  starredOnlyLabel.className = 'tasks-show-done';
+  const starredOnlyCheck = document.createElement('input');
+  starredOnlyCheck.type = 'checkbox';
+  starredOnlyCheck.addEventListener('change', () => {
+    filterState.starredOnly = starredOnlyCheck.checked;
+    renderList(list, filterState, sortSel.value, callbacks);
+  });
+  starredOnlyLabel.appendChild(starredOnlyCheck);
+  starredOnlyLabel.appendChild(document.createTextNode(' Starred'));
 
   const sortSel = document.createElement('select');
   sortSel.className = 'tasks-sort-select';
   sortSel.innerHTML = `
     <option value="due">Sort: Due date</option>
+    <option value="starred">Sort: Starred first</option>
     <option value="alpha">Sort: A–Z</option>
     <option value="created">Sort: Created</option>
   `;
   sortSel.value = state.config.taskSortOrder || 'due';
   sortSel.addEventListener('change', () => {
-    renderList(list, doneState.show, sortSel.value, callbacks);
+    renderList(list, filterState, sortSel.value, callbacks);
   });
 
-  controls.appendChild(showDoneLabel);
+  leftFilters.appendChild(showDoneLabel);
+  leftFilters.appendChild(starredOnlyLabel);
+  controls.appendChild(leftFilters);
   controls.appendChild(sortSel);
 
   // Task list
   const list = document.createElement('div');
   list.className = 'tasks-list';
-  renderList(list, doneState.show, sortSel.value, callbacks);
+  renderList(list, filterState, sortSel.value, callbacks);
 
   // Quick-add bar
   const quickAdd = buildQuickAdd(callbacks);
@@ -70,36 +88,45 @@ export function focusTaskQuickAdd() {
 
 // ── List rendering ────────────────────────────────────────
 
-function renderList(container, showDone, sortOrder, callbacks) {
+function renderList(container, filterState, sortOrder, callbacks) {
   container.innerHTML = '';
 
-  let tasks = state.tasks.filter(t => showDone || t.status !== 'COMPLETED');
+  let tasks = state.tasks.filter(t => filterState.showDone || t.status !== 'COMPLETED');
+  if (filterState.starredOnly) tasks = tasks.filter(t => t.important);
   tasks = sortTasks(tasks, sortOrder);
 
   const today    = localDateString(new Date());
   const tomorrow = localDateString(new Date(Date.now() + 86400000));
 
-  const groups = [
-    { key: 'overdue',  label: 'Overdue',       items: [] },
-    { key: 'today',    label: 'Today',          items: [] },
-    { key: 'tomorrow', label: 'Tomorrow',       items: [] },
-    { key: 'later',    label: 'Later',          items: [] },
-    { key: 'none',     label: 'No due date',    items: [] },
-  ];
+  const overdue = [];
+  const todayItems = [];
+  const tomorrowItems = [];
+  const byDate = new Map();
+  const noDue = [];
 
   for (const task of tasks) {
     if (!task.due) {
-      groups[4].items.push(task);
+      noDue.push(task);
     } else if (task.due < today) {
-      groups[0].items.push(task);
+      overdue.push(task);
     } else if (task.due === today) {
-      groups[1].items.push(task);
+      todayItems.push(task);
     } else if (task.due === tomorrow) {
-      groups[2].items.push(task);
+      tomorrowItems.push(task);
     } else {
-      groups[3].items.push(task);
+      if (!byDate.has(task.due)) byDate.set(task.due, []);
+      byDate.get(task.due).push(task);
     }
   }
+
+  const groups = [];
+  if (overdue.length)     groups.push({ key: 'overdue',   label: 'Overdue',   overdue: true, items: overdue });
+  if (todayItems.length)  groups.push({ key: 'today',     label: 'Today',     items: todayItems });
+  if (tomorrowItems.length) groups.push({ key: 'tomorrow', label: 'Tomorrow',  items: tomorrowItems });
+  for (const [date, items] of [...byDate.entries()].sort()) {
+    groups.push({ key: date, label: formatDateHeader(date), items });
+  }
+  if (noDue.length) groups.push({ key: 'none', label: 'No due date', items: noDue });
 
   let isEmpty = true;
   for (const group of groups) {
@@ -109,7 +136,7 @@ function renderList(container, showDone, sortOrder, callbacks) {
     section.className = 'tasks-group';
 
     const heading = document.createElement('h3');
-    heading.className = 'tasks-group-label' + (group.key === 'overdue' ? ' overdue' : '');
+    heading.className = 'tasks-group-label' + (group.overdue ? ' overdue' : '');
     heading.textContent = group.label;
     section.appendChild(heading);
 
@@ -141,6 +168,16 @@ function sortTasks(tasks, order) {
   }
   if (order === 'created') {
     return copy.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+  }
+  if (order === 'starred') {
+    return copy.sort((a, b) => {
+      if (a.important && !b.important) return -1;
+      if (!a.important && b.important) return 1;
+      if (a.due && b.due) return a.due.localeCompare(b.due);
+      if (a.due) return -1;
+      if (b.due) return 1;
+      return 0;
+    });
   }
   // 'due': tasks with a due date first (ascending), then no-due tasks
   return copy.sort((a, b) => {
@@ -255,6 +292,7 @@ export function openTaskModal(task, { onSave, onDelete }) {
 
   const isRecAfterCompletion = task.recurringType === 'after-completion';
   const isRecRrule = task.recurringType === 'rrule';
+  const isCompleted = task.status === 'COMPLETED';
 
   sheet.innerHTML = `
     <div class="modal-handle"></div>
@@ -279,18 +317,23 @@ export function openTaskModal(task, { onSave, onDelete }) {
       <label>Repeat</label>
       <select id="tm-recurring">
         <option value="">None</option>
-        <option value="rrule-daily"    ${isRecRrule && task.rrule?.includes('DAILY')    ? 'selected' : ''}>Every day (from due date)</option>
-        <option value="rrule-weekly"   ${isRecRrule && task.rrule?.includes('WEEKLY')   ? 'selected' : ''}>Every week (from due date)</option>
-        <option value="rrule-monthly"  ${isRecRrule && task.rrule?.includes('MONTHLY')  ? 'selected' : ''}>Every month (from due date)</option>
-        <option value="after-daily"    ${isRecAfterCompletion && task.recurringInterval === 'daily'  ? 'selected' : ''}>Daily after completion</option>
-        <option value="after-weekly"   ${isRecAfterCompletion && task.recurringInterval === 'weekly' ? 'selected' : ''}>Weekly after completion</option>
-        <option value="after-custom"   ${isRecAfterCompletion && !['daily','weekly'].includes(task.recurringInterval) ? 'selected' : ''}>Custom interval after completion</option>
+        <option value="rrule-daily"    ${isRecRrule && task.rrule?.includes('DAILY')    ? 'selected' : ''}>Daily</option>
+        <option value="rrule-weekly"   ${isRecRrule && task.rrule?.includes('WEEKLY')   ? 'selected' : ''}>Weekly</option>
+        <option value="rrule-monthly"  ${isRecRrule && task.rrule?.includes('MONTHLY')  ? 'selected' : ''}>Monthly</option>
+        <option value="after-custom"   ${isRecAfterCompletion ? 'selected' : ''}>__ days after completion</option>
       </select>
     </div>
 
-    <div class="modal-field" id="tm-interval-field" style="${isRecAfterCompletion && !['daily','weekly'].includes(task.recurringInterval) ? '' : 'display:none'}">
+    <div class="modal-field" id="tm-interval-field" style="${isRecAfterCompletion ? '' : 'display:none'}">
       <label>Interval (e.g. 3d, 2w)</label>
       <input type="text" id="tm-interval" value="${esc(task.recurringInterval || '')}" placeholder="e.g. 3d, 2w">
+    </div>
+
+    <div class="modal-field modal-field-checkbox">
+      <label>
+        <input type="checkbox" id="tm-completed" ${isCompleted ? 'checked' : ''}>
+        Mark as completed
+      </label>
     </div>
 
     <div class="modal-actions">
@@ -312,22 +355,21 @@ export function openTaskModal(task, { onSave, onDelete }) {
     const recurringVal = sheet.querySelector('#tm-recurring').value;
     let rrule = null, xRecurringType = null, xRecurringInterval = null;
     if (recurringVal === 'rrule-daily')    rrule = 'FREQ=DAILY';
-    else if (recurringVal === 'rrule-weekly')  rrule = 'FREQ=WEEKLY';
-    else if (recurringVal === 'rrule-monthly') rrule = 'FREQ=MONTHLY';
-    else if (recurringVal.startsWith('after-')) {
+    else if (recurringVal === 'rrule-weekly')   rrule = buildWeeklyRrule(sheet.querySelector('#tm-due').value);
+    else if (recurringVal === 'rrule-monthly')  rrule = buildMonthlyRrule(sheet.querySelector('#tm-due').value);
+    else if (recurringVal === 'after-custom') {
       xRecurringType = 'after-completion';
-      const part = recurringVal.slice(6);
-      if (part === 'custom') {
-        xRecurringInterval = sheet.querySelector('#tm-interval').value.trim() || 'weekly';
-      } else {
-        xRecurringInterval = part;
-      }
+      xRecurringInterval = sheet.querySelector('#tm-interval').value.trim() || 'weekly';
     }
+
+    const completedChecked = sheet.querySelector('#tm-completed').checked;
 
     onSave({
       title,
       due:  sheet.querySelector('#tm-due').value || null,
       description: sheet.querySelector('#tm-desc').value.trim(),
+      status: completedChecked ? 'COMPLETED' : 'NEEDS-ACTION',
+      completed: completedChecked ? new Date().toISOString() : null,
       rrule, xRecurringType, xRecurringInterval,
     });
     closeTaskModal();
@@ -351,6 +393,28 @@ export function closeTaskModal() {
 
 function localDateString(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function formatDateHeader(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+function buildWeeklyRrule(due) {
+  const days = ['SU','MO','TU','WE','TH','FR','SA'];
+  if (due) {
+    const day = days[new Date(due + 'T00:00:00').getDay()];
+    return `FREQ=WEEKLY;BYDAY=${day}`;
+  }
+  return 'FREQ=WEEKLY';
+}
+
+function buildMonthlyRrule(due) {
+  if (due) {
+    const dom = new Date(due + 'T00:00:00').getDate();
+    return `FREQ=MONTHLY;BYMONTHDAY=${dom}`;
+  }
+  return 'FREQ=MONTHLY';
 }
 
 function esc(str) {

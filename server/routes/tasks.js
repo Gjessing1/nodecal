@@ -59,7 +59,7 @@ router.put('/tasks/:id', async (req, res) => {
     const existing = store.getTask(req.params.id);
     if (!existing) return res.status(404).json({ error: 'Task not found' });
 
-    const allowed = ['title', 'due', 'description', 'categories', 'rrule', 'xRecurringType', 'xRecurringInterval', 'status'];
+    const allowed = ['title', 'due', 'description', 'categories', 'rrule', 'xRecurringType', 'xRecurringInterval', 'status', 'completed'];
     const changes = {};
     for (const k of allowed) {
       if (k in req.body) changes[k] = req.body[k];

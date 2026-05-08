@@ -24,6 +24,16 @@ export function buildTaskItem(task, { onComplete, onStar, onClick }) {
   title.className = 'task-title';
   title.textContent = task.title;
 
+  if (task.description) {
+    const notes = document.createElement('span');
+    notes.className = 'task-notes';
+    notes.textContent = task.description;
+    body.appendChild(title);
+    body.appendChild(notes);
+  } else {
+    body.appendChild(title);
+  }
+
   const meta = document.createElement('div');
   meta.className = 'task-meta';
 
@@ -40,7 +50,6 @@ export function buildTaskItem(task, { onComplete, onStar, onClick }) {
     meta.appendChild(rec);
   }
 
-  body.appendChild(title);
   if (meta.children.length) body.appendChild(meta);
 
   // Star
