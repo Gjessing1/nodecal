@@ -121,7 +121,7 @@ function renderForm() {
     </div>
 
     <div class="modal-field">
-      <label>Task sort order</label>
+      <label>Default task sort order</label>
       <select id="s-tasks-sort">
         <option value="due"     ${cfg.taskSortOrder === 'due'     ? 'selected' : ''}>Due date</option>
         <option value="starred" ${cfg.taskSortOrder === 'starred' ? 'selected' : ''}>Starred first</option>
@@ -172,7 +172,7 @@ function renderTaskSourcesSection(sheet, cfg) {
     radio.name = 'task-src-default';
     radio.value = src.url;
     radio.checked = src.url === defUrl || (!defUrl && idx === 0);
-    radio.title = 'Set as default source';
+    radio.title = 'Default source for new tasks';
     radio.addEventListener('change', () => {
       state.config.defaultTaskSource = src.url;
     });
@@ -213,8 +213,13 @@ function renderTaskSourcesSection(sheet, cfg) {
   if (sources.length) {
     const label = document.createElement('div');
     label.className = 'modal-field';
-    label.innerHTML = '<label style="margin-bottom:4px">Task sources <span style="font-weight:normal;font-size:11px">(● = default for new tasks)</span></label>';
+    label.innerHTML = '<label style="margin-bottom:4px">Task sources</label>';
     section.appendChild(label);
+    // Column headers
+    const colHeaders = document.createElement('div');
+    colHeaders.style.cssText = 'display:flex;gap:6px;align-items:center;padding:0 0 2px;font-size:11px;color:var(--color-text-muted)';
+    colHeaders.innerHTML = '<span style="width:18px;flex-shrink:0">Def</span><span style="flex:1">CalDAV URL</span><span style="width:100px;flex-shrink:0">Display name</span><span style="width:32px"></span>';
+    section.appendChild(colHeaders);
     sources.forEach((src, i) => addRow(src, i));
   }
 

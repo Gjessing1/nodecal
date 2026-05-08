@@ -8,7 +8,7 @@ import { state } from '../app/state.js';
 import { visibleCategories } from '../app/taskUtils.js';
 import { formatShortDate } from '../app/utils.js';
 
-export function buildTaskItem(task, { onComplete, onStar, onClick }) {
+export function buildTaskItem(task, { onComplete, onStar, onClick, onSnooze }) {
   const li = document.createElement('li');
   li.className = 'task-item' + (task.status === 'COMPLETED' ? ' task-done' : '');
   li.dataset.id = task.id;
@@ -70,6 +70,22 @@ export function buildTaskItem(task, { onComplete, onStar, onClick }) {
     body.appendChild(chips);
   }
 
+  // Snooze (+1 day) — only for tasks with a due date
+  if (task.due && onSnooze && task.status !== 'COMPLETED') {
+    const snooze = document.createElement('button');
+    snooze.className = 'task-snooze';
+    snooze.textContent = '+1d';
+    snooze.setAttribute('aria-label', 'Defer by 1 day');
+    snooze.title = 'Defer to tomorrow';
+    snooze.addEventListener('click', e => { e.stopPropagation(); onSnooze(task); });
+    li.appendChild(check);
+    li.appendChild(body);
+    li.appendChild(snooze);
+  } else {
+    li.appendChild(check);
+    li.appendChild(body);
+  }
+
   // Star
   const star = document.createElement('button');
   star.className = 'task-star' + (task.important ? ' starred' : '');
@@ -77,8 +93,6 @@ export function buildTaskItem(task, { onComplete, onStar, onClick }) {
   star.setAttribute('aria-label', task.important ? 'Remove important' : 'Mark important');
   star.addEventListener('click', e => { e.stopPropagation(); onStar(task); });
 
-  li.appendChild(check);
-  li.appendChild(body);
   li.appendChild(star);
   return li;
 }

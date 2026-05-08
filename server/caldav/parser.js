@@ -119,6 +119,7 @@ function parseIcs(icsText, { timezone = 'UTC' } = {}) {
       allDay: startInfo.allDay,
       description: unescapeIcsText(props.DESCRIPTION?.value || ''),
       location: unescapeIcsText(props.LOCATION?.value || ''),
+      url: unescapeIcsText(props.URL?.value || ''),
       rrule: props.RRULE?.value || null,
       exdates: exdates.length > 0 ? exdates : null,
       recurrenceId: props['RECURRENCE-ID']?.value || null,
@@ -164,6 +165,7 @@ function serializeEvent(event) {
   }
   if (event.description) lines.push(`DESCRIPTION:${escapeIcsText(event.description)}`);
   if (event.location) lines.push(`LOCATION:${escapeIcsText(event.location)}`);
+  if (event.url) lines.push(`URL:${event.url}`);
   lines.push('END:VEVENT', 'END:VCALENDAR');
   return lines.join(CRLF) + CRLF;
 }

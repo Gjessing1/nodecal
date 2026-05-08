@@ -280,6 +280,7 @@ function renderGroups(container, groups, callbacks, totalCount) {
         onComplete: t => callbacks.onComplete(t),
         onStar:     t => callbacks.onStar(t),
         onClick:    t => callbacks.onEdit(t),
+        onSnooze:   t => callbacks.onSnooze?.(t),
       }));
     }
     section.appendChild(ul);

@@ -158,6 +158,19 @@
   color: var(--color-text-muted);
 }
 
+/* Snooze */
+.task-snooze {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+.task-snooze:hover { color: var(--color-accent); border-color: var(--color-accent); }
+
 /* Star */
 .task-star {
   width: 32px;

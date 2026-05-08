@@ -195,7 +195,7 @@ function buildAllDayStrip(events, tasks, onEventClick, onTaskClick) {
     const chip = document.createElement('div');
     chip.className = 'allday-chip task-allday-chip';
     chip.style.cursor = 'pointer';
-    chip.textContent = '✓ ' + task.title;
+    chip.textContent = task.title;
     if (onTaskClick) chip.addEventListener('click', () => onTaskClick(task));
     strip.appendChild(chip);
   }

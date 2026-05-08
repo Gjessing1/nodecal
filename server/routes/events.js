@@ -29,13 +29,13 @@ router.get('/events', (req, res) => {
 
 router.post('/events', async (req, res) => {
   try {
-    const { calendarId, title, start, end, allDay, description, location, rrule } = req.body;
+    const { calendarId, title, start, end, allDay, description, location, url, rrule } = req.body;
     if (!calendarId || !title || !start) return res.status(400).json({ error: 'calendarId, title, start required' });
 
     const uid = crypto.randomUUID();
     const now = new Date().toISOString();
     const event = { uid, calendarId, title, start, end: end || start, allDay: !!allDay,
-      description: description || '', location: location || '', rrule: rrule || null };
+      description: description || '', location: location || '', url: url || '', rrule: rrule || null };
     const ics = serializeEvent(event);
     const { href, etag } = await putEvent(calendarId, uid, ics);
     const stored = { ...event, href, etag, localModifiedAt: now, lastSyncedAt: now };
@@ -170,7 +170,7 @@ async function handleFutureEdit(base, changes, occurrenceDate, res) {
 // ── Helpers ───────────────────────────────────────────────
 
 function filterChanges(changes) {
-  const allowed = ['title', 'start', 'end', 'allDay', 'description', 'location'];
+  const allowed = ['title', 'start', 'end', 'allDay', 'description', 'location', 'url'];
   const out = {};
   for (const k of allowed) {
     if (k in changes) out[k] = changes[k];
@@ -188,6 +188,7 @@ function toApiShape(ev) {
     allDay: ev.allDay,
     description: ev.description,
     location: ev.location,
+    url: ev.url || '',
     calendarId: ev.calendarId,
     recurring: ev.recurring || !!ev.rrule,
     occurrenceDate: ev.occurrenceDate || null,

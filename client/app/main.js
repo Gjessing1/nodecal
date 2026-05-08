@@ -77,13 +77,16 @@ const taskCallbacks = {
   onAdd:      handleTaskAdd,
   onEdit:     handleTaskEdit,
   onDelete:   handleTaskDelete,
+  onSnooze:   handleTaskSnooze,
 };
 
 function render() {
   destroyDay();
   destroyWeek();
   // Show/hide calendar quick-add bar (not shown in tasks view which has its own)
-  calQuickAdd.classList.toggle('hidden', state.activeView === 'tasks');
+  const showQuickAdd = state.activeView !== 'tasks';
+  calQuickAdd.classList.toggle('hidden', !showQuickAdd);
+  document.getElementById('app').classList.toggle('cal-quickadd-visible', showQuickAdd);
   if      (state.activeView === 'tasks') renderTasks(viewContainer, taskCallbacks);
   else if (state.activeView === 'day')   renderDay(viewContainer, viewCallbacks);
   else if (state.activeView === 'week')  renderWeek(viewContainer, viewCallbacks);
@@ -311,6 +314,25 @@ async function saveTask(id, data) {
     render();
   } catch (err) {
     alert('Save failed: ' + err.message);
+  }
+}
+
+async function handleTaskSnooze(task) {
+  if (!task.due) return;
+  const [y, m, d] = task.due.split('-').map(Number);
+  const next = new Date(y, m - 1, d + 1);
+  const nextStr = `${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,'0')}-${String(next.getDate()).padStart(2,'0')}`;
+  try {
+    const res = await fetch(`/tasks/${task.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ due: nextStr }),
+    });
+    if (!res.ok) throw new Error((await res.json()).error);
+    await loadTasks();
+    render();
+  } catch (err) {
+    alert('Could not defer task: ' + err.message);
   }
 }
 

@@ -235,6 +235,10 @@ function renderForm(event, defaultDate) {
       <input type="text" id="f-location" value="${esc(event?.location || '')}" placeholder="Location (optional)" autocomplete="off">
     </div>
     <div class="modal-field">
+      <label>URL</label>
+      <input type="url" id="f-url" value="${esc(event?.url || '')}" placeholder="https://… (video call link, etc.)">
+    </div>
+    <div class="modal-field">
       <label>Description</label>
       <textarea id="f-desc">${esc(event?.description || '')}</textarea>
     </div>
@@ -324,6 +328,7 @@ function handleSave(event) {
   const calendarId = sheet.querySelector('#f-calendar').value;
   const description = sheet.querySelector('#f-desc').value.trim();
   const location = sheet.querySelector('#f-location')?.value.trim() || '';
+  const url      = sheet.querySelector('#f-url')?.value.trim() || '';
 
   let startDt, endDt;
   if (allDay) {
@@ -344,7 +349,7 @@ function handleSave(event) {
   }
 
   const nlpRrule = !event ? (sheet.dataset.nlpRrule || null) : null;
-  const data = { title, start: startDt.toISOString(), end: endDt.toISOString(), allDay, calendarId, description, location,
+  const data = { title, start: startDt.toISOString(), end: endDt.toISOString(), allDay, calendarId, description, location, url,
     ...(nlpRrule ? { rrule: nlpRrule } : {}) };
   if (event?.recurring) {
     data.recurringScope = sheet.querySelector('#f-scope')?.value || 'single';
