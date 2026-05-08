@@ -3,7 +3,40 @@ import { toDateInputValue, toTimeInputValue, localToUTC } from '../app/utils.js'
 
 const WHEEL_ITEM_H = 40;
 
-function buildTimeWheel(id, date, timezone = 'UTC') {
+/**
+ * Wraps buildTimeWheel with a tap-to-reveal button.
+ * Shows a text display of the time; tapping it opens the scroll wheel.
+ */
+function buildTimeButton(id, date, timezone = 'UTC') {
+  const wrap = document.createElement('div');
+  wrap.className = 'time-btn-wrap';
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'time-display-btn';
+
+  const wheelPanel = document.createElement('div');
+  wheelPanel.className = 'time-wheel-panel hidden';
+
+  const pair = buildTimeWheel(id, date, timezone, val => { btn.textContent = val; });
+  const hidden = pair.querySelector(`#${id}`);
+  btn.textContent = hidden.value;
+  wheelPanel.appendChild(pair);
+
+  btn.addEventListener('click', () => {
+    const isOpen = !wheelPanel.classList.contains('hidden');
+    document.querySelectorAll('.time-wheel-panel').forEach(p => {
+      if (p !== wheelPanel) p.classList.add('hidden');
+    });
+    wheelPanel.classList.toggle('hidden', isOpen);
+  });
+
+  wrap.appendChild(btn);
+  wrap.appendChild(wheelPanel);
+  return wrap;
+}
+
+function buildTimeWheel(id, date, timezone = 'UTC', onChange) {
   const hidden = document.createElement('input');
   hidden.type = 'hidden';
   hidden.id = id;
@@ -18,6 +51,7 @@ function buildTimeWheel(id, date, timezone = 'UTC') {
 
   function sync() {
     hidden.value = `${String(hVal).padStart(2, '0')}:${String(mVal).padStart(2, '0')}`;
+    if (onChange) onChange(hidden.value);
   }
 
   function makeWheel(items, initial, onChange) {
@@ -212,8 +246,8 @@ function renderForm(event, defaultDate) {
   const startWrap = sheet.querySelector('#f-start-time-wrap');
   const endWrap = sheet.querySelector('#f-end-time-wrap');
   if (is24h) {
-    startWrap.appendChild(buildTimeWheel('f-start-time', start, tz));
-    endWrap.appendChild(buildTimeWheel('f-end-time', end, tz));
+    startWrap.appendChild(buildTimeButton('f-start-time', start, tz));
+    endWrap.appendChild(buildTimeButton('f-end-time', end, tz));
   } else {
     startWrap.innerHTML = `<input type="time" id="f-start-time" value="${toTimeInputValue(start, tz)}" style="width:100%">`;
     endWrap.innerHTML = `<input type="time" id="f-end-time" value="${toTimeInputValue(end, tz)}" style="width:100%">`;
@@ -344,6 +378,11 @@ async function applyNlp(text) {
       const etEl = sheet.querySelector('#f-end-time');
       if (stEl) stEl.value = startTimeVal;
       if (etEl) etEl.value = endTimeVal;
+      // Refresh tap-to-reveal time buttons if present
+      const startBtn = sheet.querySelector('#f-start-time-wrap .time-display-btn');
+      const endBtn   = sheet.querySelector('#f-end-time-wrap .time-display-btn');
+      if (startBtn) startBtn.textContent = startTimeVal;
+      if (endBtn)   endBtn.textContent   = endTimeVal;
       sheet.querySelector('#f-allday').checked = false;
       sheet.querySelector('#allday-date-row').style.display = 'none';
       sheet.querySelector('#time-row').style.display = '';

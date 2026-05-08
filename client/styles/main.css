@@ -358,6 +358,24 @@ input, textarea, select {
 .time-wheel::before { top: 0; background: linear-gradient(to bottom, var(--color-bg), transparent); }
 .time-wheel::after  { bottom: 0; background: linear-gradient(to top, var(--color-bg), transparent); }
 
+/* ── Time button (tap-to-reveal wheel) ──────────────────── */
+.time-btn-wrap { width: 100%; }
+.time-display-btn {
+  display: block;
+  width: 100%;
+  padding: 10px var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  font-size: var(--font-size-md);
+  text-align: left;
+  cursor: pointer;
+  color: var(--color-text);
+}
+.time-display-btn:hover { background: var(--color-surface); }
+.time-wheel-panel { margin-top: var(--space-sm); }
+.time-wheel-panel.hidden { display: none; }
+
 /* ── Agenda compact ─────────────────────────────────────── */
 .agenda-empty-inline {
   text-transform: none;
