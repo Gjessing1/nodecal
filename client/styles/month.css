@@ -54,6 +54,7 @@
 .month-grid.with-weeknum .month-day:nth-child(7n) { border-right: none; }
 
 .month-day.other-month { opacity: 0.38; }
+.month-day.today { background: var(--color-today-bg); }
 
 .month-day-num {
   text-align: right;

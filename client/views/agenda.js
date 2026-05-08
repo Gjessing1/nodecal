@@ -37,12 +37,7 @@ export function renderAgenda(container, onEventClick, onTaskClick) {
     dateEl.textContent = formatDayHeader(day, isToday);
     header.appendChild(dateEl);
 
-    if (dayEvents.length === 0 && dayTasks.length === 0) {
-      const noEvSpan = document.createElement('span');
-      noEvSpan.className = 'agenda-empty-inline';
-      noEvSpan.textContent = ' — Nothing scheduled';
-      dateEl.appendChild(noEvSpan);
-    } else {
+    if (dayEvents.length > 0 || dayTasks.length > 0) {
       for (const ev of dayEvents) {
         header.appendChild(buildEventCard(ev, onEventClick));
       }
