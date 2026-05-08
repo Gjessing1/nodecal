@@ -186,42 +186,78 @@ function renderTaskSourcesSection(sheet, cfg) {
 
   section.innerHTML = '';
 
+  const headerLabel = document.createElement('div');
+  headerLabel.className = 'modal-field';
+  headerLabel.innerHTML = '<label>Task sources <span style="font-weight:normal;font-size:11px;color:var(--color-text-muted)">(select which calendar collection stores tasks)</span></label>';
+  section.appendChild(headerLabel);
+
+  // Build calendar options list — available CalDAV calendars + custom URL option
+  const calOptions = state.calendars.map(c => ({ value: c.id, label: c.name }));
+  const CUSTOM = '__custom__';
+
   const addRow = (src, idx) => {
+    const isCustom = !calOptions.find(o => o.value === src.url);
     const row = document.createElement('div');
-    row.className = 'modal-field';
-    row.style.cssText = 'gap:6px;margin-bottom:8px';
+    row.style.cssText = 'display:flex;gap:6px;align-items:flex-start;margin-bottom:8px';
 
-    const urlRow = document.createElement('div');
-    urlRow.style.cssText = 'display:flex;gap:6px;align-items:center';
-
+    // Default radio
     const radio = document.createElement('input');
     radio.type = 'radio';
     radio.name = 'task-src-default';
-    radio.value = src.url;
-    radio.checked = src.url === defUrl || (!defUrl && idx === 0);
+    radio.value = src.url || `__new__${idx}`;
+    radio.checked = !!src.url && (src.url === defUrl || (!defUrl && idx === 0));
     radio.title = 'Default source for new tasks';
-    radio.addEventListener('change', () => {
-      state.config.defaultTaskSource = src.url;
+    radio.style.marginTop = '10px';
+    radio.addEventListener('change', () => { state.config.defaultTaskSource = src.url; });
+
+    // Calendar dropdown
+    const sel = document.createElement('select');
+    sel.style.flex = '1';
+    sel.innerHTML = calOptions.map(o =>
+      `<option value="${esc(o.value)}" ${src.url === o.value ? 'selected' : ''}>${esc(o.label)}</option>`
+    ).join('') + `<option value="${CUSTOM}" ${isCustom ? 'selected' : ''}>Custom URL…</option>`;
+
+    // Custom URL input (shown only when "Custom URL" selected)
+    const customInput = document.createElement('input');
+    customInput.type = 'url';
+    customInput.placeholder = 'https://…/user/tasks/';
+    customInput.style.cssText = 'flex:1;display:' + (isCustom ? 'block' : 'none');
+    customInput.value = isCustom ? src.url : '';
+
+    const colWrap = document.createElement('div');
+    colWrap.style.cssText = 'flex:1;display:flex;flex-direction:column;gap:4px';
+    colWrap.appendChild(sel);
+    colWrap.appendChild(customInput);
+
+    sel.addEventListener('change', () => {
+      const val = sel.value;
+      if (val === CUSTOM) {
+        customInput.style.display = 'block';
+        sources[idx].url = customInput.value.trim();
+        sources[idx].name = 'Custom';
+      } else {
+        customInput.style.display = 'none';
+        sources[idx].url = val;
+        sources[idx].name = calOptions.find(o => o.value === val)?.label || '';
+        radio.value = val;
+        if (radio.checked) state.config.defaultTaskSource = val;
+      }
+    });
+    customInput.addEventListener('input', () => {
+      sources[idx].url = customInput.value.trim();
+      radio.value = sources[idx].url;
+      if (radio.checked) state.config.defaultTaskSource = sources[idx].url;
     });
 
-    const urlInput = document.createElement('input');
-    urlInput.type = 'url';
-    urlInput.value = src.url;
-    urlInput.placeholder = 'https://…/user/tasks/';
-    urlInput.style.flex = '1';
-    urlInput.addEventListener('change', () => { sources[idx].url = urlInput.value.trim(); });
-
-    const nameInput = document.createElement('input');
-    nameInput.type = 'text';
-    nameInput.value = src.name || '';
-    nameInput.placeholder = 'Name (optional)';
-    nameInput.style.cssText = 'width:100px;flex-shrink:0';
-    nameInput.addEventListener('input', () => { sources[idx].name = nameInput.value.trim() || src.url; });
+    // Pre-fill name from calendar list if not custom
+    if (!isCustom && !src.name) {
+      sources[idx].name = calOptions.find(o => o.value === src.url)?.label || src.url;
+    }
 
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
     removeBtn.className = 'btn btn-ghost';
-    removeBtn.style.cssText = 'padding:4px 8px;font-size:var(--font-size-sm);color:var(--color-danger);flex-shrink:0';
+    removeBtn.style.cssText = 'padding:4px 8px;font-size:var(--font-size-sm);color:var(--color-danger);flex-shrink:0;margin-top:2px';
     removeBtn.textContent = '×';
     removeBtn.addEventListener('click', () => {
       sources.splice(idx, 1);
@@ -229,25 +265,20 @@ function renderTaskSourcesSection(sheet, cfg) {
       renderTaskSourcesSection(sheet, { ...cfg, defaultTaskSource: state.config.defaultTaskSource });
     });
 
-    urlRow.appendChild(radio);
-    urlRow.appendChild(urlInput);
-    urlRow.appendChild(nameInput);
-    urlRow.appendChild(removeBtn);
-    row.appendChild(urlRow);
+    row.appendChild(radio);
+    row.appendChild(colWrap);
+    row.appendChild(removeBtn);
     section.appendChild(row);
   };
 
-  if (sources.length) {
-    const label = document.createElement('div');
-    label.className = 'modal-field';
-    label.innerHTML = '<label style="margin-bottom:4px">Task sources</label>';
-    section.appendChild(label);
-    // Column headers
-    const colHeaders = document.createElement('div');
-    colHeaders.style.cssText = 'display:flex;gap:6px;align-items:center;padding:0 0 2px;font-size:11px;color:var(--color-text-muted)';
-    colHeaders.innerHTML = '<span style="width:18px;flex-shrink:0">Def</span><span style="flex:1">CalDAV URL</span><span style="width:100px;flex-shrink:0">Display name</span><span style="width:32px"></span>';
-    section.appendChild(colHeaders);
-    sources.forEach((src, i) => addRow(src, i));
+  sources.forEach((src, i) => addRow(src, i));
+
+  // If no sources configured yet and calendars exist, show a hint to add one
+  if (!sources.length && calOptions.length) {
+    const hint = document.createElement('p');
+    hint.style.cssText = 'font-size:var(--font-size-sm);color:var(--color-text-muted);margin:0 0 8px';
+    hint.textContent = 'No task source configured. Add one below.';
+    section.appendChild(hint);
   }
 
   const addBtn = document.createElement('button');
@@ -256,13 +287,13 @@ function renderTaskSourcesSection(sheet, cfg) {
   addBtn.style.cssText = 'font-size:var(--font-size-sm);padding:4px 12px;margin-bottom:var(--space-md)';
   addBtn.textContent = '+ Add task source';
   addBtn.addEventListener('click', () => {
-    sources.push({ url: '', name: '' });
+    const firstCal = calOptions[0];
+    sources.push({ url: firstCal?.value || '', name: firstCal?.label || '' });
     state.taskSources = [...sources];
     renderTaskSourcesSection(sheet, cfg);
   });
   section.appendChild(addBtn);
 
-  // Persist sources to state so handleSave picks them up
   state.taskSources = [...sources];
 }
 

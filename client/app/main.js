@@ -503,7 +503,12 @@ async function init() {
   initLogin();
   initModal();
   initCalendarDrawer(render);
-  initSettingsPanel(() => { buildNav(); render(); });
+  initSettingsPanel(() => {
+    buildNav();
+    render();
+    // Reload weather if location was changed
+    loadWeather().then(() => render()).catch(() => {});
+  });
   initInstallPrompt();
 
   window.addEventListener('offline', () => {
