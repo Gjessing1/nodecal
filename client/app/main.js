@@ -246,12 +246,12 @@ async function handleTaskStar(task) {
   }
 }
 
-async function handleTaskAdd({ title, due }) {
+async function handleTaskAdd({ title, due, categories }) {
   try {
     const res = await fetch('/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, due }),
+      body: JSON.stringify({ title, due, ...(categories?.length ? { categories } : {}) }),
     });
     if (!res.ok) throw new Error((await res.json()).error);
     await loadTasks();

@@ -187,8 +187,13 @@
   gap: var(--space-sm);
 }
 
-.tasks-quickadd-input {
+.tasks-quickadd-input-wrap {
   flex: 1;
+  position: relative;
+}
+
+.tasks-quickadd-input {
+  width: 100%;
   border-radius: var(--radius-md);
   padding: var(--space-sm) var(--space-md);
   font-size: var(--font-size-md);
@@ -235,6 +240,116 @@
   pointer-events: none;
   width: 1px;
   height: 1px;
+}
+
+/* ── Right controls ──────────────────────────────────────── */
+.tasks-right-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* ── Category filter row ─────────────────────────────────── */
+.tasks-cat-filter-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
+  flex-shrink: 0;
+  scrollbar-width: none;
+}
+.tasks-cat-filter-row:empty { display: none; }
+.tasks-cat-filter-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+.tasks-cat-chip-filter {
+  padding: 3px 10px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.1s, color 0.1s;
+}
+.tasks-cat-chip-filter.active {
+  background: var(--color-accent-light);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* ── Category chips on task items ────────────────────────── */
+.task-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 3px;
+}
+.task-cat-chip {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+.tm-cat-chip-rm {
+  cursor: pointer;
+}
+.tm-cat-chip-rm:hover {
+  background: var(--color-accent-light);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* ── Modal category add row ──────────────────────────────── */
+.tm-cats-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: var(--space-xs);
+  min-height: 24px;
+}
+.tm-cats-add-row {
+  display: flex;
+  gap: var(--space-xs);
+}
+.tm-cats-add-row input {
+  flex: 1;
+}
+
+/* ── Quick-add autocomplete ──────────────────────────────── */
+.tasks-quickadd-input-wrap {
+  flex: 1;
+  position: relative;
+}
+.tasks-autocomplete {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  list-style: none;
+  max-height: 180px;
+  overflow-y: auto;
+  z-index: 100;
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+}
+.tasks-autocomplete li {
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+  font-size: var(--font-size-md);
+}
+.tasks-autocomplete li:hover {
+  background: var(--color-surface);
 }
 
 /* ── Empty state ─────────────────────────────────────────── */

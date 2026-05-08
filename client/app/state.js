@@ -22,6 +22,7 @@ export const state = {
     showTasksOnCalendar: false,
     taskSortOrder: 'due',
     tasksCalDAVUrl: '',
+    hiddenCategories: [],
   },
 };
 

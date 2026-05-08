@@ -1,4 +1,5 @@
 import { state, setConfig } from '../app/state.js';
+import { getAllCategories } from '../app/taskUtils.js';
 
 const ALL_VIEWS = [
   { id: 'agenda', label: 'Agenda' },
@@ -106,10 +107,13 @@ function renderForm() {
       <label>Task sort order</label>
       <select id="s-tasks-sort">
         <option value="due"     ${cfg.taskSortOrder === 'due'     ? 'selected' : ''}>Due date</option>
+        <option value="starred" ${cfg.taskSortOrder === 'starred' ? 'selected' : ''}>Starred first</option>
         <option value="alpha"   ${cfg.taskSortOrder === 'alpha'   ? 'selected' : ''}>Alphabetical</option>
         <option value="created" ${cfg.taskSortOrder === 'created' ? 'selected' : ''}>Creation date</option>
       </select>
     </div>
+
+    <div id="s-categories-section"></div>
 
     <div class="modal-actions">
       <button class="btn btn-primary" id="s-save">Save</button>
@@ -123,11 +127,68 @@ function renderForm() {
     customRow.style.display = e.target.value === '__custom__' ? '' : 'none';
   });
 
+  // Categories section — show all categories with hide/unhide controls
+  renderCategoriesSection(sheet, cfg);
+
   sheet.querySelector('#s-save').addEventListener('click', handleSave);
   sheet.querySelector('#s-cancel').addEventListener('click', closeSettings);
   if (cfg.authEnabled) {
     sheet.querySelector('#s-logout').addEventListener('click', handleLogout);
   }
+}
+
+function renderCategoriesSection(sheet, cfg) {
+  const allCats = getAllCategories(state.tasks);
+  const section = sheet.querySelector('#s-categories-section');
+  if (!allCats.length) { section.innerHTML = ''; return; }
+
+  const hidden = cfg.hiddenCategories || [];
+  section.innerHTML = `<div class="modal-section-label">Categories</div>`;
+
+  const list = document.createElement('div');
+  list.className = 'modal-field';
+  list.style.gap = '6px';
+
+  for (const cat of allCats) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:4px 0';
+
+    const name = document.createElement('span');
+    name.className = 'task-cat-chip';
+    name.textContent = cat;
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-ghost';
+    btn.style.cssText = 'padding:2px 10px;font-size:var(--font-size-sm)';
+    const isHidden = hidden.includes(cat);
+    btn.textContent = isHidden ? 'Unhide' : 'Hide';
+    btn.style.color = isHidden ? 'var(--color-accent)' : 'var(--color-text-muted)';
+
+    btn.addEventListener('click', async () => {
+      const current = state.config.hiddenCategories || [];
+      const next = isHidden
+        ? current.filter(c => c !== cat)
+        : [...current, cat];
+      try {
+        const res = await fetch('/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hiddenCategories: next }),
+        });
+        if (!res.ok) throw new Error((await res.json()).error);
+        setConfig({ hiddenCategories: next });
+        renderCategoriesSection(sheet, { ...cfg, hiddenCategories: next });
+      } catch (err) {
+        alert('Could not update: ' + err.message);
+      }
+    });
+
+    row.appendChild(name);
+    row.appendChild(btn);
+    list.appendChild(row);
+  }
+  section.appendChild(list);
 }
 
 async function handleLogout() {
@@ -164,6 +225,7 @@ async function handleSave() {
   const payload = {
     enabledViews, defaultView, timeFormat, weekStart,
     enableTasksView, showTasksOnCalendar, taskSortOrder,
+    hiddenCategories: state.config.hiddenCategories || [],
   };
   if (defaultCalRaw) payload.defaultCalendar = defaultCalRaw;
   if (tasksCalDAVUrl) payload.tasksCalDAVUrl = tasksCalDAVUrl;

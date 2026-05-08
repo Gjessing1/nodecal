@@ -4,6 +4,9 @@
  * @param {object} callbacks - { onComplete, onStar, onClick }
  * @returns {HTMLElement}
  */
+import { state } from '../app/state.js';
+import { visibleCategories } from '../app/taskUtils.js';
+
 export function buildTaskItem(task, { onComplete, onStar, onClick }) {
   const li = document.createElement('li');
   li.className = 'task-item' + (task.status === 'COMPLETED' ? ' task-done' : '');
@@ -51,6 +54,20 @@ export function buildTaskItem(task, { onComplete, onStar, onClick }) {
   }
 
   if (meta.children.length) body.appendChild(meta);
+
+  const hidden = state.config.hiddenCategories || [];
+  const visCats = visibleCategories(task.categories || [], hidden);
+  if (visCats.length) {
+    const chips = document.createElement('div');
+    chips.className = 'task-cats';
+    for (const cat of visCats) {
+      const chip = document.createElement('span');
+      chip.className = 'task-cat-chip';
+      chip.textContent = cat;
+      chips.appendChild(chip);
+    }
+    body.appendChild(chips);
+  }
 
   // Star
   const star = document.createElement('button');

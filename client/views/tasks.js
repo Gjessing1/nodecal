@@ -1,8 +1,7 @@
 import { state } from '../app/state.js';
 import { buildTaskItem } from '../components/taskItem.js';
-import { toDateInputValue } from '../app/utils.js';
+import { parseTagsFromTitle, getAllCategories, visibleCategories, groupTasksByCategory } from '../app/taskUtils.js';
 
-// Callbacks set on first render, reused for quick-add
 let _callbacks = null;
 
 /**
@@ -17,11 +16,13 @@ export function renderTasks(container, callbacks) {
   const wrap = document.createElement('div');
   wrap.className = 'tasks-view';
 
-  // Controls row: show-completed toggle, starred-only toggle, sort selector
+  const filterState = { showDone: false, starredOnly: false };
+  let currentGroupBy  = 'date';
+  let currentFilterCat = '';
+
+  // ── Controls row ───────────────────────────────────────────
   const controls = document.createElement('div');
   controls.className = 'tasks-controls';
-
-  const filterState = { showDone: false, starredOnly: false };
 
   const leftFilters = document.createElement('div');
   leftFilters.className = 'tasks-filters';
@@ -30,10 +31,9 @@ export function renderTasks(container, callbacks) {
   showDoneLabel.className = 'tasks-show-done';
   const showDoneCheck = document.createElement('input');
   showDoneCheck.type = 'checkbox';
-  showDoneCheck.id = 'tasks-show-done';
   showDoneCheck.addEventListener('change', () => {
     filterState.showDone = showDoneCheck.checked;
-    renderList(list, filterState, sortSel.value, callbacks);
+    rerender();
   });
   showDoneLabel.appendChild(showDoneCheck);
   showDoneLabel.appendChild(document.createTextNode(' Done'));
@@ -44,38 +44,94 @@ export function renderTasks(container, callbacks) {
   starredOnlyCheck.type = 'checkbox';
   starredOnlyCheck.addEventListener('change', () => {
     filterState.starredOnly = starredOnlyCheck.checked;
-    renderList(list, filterState, sortSel.value, callbacks);
+    rerender();
   });
   starredOnlyLabel.appendChild(starredOnlyCheck);
   starredOnlyLabel.appendChild(document.createTextNode(' Starred'));
 
+  leftFilters.appendChild(showDoneLabel);
+  leftFilters.appendChild(starredOnlyLabel);
+
+  const rightControls = document.createElement('div');
+  rightControls.className = 'tasks-right-controls';
+
+  const groupSel = document.createElement('select');
+  groupSel.className = 'tasks-sort-select';
+  groupSel.innerHTML = `
+    <option value="date">Group: Date</option>
+    <option value="category">Group: Category</option>
+  `;
+  groupSel.addEventListener('change', () => {
+    currentGroupBy = groupSel.value;
+    rerender();
+  });
+
   const sortSel = document.createElement('select');
   sortSel.className = 'tasks-sort-select';
   sortSel.innerHTML = `
-    <option value="due">Sort: Due date</option>
-    <option value="starred">Sort: Starred first</option>
+    <option value="due">Sort: Due</option>
+    <option value="starred">Sort: Starred</option>
     <option value="alpha">Sort: A–Z</option>
     <option value="created">Sort: Created</option>
   `;
   sortSel.value = state.config.taskSortOrder || 'due';
-  sortSel.addEventListener('change', () => {
-    renderList(list, filterState, sortSel.value, callbacks);
-  });
+  sortSel.addEventListener('change', () => rerender());
 
-  leftFilters.appendChild(showDoneLabel);
-  leftFilters.appendChild(starredOnlyLabel);
+  rightControls.appendChild(groupSel);
+  rightControls.appendChild(sortSel);
   controls.appendChild(leftFilters);
-  controls.appendChild(sortSel);
+  controls.appendChild(rightControls);
 
-  // Task list
+  // ── Category filter row ─────────────────────────────────────
+  const catFilterRow = document.createElement('div');
+  catFilterRow.className = 'tasks-cat-filter-row';
+
+  function buildCatFilter() {
+    catFilterRow.innerHTML = '';
+    const hidden = state.config.hiddenCategories || [];
+    const allCats = getAllCategories(state.tasks).filter(c => !hidden.includes(c));
+    if (!allCats.length) return;
+
+    const label = document.createElement('span');
+    label.className = 'tasks-cat-filter-label';
+    label.textContent = 'Filter:';
+    catFilterRow.appendChild(label);
+
+    const allChip = document.createElement('button');
+    allChip.className = 'tasks-cat-chip-filter' + (!currentFilterCat ? ' active' : '');
+    allChip.textContent = 'All';
+    allChip.addEventListener('click', () => { currentFilterCat = ''; buildCatFilter(); rerender(); });
+    catFilterRow.appendChild(allChip);
+
+    for (const cat of allCats) {
+      const chip = document.createElement('button');
+      chip.className = 'tasks-cat-chip-filter' + (currentFilterCat === cat ? ' active' : '');
+      chip.textContent = cat;
+      chip.addEventListener('click', () => {
+        currentFilterCat = currentFilterCat === cat ? '' : cat;
+        buildCatFilter();
+        rerender();
+      });
+      catFilterRow.appendChild(chip);
+    }
+  }
+  buildCatFilter();
+
+  // ── Task list ───────────────────────────────────────────────
   const list = document.createElement('div');
   list.className = 'tasks-list';
-  renderList(list, filterState, sortSel.value, callbacks);
 
-  // Quick-add bar
+  function rerender() {
+    buildCatFilter();
+    renderList(list, filterState, sortSel.value, currentGroupBy, currentFilterCat, callbacks);
+  }
+
+  renderList(list, filterState, sortSel.value, currentGroupBy, currentFilterCat, callbacks);
+
   const quickAdd = buildQuickAdd(callbacks);
 
   wrap.appendChild(controls);
+  wrap.appendChild(catFilterRow);
   wrap.appendChild(list);
   wrap.appendChild(quickAdd);
   container.appendChild(wrap);
@@ -86,15 +142,25 @@ export function focusTaskQuickAdd() {
   document.getElementById('task-quick-add-input')?.focus();
 }
 
-// ── List rendering ────────────────────────────────────────
+// ── List rendering ─────────────────────────────────────────
 
-function renderList(container, filterState, sortOrder, callbacks) {
+function renderList(container, filterState, sortOrder, groupBy, filterCat, callbacks) {
   container.innerHTML = '';
 
+  const hidden = state.config.hiddenCategories || [];
   let tasks = state.tasks.filter(t => filterState.showDone || t.status !== 'COMPLETED');
   if (filterState.starredOnly) tasks = tasks.filter(t => t.important);
+  if (filterCat) tasks = tasks.filter(t => (t.categories || []).includes(filterCat));
   tasks = sortTasks(tasks, sortOrder);
 
+  if (groupBy === 'category') {
+    renderByCategoryGroups(container, tasks, hidden, callbacks);
+  } else {
+    renderByDateGroups(container, tasks, callbacks);
+  }
+}
+
+function renderByDateGroups(container, tasks, callbacks) {
   const today    = localDateString(new Date());
   const tomorrow = localDateString(new Date(Date.now() + 86400000));
 
@@ -120,14 +186,27 @@ function renderList(container, filterState, sortOrder, callbacks) {
   }
 
   const groups = [];
-  if (overdue.length)     groups.push({ key: 'overdue',   label: 'Overdue',   overdue: true, items: overdue });
-  if (todayItems.length)  groups.push({ key: 'today',     label: 'Today',     items: todayItems });
+  if (overdue.length)       groups.push({ key: 'overdue',  label: 'Overdue',   overdue: true, items: overdue });
+  if (todayItems.length)    groups.push({ key: 'today',    label: 'Today',     items: todayItems });
   if (tomorrowItems.length) groups.push({ key: 'tomorrow', label: 'Tomorrow',  items: tomorrowItems });
   for (const [date, items] of [...byDate.entries()].sort()) {
     groups.push({ key: date, label: formatDateHeader(date), items });
   }
   if (noDue.length) groups.push({ key: 'none', label: 'No due date', items: noDue });
 
+  renderGroups(container, groups, callbacks, tasks.length);
+}
+
+function renderByCategoryGroups(container, tasks, hidden, callbacks) {
+  const grouped = groupTasksByCategory(tasks, hidden);
+  const groups = [];
+  for (const [key, items] of grouped) {
+    groups.push({ key: key || '__none__', label: key || 'Uncategorized', items });
+  }
+  renderGroups(container, groups, callbacks, tasks.length);
+}
+
+function renderGroups(container, groups, callbacks, totalCount) {
   let isEmpty = true;
   for (const group of groups) {
     if (!group.items.length) continue;
@@ -156,19 +235,15 @@ function renderList(container, filterState, sortOrder, callbacks) {
   if (isEmpty) {
     const empty = document.createElement('p');
     empty.className = 'tasks-empty';
-    empty.textContent = state.tasks.length ? 'All done! ✓' : 'No tasks yet — add one below.';
+    empty.textContent = totalCount ? 'All done! ✓' : 'No tasks yet — add one below.';
     container.appendChild(empty);
   }
 }
 
 function sortTasks(tasks, order) {
   const copy = [...tasks];
-  if (order === 'alpha') {
-    return copy.sort((a, b) => a.title.localeCompare(b.title));
-  }
-  if (order === 'created') {
-    return copy.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
-  }
+  if (order === 'alpha') return copy.sort((a, b) => a.title.localeCompare(b.title));
+  if (order === 'created') return copy.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
   if (order === 'starred') {
     return copy.sort((a, b) => {
       if (a.important && !b.important) return -1;
@@ -179,7 +254,6 @@ function sortTasks(tasks, order) {
       return 0;
     });
   }
-  // 'due': tasks with a due date first (ascending), then no-due tasks
   return copy.sort((a, b) => {
     if (a.due && b.due) return a.due.localeCompare(b.due);
     if (a.due) return -1;
@@ -188,23 +262,74 @@ function sortTasks(tasks, order) {
   });
 }
 
-// ── Quick-add bar ─────────────────────────────────────────
+// ── Quick-add bar ──────────────────────────────────────────
 
 function buildQuickAdd(callbacks) {
   const bar = document.createElement('div');
   bar.className = 'tasks-quickadd';
 
+  const inputWrap = document.createElement('div');
+  inputWrap.className = 'tasks-quickadd-input-wrap';
+  inputWrap.style.position = 'relative';
+
   const input = document.createElement('input');
   input.type = 'text';
   input.id = 'task-quick-add-input';
   input.className = 'tasks-quickadd-input';
-  input.placeholder = 'Add a task…';
+  input.placeholder = 'Add a task… use #tag for categories';
+
+  const autocompleteList = document.createElement('ul');
+  autocompleteList.className = 'tasks-autocomplete';
+  autocompleteList.style.display = 'none';
+
+  function getCurrentHashWord() {
+    const val = input.value;
+    const pos = input.selectionStart;
+    const before = val.slice(0, pos);
+    const m = before.match(/#(\S*)$/);
+    return m ? { word: m[0], partial: m[1], start: pos - m[0].length } : null;
+  }
+
+  function showAutocomplete() {
+    const hw = getCurrentHashWord();
+    if (!hw) { autocompleteList.style.display = 'none'; return; }
+    const hidden = state.config.hiddenCategories || [];
+    const cats = getAllCategories(state.tasks)
+      .filter(c => !hidden.includes(c) && c.startsWith(hw.partial.toLowerCase()));
+    if (!cats.length) { autocompleteList.style.display = 'none'; return; }
+
+    autocompleteList.innerHTML = '';
+    for (const cat of cats.slice(0, 8)) {
+      const li = document.createElement('li');
+      li.textContent = cat;
+      li.addEventListener('mousedown', e => {
+        e.preventDefault();
+        const hw2 = getCurrentHashWord();
+        if (!hw2) return;
+        const val = input.value;
+        input.value = val.slice(0, hw2.start) + '#' + cat + ' ' + val.slice(hw2.start + hw2.word.length);
+        input.focus();
+        autocompleteList.style.display = 'none';
+      });
+      autocompleteList.appendChild(li);
+    }
+    autocompleteList.style.display = '';
+  }
+
+  input.addEventListener('input', showAutocomplete);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { autocompleteList.style.display = 'none'; }
+    if (e.key === 'Enter') { autocompleteList.style.display = 'none'; submit(); }
+  });
+  input.addEventListener('blur', () => { setTimeout(() => { autocompleteList.style.display = 'none'; }, 150); });
+
+  inputWrap.appendChild(input);
+  inputWrap.appendChild(autocompleteList);
 
   const dates = document.createElement('div');
   dates.className = 'tasks-quickadd-dates';
 
   let selectedDue = null;
-
   const today    = localDateString(new Date());
   const tomorrow = localDateString(new Date(Date.now() + 86400000));
 
@@ -212,16 +337,12 @@ function buildQuickAdd(callbacks) {
     const btn = document.createElement('button');
     btn.className = 'tasks-date-shortcut';
     btn.textContent = label;
-    btn.addEventListener('click', () => {
-      selectedDue = value;
-      updateActive();
-    });
+    btn.addEventListener('click', () => { selectedDue = value; updateActive(); });
     return btn;
   }
 
   const todayBtn    = makeShortcut('Today',    today);
   const tomorrowBtn = makeShortcut('Tomorrow', tomorrow);
-
   const pickBtn = document.createElement('button');
   pickBtn.className = 'tasks-date-shortcut';
   pickBtn.textContent = 'Pick date';
@@ -230,10 +351,7 @@ function buildQuickAdd(callbacks) {
   datePicker.type = 'date';
   datePicker.className = 'tasks-date-picker-hidden';
   datePicker.addEventListener('change', () => {
-    if (datePicker.value) {
-      selectedDue = datePicker.value;
-      updateActive();
-    }
+    if (datePicker.value) { selectedDue = datePicker.value; updateActive(); }
   });
   pickBtn.addEventListener('click', () => datePicker.showPicker?.() || datePicker.click());
 
@@ -255,18 +373,16 @@ function buildQuickAdd(callbacks) {
   dates.appendChild(datePicker);
 
   async function submit() {
-    const title = input.value.trim();
-    if (!title) return;
+    const raw = input.value.trim();
+    if (!raw) return;
+    const { title, tags } = parseTagsFromTitle(raw);
+    if (!title) { input.value = ''; return; }
     input.value = '';
     const due = selectedDue;
     selectedDue = null;
     updateActive();
-    await callbacks.onAdd({ title, due });
+    await callbacks.onAdd({ title, due, categories: tags.length ? tags : undefined });
   }
-
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter') submit();
-  });
 
   const submitBtn = document.createElement('button');
   submitBtn.className = 'tasks-quickadd-submit';
@@ -276,7 +392,7 @@ function buildQuickAdd(callbacks) {
 
   const row = document.createElement('div');
   row.className = 'tasks-quickadd-row';
-  row.appendChild(input);
+  row.appendChild(inputWrap);
   row.appendChild(submitBtn);
 
   bar.appendChild(row);
@@ -284,7 +400,7 @@ function buildQuickAdd(callbacks) {
   return bar;
 }
 
-// ── Task edit modal ───────────────────────────────────────
+// ── Task edit modal ────────────────────────────────────────
 
 export function openTaskModal(task, { onSave, onDelete }) {
   const overlay = document.getElementById('modal-overlay');
@@ -293,6 +409,10 @@ export function openTaskModal(task, { onSave, onDelete }) {
   const isRecAfterCompletion = task.recurringType === 'after-completion';
   const isRecRrule = task.recurringType === 'rrule';
   const isCompleted = task.status === 'COMPLETED';
+
+  const hidden = state.config.hiddenCategories || [];
+  const existingCats = getAllCategories(state.tasks).filter(c => !hidden.includes(c));
+  const taskCats = visibleCategories(task.categories || [], hidden);
 
   sheet.innerHTML = `
     <div class="modal-handle"></div>
@@ -314,13 +434,27 @@ export function openTaskModal(task, { onSave, onDelete }) {
     </div>
 
     <div class="modal-field">
+      <label>Categories</label>
+      <div id="tm-cats-chips" class="tm-cats-chips">
+        ${taskCats.map(c => `<span class="task-cat-chip tm-cat-chip-rm" data-cat="${esc(c)}">${esc(c)} ×</span>`).join('')}
+      </div>
+      <div class="tm-cats-add-row">
+        <input type="text" id="tm-cat-input" placeholder="Add category…" autocomplete="off" list="tm-cat-datalist">
+        <datalist id="tm-cat-datalist">
+          ${existingCats.map(c => `<option value="${esc(c)}">`).join('')}
+        </datalist>
+        <button type="button" id="tm-cat-add" class="btn btn-ghost" style="padding:4px 10px">+</button>
+      </div>
+    </div>
+
+    <div class="modal-field">
       <label>Repeat</label>
       <select id="tm-recurring">
         <option value="">None</option>
-        <option value="rrule-daily"    ${isRecRrule && task.rrule?.includes('DAILY')    ? 'selected' : ''}>Daily</option>
-        <option value="rrule-weekly"   ${isRecRrule && task.rrule?.includes('WEEKLY')   ? 'selected' : ''}>Weekly</option>
-        <option value="rrule-monthly"  ${isRecRrule && task.rrule?.includes('MONTHLY')  ? 'selected' : ''}>Monthly</option>
-        <option value="after-custom"   ${isRecAfterCompletion ? 'selected' : ''}>__ days after completion</option>
+        <option value="rrule-daily"   ${isRecRrule && task.rrule?.includes('DAILY')   ? 'selected' : ''}>Daily</option>
+        <option value="rrule-weekly"  ${isRecRrule && task.rrule?.includes('WEEKLY')  ? 'selected' : ''}>Weekly</option>
+        <option value="rrule-monthly" ${isRecRrule && task.rrule?.includes('MONTHLY') ? 'selected' : ''}>Monthly</option>
+        <option value="after-custom"  ${isRecAfterCompletion ? 'selected' : ''}>__ days after completion</option>
       </select>
     </div>
 
@@ -343,9 +477,55 @@ export function openTaskModal(task, { onSave, onDelete }) {
     </div>
   `;
 
+  // Track categories in modal as mutable array
+  const modalCats = [...taskCats];
+
+  function renderCatChips() {
+    const chipsEl = sheet.querySelector('#tm-cats-chips');
+    chipsEl.innerHTML = '';
+    for (const c of modalCats) {
+      const chip = document.createElement('span');
+      chip.className = 'task-cat-chip tm-cat-chip-rm';
+      chip.textContent = c + ' ×';
+      chip.dataset.cat = c;
+      chip.addEventListener('click', () => {
+        const idx = modalCats.indexOf(c);
+        if (idx !== -1) modalCats.splice(idx, 1);
+        renderCatChips();
+      });
+      chipsEl.appendChild(chip);
+    }
+  }
+  // Wire up existing chip remove buttons
+  sheet.querySelectorAll('.tm-cat-chip-rm').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const cat = chip.dataset.cat;
+      const idx = modalCats.indexOf(cat);
+      if (idx !== -1) modalCats.splice(idx, 1);
+      renderCatChips();
+    });
+  });
+
+  function addCategory(cat) {
+    const c = cat.trim().toLowerCase();
+    if (c && !modalCats.includes(c)) { modalCats.push(c); renderCatChips(); }
+  }
+
+  sheet.querySelector('#tm-cat-add').addEventListener('click', () => {
+    const inp = sheet.querySelector('#tm-cat-input');
+    addCategory(inp.value);
+    inp.value = '';
+  });
+  sheet.querySelector('#tm-cat-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addCategory(e.target.value);
+      e.target.value = '';
+    }
+  });
+
   sheet.querySelector('#tm-recurring').addEventListener('change', e => {
-    const show = e.target.value === 'after-custom';
-    sheet.querySelector('#tm-interval-field').style.display = show ? '' : 'none';
+    sheet.querySelector('#tm-interval-field').style.display = e.target.value === 'after-custom' ? '' : 'none';
   });
 
   sheet.querySelector('#tm-save').addEventListener('click', () => {
@@ -354,7 +534,7 @@ export function openTaskModal(task, { onSave, onDelete }) {
 
     const recurringVal = sheet.querySelector('#tm-recurring').value;
     let rrule = null, xRecurringType = null, xRecurringInterval = null;
-    if (recurringVal === 'rrule-daily')    rrule = 'FREQ=DAILY';
+    if (recurringVal === 'rrule-daily')     rrule = 'FREQ=DAILY';
     else if (recurringVal === 'rrule-weekly')   rrule = buildWeeklyRrule(sheet.querySelector('#tm-due').value);
     else if (recurringVal === 'rrule-monthly')  rrule = buildMonthlyRrule(sheet.querySelector('#tm-due').value);
     else if (recurringVal === 'after-custom') {
@@ -363,13 +543,16 @@ export function openTaskModal(task, { onSave, onDelete }) {
     }
 
     const completedChecked = sheet.querySelector('#tm-completed').checked;
+    const important = (task.categories || []).includes('important');
+    const finalCats = important ? [...modalCats, 'important'] : [...modalCats];
 
     onSave({
       title,
-      due:  sheet.querySelector('#tm-due').value || null,
+      due:         sheet.querySelector('#tm-due').value || null,
       description: sheet.querySelector('#tm-desc').value.trim(),
-      status: completedChecked ? 'COMPLETED' : 'NEEDS-ACTION',
-      completed: completedChecked ? new Date().toISOString() : null,
+      categories:  finalCats,
+      status:      completedChecked ? 'COMPLETED' : 'NEEDS-ACTION',
+      completed:   completedChecked ? new Date().toISOString() : null,
       rrule, xRecurringType, xRecurringInterval,
     });
     closeTaskModal();
@@ -389,7 +572,7 @@ export function closeTaskModal() {
   document.getElementById('modal-overlay').classList.add('hidden');
 }
 
-// ── Utilities ─────────────────────────────────────────────
+// ── Utilities ──────────────────────────────────────────────
 
 function localDateString(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -402,18 +585,12 @@ function formatDateHeader(dateStr) {
 
 function buildWeeklyRrule(due) {
   const days = ['SU','MO','TU','WE','TH','FR','SA'];
-  if (due) {
-    const day = days[new Date(due + 'T00:00:00').getDay()];
-    return `FREQ=WEEKLY;BYDAY=${day}`;
-  }
+  if (due) return `FREQ=WEEKLY;BYDAY=${days[new Date(due + 'T00:00:00').getDay()]}`;
   return 'FREQ=WEEKLY';
 }
 
 function buildMonthlyRrule(due) {
-  if (due) {
-    const dom = new Date(due + 'T00:00:00').getDate();
-    return `FREQ=MONTHLY;BYMONTHDAY=${dom}`;
-  }
+  if (due) return `FREQ=MONTHLY;BYMONTHDAY=${new Date(due + 'T00:00:00').getDate()}`;
   return 'FREQ=MONTHLY';
 }
 
