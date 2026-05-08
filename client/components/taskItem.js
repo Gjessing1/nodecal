@@ -42,10 +42,14 @@ export function buildTaskItem(task, { onComplete, onStar, onClick, onSnooze }) {
   meta.className = 'task-meta';
 
   if (task.due) {
-    const badge = document.createElement('span');
-    badge.className = 'task-due-badge' + (isDueOverdue(task.due) ? ' overdue' : '');
-    badge.textContent = formatDue(task.due);
-    meta.appendChild(badge);
+    const dueFmt = formatDue(task.due);
+    // Only show badge if it adds info — skip "Today" since it's visible from the group header
+    if (dueFmt !== 'Today') {
+      const badge = document.createElement('span');
+      badge.className = 'task-due-badge' + (isDueOverdue(task.due) ? ' overdue' : '');
+      badge.textContent = dueFmt;
+      meta.appendChild(badge);
+    }
   }
   if (task.recurring) {
     const rec = document.createElement('span');

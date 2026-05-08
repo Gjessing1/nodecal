@@ -56,8 +56,12 @@
 .month-day.other-month { opacity: 0.38; }
 .month-day.today { background: var(--color-today-bg); }
 
+/* Date number + weather icon sit on the same row */
 .month-day-num {
-  text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
   margin-bottom: 2px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -71,12 +75,72 @@
   font-size: var(--font-size-sm);
   font-weight: 500;
   color: var(--color-text-muted);
+  flex-shrink: 0;
 }
 .month-day.today .month-day-num span {
   background: var(--color-accent);
   color: #fff;
   font-weight: 700;
 }
+/* Weather icon: tiny, no background, sits left of the date number */
+.month-weather {
+  font-size: 9px;
+  color: var(--color-text-muted);
+  order: -1;   /* put the icon before (left of) the date number */
+  flex-shrink: 0;
+  line-height: 1;
+  background: none !important;  /* never inherit the today blue cell tint */
+}
+
+/* ── Day event popup ─────────────────────────────────────── */
+.month-popup-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+}
+.month-popup-panel {
+  background: var(--color-bg);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 360px;
+  max-height: 70dvh;
+  overflow-y: auto;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+  padding: var(--space-md);
+}
+.month-popup-heading {
+  font-weight: 600;
+  font-size: var(--font-size-md);
+  margin-bottom: var(--space-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.month-popup-close {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+  padding: 0 4px;
+}
+.month-popup-event {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+}
+.month-popup-event:last-of-type { border-bottom: none; }
+.month-popup-event:hover { background: var(--color-surface); border-radius: var(--radius-sm); }
+.month-popup-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+.month-popup-info { flex: 1; min-width: 0; }
+.month-popup-title { font-size: var(--font-size-md); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.month-popup-time { font-size: var(--font-size-sm); color: var(--color-text-muted); }
+.month-popup-empty { color: var(--color-text-muted); font-size: var(--font-size-sm); padding: var(--space-sm) 0; }
+.month-popup-view-day { width: 100%; margin-top: var(--space-sm); font-size: var(--font-size-sm); }
 
 /* Event chips inside month cells */
 .month-event-chip {

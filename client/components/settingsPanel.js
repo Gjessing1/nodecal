@@ -148,6 +148,7 @@ function renderForm() {
 
     <div class="modal-actions">
       <button class="btn btn-primary" id="s-save">Save</button>
+      <button class="btn btn-ghost" id="s-clear-cache" title="Clear local cache and re-sync from server">Clear cache</button>
       <button class="btn btn-ghost" id="s-cancel">Cancel</button>
       ${cfg.authEnabled ? '<button class="btn btn-ghost" id="s-logout" style="color:var(--color-danger)">Log out</button>' : ''}
     </div>
@@ -178,6 +179,26 @@ function renderForm() {
 
   sheet.querySelector('#s-save').addEventListener('click', handleSave);
   sheet.querySelector('#s-cancel').addEventListener('click', closeSettings);
+  sheet.querySelector('#s-clear-cache').addEventListener('click', async () => {
+    const btn = sheet.querySelector('#s-clear-cache');
+    btn.textContent = '↻ Syncing…';
+    btn.disabled = true;
+    try {
+      const res = await fetch('/sync/clear', { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        closeSettings();
+        onChangeCb();
+      } else {
+        alert('Clear failed: ' + data.error);
+      }
+    } catch (err) {
+      alert('Clear failed: ' + err.message);
+    } finally {
+      btn.textContent = 'Clear cache';
+      btn.disabled = false;
+    }
+  });
   if (cfg.authEnabled) {
     sheet.querySelector('#s-logout').addEventListener('click', handleLogout);
   }

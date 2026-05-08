@@ -450,10 +450,32 @@ async function applyNlp(text) {
       sheet.querySelector('#time-row').style.display = 'none';
     }
 
-    // Show feedback
-    const dateStr = start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    const timeStr = data.allDay ? 'All day' : `${toTimeInputValue(start)} – ${toTimeInputValue(end)}`;
-    fb.textContent = `📅 ${dateStr} · ${timeStr}${data.rrule ? ' · 🔁 Repeats' : ''}`;
+    // Show feedback with the recognized text highlighted inline
+    const dateStr = start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: tz });
+    const timeStr = data.allDay ? 'All day' : `${toTimeInputValue(start, tz)} – ${toTimeInputValue(end, tz)}`;
+    const rruleTag = data.rrule ? ' · Repeats' : '';
+    fb.innerHTML = '';
+    // If parsedText is available, show "recognized: <blue span>" before the summary
+    if (data.parsedText) {
+      const rawInput = sheet.querySelector('#f-nlp')?.value || '';
+      const idx = rawInput.toLowerCase().indexOf(data.parsedText.toLowerCase());
+      if (idx !== -1) {
+        const before = document.createTextNode(rawInput.slice(0, idx));
+        const match  = document.createElement('mark');
+        match.className = 'nlp-match';
+        match.textContent = rawInput.slice(idx, idx + data.parsedText.length);
+        const after  = document.createTextNode(rawInput.slice(idx + data.parsedText.length));
+        const inputPreview = document.createElement('div');
+        inputPreview.className = 'nlp-input-preview';
+        inputPreview.appendChild(before);
+        inputPreview.appendChild(match);
+        inputPreview.appendChild(after);
+        fb.appendChild(inputPreview);
+      }
+    }
+    const summary = document.createElement('div');
+    summary.textContent = `${dateStr} · ${timeStr}${rruleTag}`;
+    fb.appendChild(summary);
     fb.classList.remove('hidden');
 
     // Store rrule if detected so handleSave can include it

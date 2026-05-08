@@ -389,6 +389,17 @@ input, textarea, select {
   border-radius: var(--radius-sm);
   border-left: 3px solid var(--color-accent);
 }
+.nlp-input-preview {
+  color: var(--color-text);
+  margin-bottom: 2px;
+}
+mark.nlp-match {
+  background: none;
+  color: var(--color-accent);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
 
 /* ── Time wheel (24h mode) ──────────────────────────────── */
 .time-wheel-pair {

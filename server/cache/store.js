@@ -118,6 +118,17 @@ function setSyncState(state) { syncState = { ...syncState, ...state }; }
 
 loadFromDisk();
 
+/** Clear all in-memory data and reset ctags so the next sync fetches everything fresh. */
+function clearAll() {
+  events.clear();
+  tasks.clear();
+  calendarCtags = {};
+  calendars = [];
+  syncState = { lastSync: null, error: null };
+  // Remove the disk cache so it doesn't re-seed stale data on next restart
+  try { fs.unlinkSync(CACHE_FILE); } catch { /* file may not exist */ }
+}
+
 module.exports = {
   getCalendars, setCalendars,
   getCalendarCtag, setCalendarCtag,
@@ -130,4 +141,5 @@ module.exports = {
   setTask, removeTask,
   setTaskSilent, removeTaskSilent,
   getSyncState, setSyncState,
+  clearAll,
 };

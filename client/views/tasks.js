@@ -60,7 +60,7 @@ export function renderTasks(container, callbacks) {
     rerender();
   });
   starredOnlyLabel.appendChild(starredOnlyCheck);
-  starredOnlyLabel.appendChild(document.createTextNode(' ★ Starred'));
+  starredOnlyLabel.appendChild(document.createTextNode(' ★'));
   starredOnlyLabel.title = 'Show starred tasks from all sources';
 
   leftFilters.appendChild(showDoneLabel);

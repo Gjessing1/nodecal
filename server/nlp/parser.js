@@ -1,5 +1,53 @@
 const chrono = require('chrono-node');
 
+/**
+ * Convert a chrono ParsedResult date to UTC, interpreting the parsed hour/minute
+ * as local time in the given IANA timezone (chrono-node returns times as UTC
+ * regardless of the timezone option — we must apply the offset ourselves).
+ */
+function chronoToUtc(result, timezone) {
+  // If chrono captured an explicit timezone in the text, trust its Date
+  if (result.start.get('timezone') !== null) return result.start.date();
+  const s = result.start;
+  const year  = s.get('year');
+  const month = String(s.get('month')).padStart(2, '0');
+  const day   = String(s.get('day')).padStart(2, '0');
+  const hour  = String(s.get('hour')).padStart(2, '0');
+  const min   = String(s.get('minute')).padStart(2, '0');
+  // Treat the time as floating local in `timezone`, convert to UTC
+  const naive = new Date(`${year}-${month}-${day}T${hour}:${min}:00Z`);
+  const parts = {};
+  for (const p of new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  }).formatToParts(naive)) parts[p.type] = p.value;
+  const h = parts.hour === '24' ? '00' : parts.hour;
+  const shownAsUtc = new Date(`${parts.year}-${parts.month}-${parts.day}T${h}:${parts.minute}:${parts.second}Z`);
+  return new Date(naive.getTime() + (naive.getTime() - shownAsUtc.getTime()));
+}
+
+function chronoEndToUtc(result, timezone, startUtc, hasTime) {
+  if (!result.end) return null;
+  if (result.end.get('timezone') !== null) return result.end.date();
+  const s = result.end;
+  const year  = s.get('year');
+  const month = String(s.get('month')).padStart(2, '0');
+  const day   = String(s.get('day')).padStart(2, '0');
+  const hour  = String(s.get('hour')).padStart(2, '0');
+  const min   = String(s.get('minute')).padStart(2, '0');
+  const naive = new Date(`${year}-${month}-${day}T${hour}:${min}:00Z`);
+  const parts = {};
+  for (const p of new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  }).formatToParts(naive)) parts[p.type] = p.value;
+  const h = parts.hour === '24' ? '00' : parts.hour;
+  const shownAsUtc = new Date(`${parts.year}-${parts.month}-${parts.day}T${h}:${parts.minute}:${parts.second}Z`);
+  return new Date(naive.getTime() + (naive.getTime() - shownAsUtc.getTime()));
+}
+
 const RECURRENCE = [
   [/every\s+day\b|daily\b/i,     'FREQ=DAILY'],
   [/every\s+week\b|weekly\b/i,   'FREQ=WEEKLY'],
@@ -108,11 +156,10 @@ function parse(text, refDate = new Date(), timezone = 'UTC') {
   }
 
   const result = results[0];
-  const start = result.start.date();
   const hasTime = result.start.isCertain('hour');
-  const end = result.end
-    ? result.end.date()
-    : new Date(start.getTime() + (hasTime ? 3600000 : 86400000));
+  const start = chronoToUtc(result, timezone);
+  const endRaw = chronoEndToUtc(result, timezone, start, hasTime);
+  const end = endRaw ?? new Date(start.getTime() + (hasTime ? 3600000 : 86400000));
 
   const before = normalized.slice(0, result.index).trim();
   const after  = normalized.slice(result.index + result.text.length).trim();

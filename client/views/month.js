@@ -150,7 +150,10 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, on
     wxEl.textContent = wx;
     numWrap.appendChild(wxEl);
   }
-  numWrap.addEventListener('click', () => onDayClick && onDayClick(new Date(day)));
+  numWrap.addEventListener('click', e => {
+    e.stopPropagation();
+    showDayPopup(day, dayStr, onEventClick, onDayClick);
+  });
   cell.appendChild(numWrap);
 
   const dayStr = localDateStr(day);
@@ -224,4 +227,83 @@ function buildChip(ev, onClick) {
 
   chip.addEventListener('click', e => { e.stopPropagation(); onClick(ev); });
   return chip;
+}
+
+function showDayPopup(day, dayStr, onEventClick, onDayClick) {
+  // Remove any existing popup
+  document.getElementById('month-day-popup')?.remove();
+
+  const tz = state.config.timezone;
+  const dayStart = new Date(day);
+  const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
+  const dayEvs = state.events
+    .filter(ev => {
+      if (state.hiddenCalendars.has(ev.calendarId)) return false;
+      if (ev.allDay) return ev.start.slice(0, 10) <= dayStr && ev.end.slice(0, 10) > dayStr;
+      return new Date(ev.start) < dayEnd && new Date(ev.end) > dayStart;
+    })
+    .sort((a, b) => (a.allDay ? -1 : 1) - (b.allDay ? -1 : 1) || new Date(a.start) - new Date(b.start));
+
+  const overlay = document.createElement('div');
+  overlay.id = 'month-day-popup';
+  overlay.className = 'month-popup-overlay';
+  overlay.addEventListener('click', () => overlay.remove());
+
+  const panel = document.createElement('div');
+  panel.className = 'month-popup-panel';
+  panel.addEventListener('click', e => e.stopPropagation());
+
+  const heading = document.createElement('div');
+  heading.className = 'month-popup-heading';
+  heading.textContent = day.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'month-popup-close';
+  closeBtn.textContent = '✕';
+  closeBtn.addEventListener('click', () => overlay.remove());
+  heading.appendChild(closeBtn);
+  panel.appendChild(heading);
+
+  if (!dayEvs.length) {
+    const empty = document.createElement('p');
+    empty.className = 'month-popup-empty';
+    empty.textContent = 'No events';
+    panel.appendChild(empty);
+  } else {
+    for (const ev of dayEvs) {
+      const row = document.createElement('div');
+      row.className = 'month-popup-event';
+      const cal = calendarById(ev.calendarId);
+      const dot = document.createElement('span');
+      dot.className = 'month-popup-dot';
+      dot.style.background = cal?.color || '#4a90d9';
+      const info = document.createElement('div');
+      info.className = 'month-popup-info';
+      const title = document.createElement('div');
+      title.className = 'month-popup-title';
+      title.textContent = ev.title;
+      info.appendChild(title);
+      if (!ev.allDay) {
+        const time = document.createElement('div');
+        time.className = 'month-popup-time';
+        time.textContent = new Date(ev.start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: state.config.timeFormat === '12h', timeZone: tz });
+        info.appendChild(time);
+      }
+      row.appendChild(dot);
+      row.appendChild(info);
+      row.addEventListener('click', () => { overlay.remove(); onEventClick(ev); });
+      panel.appendChild(row);
+    }
+  }
+
+  if (onDayClick) {
+    const viewBtn = document.createElement('button');
+    viewBtn.className = 'month-popup-view-day btn btn-ghost';
+    viewBtn.textContent = 'Open day view →';
+    viewBtn.addEventListener('click', () => { overlay.remove(); onDayClick(new Date(day)); });
+    panel.appendChild(viewBtn);
+  }
+
+  overlay.appendChild(panel);
+  document.getElementById('app')?.appendChild(overlay);
 }
