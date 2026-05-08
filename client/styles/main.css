@@ -166,14 +166,22 @@ input, textarea, select {
 /* ── Calendar quick-add bar ─────────────────────────────── */
 .cal-quickadd {
   display: flex;
-  align-items: center;
-  gap: var(--space-sm);
+  flex-direction: column;
+  gap: 0;
   padding: var(--space-sm) var(--space-md);
   border-top: 1px solid var(--color-border);
   background: var(--color-bg);
   flex-shrink: 0;
 }
 .cal-quickadd.hidden { display: none; }
+.cal-quickadd-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.cal-quickadd #cal-quickadd-nlp-fb {
+  margin-top: var(--space-xs);
+}
 .cal-quickadd-input {
   flex: 1;
   border-radius: var(--radius-md);

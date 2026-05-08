@@ -203,15 +203,10 @@ function renderForm(event, defaultDate) {
   sheet.innerHTML = `
     <div class="modal-handle"></div>
     <div class="modal-title">${isNew ? 'New Event' : 'Edit Event'}</div>
-    ${isNew ? `
-    <div class="modal-field nlp-field">
-      <label>Quick add</label>
-      <input type="text" id="f-nlp" placeholder="e.g. Team meeting tomorrow 14:00" autocomplete="off" spellcheck="false">
-      <div class="nlp-feedback hidden" id="nlp-fb"></div>
-    </div>` : ''}
     <div class="modal-field">
       <label>Title</label>
-      <input type="text" id="f-title" value="${esc(event?.title || '')}" placeholder="Event title" autocomplete="off">
+      <input type="text" id="f-title" value="${esc(event?.title || '')}" placeholder="${isNew ? 'e.g. Meeting tomorrow 14:00' : 'Event title'}" autocomplete="off">
+      ${isNew ? '<div class="nlp-feedback hidden" id="nlp-fb"></div>' : ''}
     </div>
     <div class="modal-field modal-toggle-field">
       <label for="f-allday">All day</label>
@@ -342,12 +337,12 @@ function renderForm(event, defaultDate) {
   sheet.querySelector('#f-save').addEventListener('click', () => handleSave(event));
   sheet.querySelector('#f-cancel').addEventListener('click', closeModal);
 
-  const nlpInput = sheet.querySelector('#f-nlp');
-  if (nlpInput) {
+  if (isNew) {
+    const titleInput = sheet.querySelector('#f-title');
     let nlpTimer = null;
-    nlpInput.addEventListener('input', () => {
+    titleInput.addEventListener('input', () => {
       clearTimeout(nlpTimer);
-      nlpTimer = setTimeout(() => applyNlp(nlpInput.value), 320);
+      nlpTimer = setTimeout(() => applyNlp(titleInput.value), 320);
     });
   }
   if (!isNew) {
@@ -368,8 +363,12 @@ function renderForm(event, defaultDate) {
 }
 
 function handleSave(event) {
-  const title = sheet.querySelector('#f-title').value.trim();
-  if (!title) { sheet.querySelector('#f-title').focus(); return; }
+  const rawTitle = sheet.querySelector('#f-title').value.trim();
+  if (!rawTitle) { sheet.querySelector('#f-title').focus(); return; }
+  // If the user hasn't changed the input since NLP parsed it, use the stripped title
+  const title = (sheet.dataset.nlpRaw && rawTitle === sheet.dataset.nlpRaw && sheet.dataset.nlpTitle)
+    ? sheet.dataset.nlpTitle
+    : rawTitle;
 
   const allDay = sheet.querySelector('#f-allday').checked;
   const calendarId = sheet.querySelector('#f-calendar').value;
@@ -418,10 +417,11 @@ async function applyNlp(text) {
       body: JSON.stringify({ text }),
     });
     const data = await res.json();
-    if (!data.parsed) { fb.classList.add('hidden'); return; }
+    if (!data.parsed) { fb.classList.add('hidden'); sheet.dataset.nlpRaw = ''; return; }
 
-    // Update form fields
-    sheet.querySelector('#f-title').value = data.title;
+    // Update date/time fields only — title field is the input, don't overwrite it
+    sheet.dataset.nlpTitle = data.title;
+    sheet.dataset.nlpRaw   = text;
     const start = new Date(data.start);
     const end = new Date(data.end);
     const tz = state.config.timezone;
@@ -457,7 +457,7 @@ async function applyNlp(text) {
     fb.innerHTML = '';
     // If parsedText is available, show "recognized: <blue span>" before the summary
     if (data.parsedText) {
-      const rawInput = sheet.querySelector('#f-nlp')?.value || '';
+      const rawInput = text;
       const idx = rawInput.toLowerCase().indexOf(data.parsedText.toLowerCase());
       if (idx !== -1) {
         const before = document.createTextNode(rawInput.slice(0, idx));

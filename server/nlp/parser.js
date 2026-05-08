@@ -70,6 +70,8 @@ const RECURRENCE = [
   [/hver\s+s[øo]ndag/i,'FREQ=WEEKLY;BYDAY=SU'],
   [/hver\s+dag\b|daglig\b/i, 'FREQ=DAILY'],
   [/hver\s+uke\b|ukentlig\b/i, 'FREQ=WEEKLY'],
+  [/hver\s+m[åa]ned\b|m[åa]nedlig\b/i, 'FREQ=MONTHLY'],
+  [/hvert\s+[åa]r\b|[åa]rlig\b/i, 'FREQ=YEARLY'],
 ];
 
 // Short hour-range patterns not handled by chrono-node: "18-21" → "18:00-21:00"
@@ -107,6 +109,14 @@ const NO_TO_EN_EVENT = [
   [/\bl[øo]rdag\b/gi, 'saturday'],
   [/\bs[øo]ndag\b/gi, 'sunday'],
   [/\bneste\b/gi, 'next'],
+  [/\bforrige\b/gi, 'last'],
+  // plural before singular to avoid partial replacement
+  [/\buker\b/gi, 'weeks'],
+  [/\buke\b/gi, 'week'],
+  [/\bm[åa]neder\b/gi, 'months'],
+  [/\bm[åa]ned\b/gi, 'month'],
+  // å is non-ASCII so \b at start doesn't work; match ar\b covers both ar and år
+  [/år\b/gi, 'year'],
   [/\bjan(?:uar)?\b/gi, 'january'],
   [/\bfeb(?:ruar)?\b/gi, 'february'],
   [/\bmars\b/gi, 'march'],
@@ -141,12 +151,13 @@ function parse(text, refDate = new Date(), timezone = 'UTC') {
   const rruleResult = detectRrule(trimmed);
   const rrule = rruleResult?.rule || null;
 
-  // Normalize: translate Norwegian, expand short time ranges, strip rrule phrase
-  let normalized = normalizeTimeRanges(normalizeNorwegian(trimmed));
-  // Remove rrule phrase before chrono-parsing so it doesn't bleed into the title
+  // Strip rrule phrase from original BEFORE normalization — the matchText is Norwegian
+  // and won't be found after translation (e.g. "hver uke" → "every week").
+  let textForParsing = trimmed;
   if (rruleResult?.matchText) {
-    normalized = normalized.replace(new RegExp(escapeRegex(rruleResult.matchText), 'i'), '').replace(/\s{2,}/g, ' ').trim();
+    textForParsing = trimmed.replace(new RegExp(escapeRegex(rruleResult.matchText), 'i'), '').replace(/\s{2,}/g, ' ').trim();
   }
+  const normalized = normalizeTimeRanges(normalizeNorwegian(textForParsing));
 
   const results = chrono.parse(normalized, refDate, { forwardDate: true, timezone });
 

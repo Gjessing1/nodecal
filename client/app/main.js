@@ -535,10 +535,56 @@ async function init() {
   searchInput.addEventListener('input', () => runSearch(searchInput.value));
 
   // Calendar quick-add bar
+  const calQuickAddFb = document.getElementById('cal-quickadd-nlp-fb');
+  let calNlpTimer = null;
+
+  calQuickAddInput.addEventListener('input', () => {
+    clearTimeout(calNlpTimer);
+    const text = calQuickAddInput.value.trim();
+    if (!text) { calQuickAddFb.classList.add('hidden'); return; }
+    calNlpTimer = setTimeout(async () => {
+      try {
+        const res = await fetch('/nlp/parse', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+        const data = await res.json();
+        if (!data.parsed || !data.parsedText) { calQuickAddFb.classList.add('hidden'); return; }
+        const raw = calQuickAddInput.value;
+        const idx = raw.toLowerCase().indexOf(data.parsedText.toLowerCase());
+        calQuickAddFb.innerHTML = '';
+        if (idx !== -1) {
+          const preview = document.createElement('div');
+          preview.className = 'nlp-input-preview';
+          preview.appendChild(document.createTextNode(raw.slice(0, idx)));
+          const mark = document.createElement('mark');
+          mark.className = 'nlp-match';
+          mark.textContent = raw.slice(idx, idx + data.parsedText.length);
+          preview.appendChild(mark);
+          preview.appendChild(document.createTextNode(raw.slice(idx + data.parsedText.length)));
+          calQuickAddFb.appendChild(preview);
+        }
+        const start = new Date(data.start);
+        const tz = state.config.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const dateStr = start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: tz });
+        const timeStr = data.allDay ? 'All day' : start.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz });
+        const summary = document.createElement('div');
+        summary.textContent = `${dateStr} · ${timeStr}${data.rrule ? ' · Repeats' : ''}`;
+        calQuickAddFb.appendChild(summary);
+        calQuickAddFb.classList.remove('hidden');
+      } catch {
+        calQuickAddFb.classList.add('hidden');
+      }
+    }, 320);
+  });
+
   async function submitCalQuickAdd() {
     const text = calQuickAddInput.value.trim();
     if (!text) return;
     calQuickAddInput.value = '';
+    calQuickAddFb.classList.add('hidden');
+    clearTimeout(calNlpTimer);
     try {
       const res = await fetch('/nlp/parse', {
         method: 'POST',

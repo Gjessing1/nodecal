@@ -60,8 +60,11 @@
     <main id="view-container"></main>
 
     <div id="cal-quickadd" class="cal-quickadd hidden">
-      <input type="text" id="cal-quickadd-input" class="cal-quickadd-input" placeholder="Add event… e.g. Meeting tomorrow 14:00" autocomplete="off" spellcheck="false">
-      <button class="cal-quickadd-btn" id="cal-quickadd-submit" aria-label="Add">↵</button>
+      <div class="cal-quickadd-row">
+        <input type="text" id="cal-quickadd-input" class="cal-quickadd-input" placeholder="Add event… e.g. Meeting tomorrow 14:00" autocomplete="off" spellcheck="false">
+        <button class="cal-quickadd-btn" id="cal-quickadd-submit" aria-label="Add">↵</button>
+      </div>
+      <div class="nlp-feedback hidden" id="cal-quickadd-nlp-fb"></div>
     </div>
 
     <nav class="bottom-nav" id="bottom-nav"></nav>
