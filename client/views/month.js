@@ -1,6 +1,6 @@
 import { state, calendarById } from '../app/state.js';
 import { initDayDnd, initLongPressCreate, initSwipe } from '../components/dnd.js';
-import { localDateStr, getISOWeek } from '../app/utils.js';
+import { localDateStr, getISOWeek, weatherBadge } from '../app/utils.js';
 
 /**
  * @param {HTMLElement} container
@@ -143,6 +143,13 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, on
   const numSpan = document.createElement('span');
   numSpan.textContent = day.getDate();
   numWrap.appendChild(numSpan);
+  const wx = weatherBadge(localDateStr(day), state.weather);
+  if (wx && !isOther) {
+    const wxEl = document.createElement('span');
+    wxEl.className = 'month-weather';
+    wxEl.textContent = wx;
+    numWrap.appendChild(wxEl);
+  }
   numWrap.addEventListener('click', () => onDayClick && onDayClick(new Date(day)));
   cell.appendChild(numWrap);
 

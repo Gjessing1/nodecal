@@ -132,6 +132,16 @@ function renderForm() {
 
     <div id="s-categories-section"></div>
 
+    <div class="modal-section-label">Weather</div>
+    <div class="modal-field">
+      <label>Location for weather (met.no)</label>
+      <div style="display:flex;gap:var(--space-sm)">
+        <input type="text" id="s-weather-lat" value="${esc(cfg.weatherLat || '')}" placeholder="Latitude e.g. 59.91" style="flex:1">
+        <input type="text" id="s-weather-lon" value="${esc(cfg.weatherLon || '')}" placeholder="Longitude e.g. 10.75" style="flex:1">
+      </div>
+      <button type="button" id="s-weather-detect" class="btn btn-ghost" style="margin-top:var(--space-xs);font-size:var(--font-size-sm)">📍 Detect my location</button>
+    </div>
+
     <div class="modal-actions">
       <button class="btn btn-primary" id="s-save">Save</button>
       <button class="btn btn-ghost" id="s-cancel">Cancel</button>
@@ -144,6 +154,23 @@ function renderForm() {
 
   // Categories section — show all categories with hide/unhide controls
   renderCategoriesSection(sheet, cfg);
+
+  // Weather location detect button
+  const detectBtn = sheet.querySelector('#s-weather-detect');
+  if (detectBtn) {
+    detectBtn.addEventListener('click', () => {
+      if (!navigator.geolocation) { alert('Geolocation not supported by your browser'); return; }
+      detectBtn.textContent = '⏳ Detecting…';
+      navigator.geolocation.getCurrentPosition(pos => {
+        sheet.querySelector('#s-weather-lat').value = pos.coords.latitude.toFixed(4);
+        sheet.querySelector('#s-weather-lon').value = pos.coords.longitude.toFixed(4);
+        detectBtn.textContent = '✓ Location detected';
+      }, () => {
+        detectBtn.textContent = '📍 Detect my location';
+        alert('Location permission denied');
+      });
+    });
+  }
 
   sheet.querySelector('#s-save').addEventListener('click', handleSave);
   sheet.querySelector('#s-cancel').addEventListener('click', closeSettings);
@@ -323,6 +350,8 @@ async function handleSave() {
   const defaultEventDuration = parseInt(sheet.querySelector('#s-default-event-dur').value) || 60;
   const showWeekNumbers      = sheet.querySelector('#s-weeknums').checked;
   const dateFormat           = sheet.querySelector('#s-datefmt').value;
+  const weatherLat           = sheet.querySelector('#s-weather-lat').value.trim();
+  const weatherLon           = sheet.querySelector('#s-weather-lon').value.trim();
 
   const payload = {
     enabledViews, defaultView, timeFormat, weekStart,
@@ -331,6 +360,7 @@ async function handleSave() {
     taskSources: state.taskSources || [],
     defaultTaskSource: state.config.defaultTaskSource || '',
     defaultEventTime, defaultEventDuration, showWeekNumbers, dateFormat,
+    weatherLat, weatherLon,
   };
   if (defaultCalRaw) payload.defaultCalendar = defaultCalRaw;
 

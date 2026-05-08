@@ -1,5 +1,5 @@
 import { state, calendarById } from '../app/state.js';
-import { localDateStr, getISOWeek } from '../app/utils.js';
+import { localDateStr, getISOWeek, weatherBadge } from '../app/utils.js';
 import {
   buildTimeColumn, buildHourLines, buildEventBlock,
   buildCurrentTimeLine, updateCurrentTimeLine, getTotalHeight, timeToTop,
@@ -201,7 +201,8 @@ function buildDayHeaders(days, today) {
     );
     const cell = document.createElement('div');
     cell.className = 'week-day-header' + (day.toDateString() === today.toDateString() ? ' today' : '');
-    cell.innerHTML = `<span class="wdh-name">${day.toLocaleDateString('en-US',{weekday:'short'})}</span><span class="wdh-date">${day.getDate()}</span>${hasEvents ? '<span class="wdh-dot"></span>' : ''}`;
+    const wx = weatherBadge(localDateStr(day), state.weather);
+    cell.innerHTML = `<span class="wdh-name">${day.toLocaleDateString('en-US',{weekday:'short'})}</span><span class="wdh-date">${day.getDate()}</span>${hasEvents ? '<span class="wdh-dot"></span>' : ''}${wx ? `<span class="wdh-weather">${wx}</span>` : ''}`;
     row.appendChild(cell);
   }
   return row;

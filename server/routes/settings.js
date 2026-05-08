@@ -37,6 +37,7 @@ router.put('/settings', (req, res) => {
     'enableTasksView', 'showTasksOnCalendar', 'taskSortOrder', 'tasksCalDAVUrl',
     'hiddenCategories', 'taskSources', 'defaultTaskSource',
     'defaultEventTime', 'defaultEventDuration', 'showWeekNumbers', 'dateFormat',
+    'weatherLat', 'weatherLon',
   ];
   const toSave = {};
   for (const k of allowed) {

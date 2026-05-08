@@ -1,4 +1,4 @@
-import { state, setCalendars, setEvents, setTasks, setTaskSources, setConfig } from './state.js';
+import { state, setCalendars, setEvents, setTasks, setTaskSources, setWeather, setConfig } from './state.js';
 import { renderAgenda } from '../views/agenda.js';
 import { renderDay, destroyDay } from '../views/day.js';
 import { renderWeek, destroyWeek } from '../views/week.js';
@@ -17,8 +17,11 @@ const fab             = document.getElementById('fab');
 const calBtn          = document.getElementById('cal-btn');
 const settingsBtn     = document.getElementById('settings-btn');
 const bottomNav       = document.getElementById('bottom-nav');
-const calQuickAdd     = document.getElementById('cal-quickadd');
+const calQuickAdd      = document.getElementById('cal-quickadd');
 const calQuickAddInput = document.getElementById('cal-quickadd-input');
+const searchOverlay    = document.getElementById('search-overlay');
+const searchInput      = document.getElementById('search-input');
+const searchResults    = document.getElementById('search-results');
 
 const VIEW_META = {
   agenda: { icon: '≡', label: 'Agenda' },
@@ -142,6 +145,36 @@ async function loadTasks() {
   const [tasksRes, sourcesRes] = await Promise.all([fetch('/tasks'), fetch('/task-sources')]);
   if (tasksRes.ok) setTasks(await tasksRes.json());
   if (sourcesRes.ok) setTaskSources(await sourcesRes.json());
+}
+
+async function loadWeather() {
+  const lat = state.config.weatherLat;
+  const lon = state.config.weatherLon;
+  if (!lat || !lon) return;
+  try {
+    const res = await fetch(`/weather?lat=${lat}&lon=${lon}`);
+    if (res.ok) setWeather(await res.json());
+  } catch { /* weather is optional */ }
+}
+
+function detectAndLoadWeather() {
+  if (state.config.weatherLat && state.config.weatherLon) {
+    loadWeather();
+    return;
+  }
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(pos => {
+    const lat = pos.coords.latitude.toFixed(4);
+    const lon = pos.coords.longitude.toFixed(4);
+    setConfig({ weatherLat: lat, weatherLon: lon });
+    // Persist so subsequent loads skip the geolocation prompt
+    fetch('/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ weatherLat: lat, weatherLon: lon }),
+    }).catch(() => {});
+    loadWeather();
+  }, () => { /* permission denied — no weather */ });
 }
 
 // ── Sync ──────────────────────────────────────────────────
@@ -336,6 +369,90 @@ async function handleTaskSnooze(task) {
   }
 }
 
+function runSearch(query) {
+  const q = query.trim().toLowerCase();
+  searchResults.innerHTML = '';
+  if (q.length < 2) return;
+
+  const matches = [];
+
+  for (const ev of state.events) {
+    if (
+      ev.title?.toLowerCase().includes(q) ||
+      ev.description?.toLowerCase().includes(q) ||
+      ev.location?.toLowerCase().includes(q)
+    ) {
+      matches.push({ type: 'event', item: ev });
+    }
+  }
+  for (const task of state.tasks) {
+    if (
+      task.title?.toLowerCase().includes(q) ||
+      task.description?.toLowerCase().includes(q)
+    ) {
+      matches.push({ type: 'task', item: task });
+    }
+  }
+
+  if (!matches.length) {
+    const empty = document.createElement('p');
+    empty.className = 'search-empty';
+    empty.textContent = 'No results for "' + query + '"';
+    searchResults.appendChild(empty);
+    return;
+  }
+
+  // Sort: tasks first by due, events by start
+  matches.sort((a, b) => {
+    const aDate = a.type === 'task' ? (a.item.due || '') : (a.item.start || '');
+    const bDate = b.type === 'task' ? (b.item.due || '') : (b.item.start || '');
+    return aDate.localeCompare(bDate);
+  });
+
+  for (const { type, item } of matches.slice(0, 50)) {
+    const row = document.createElement('div');
+    row.className = 'search-result-row';
+
+    const icon = document.createElement('span');
+    icon.className = 'search-result-icon';
+    icon.textContent = type === 'task' ? '✓' : '▭';
+
+    const info = document.createElement('div');
+    info.className = 'search-result-info';
+
+    const title = document.createElement('div');
+    title.className = 'search-result-title';
+    title.textContent = item.title;
+
+    const sub = document.createElement('div');
+    sub.className = 'search-result-sub';
+    if (type === 'event') {
+      const d = new Date(item.start);
+      sub.textContent = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+      if (item.location) sub.textContent += ' · ' + item.location;
+    } else {
+      sub.textContent = item.due ? 'Due: ' + item.due : 'No due date';
+      if (item.description) sub.textContent += ' · ' + item.description.slice(0, 60);
+    }
+
+    info.appendChild(title);
+    info.appendChild(sub);
+    row.appendChild(icon);
+    row.appendChild(info);
+
+    row.addEventListener('click', () => {
+      searchOverlay.classList.add('hidden');
+      if (type === 'task') {
+        handleTaskEdit(item);
+      } else {
+        handleEventClick(item);
+      }
+    });
+
+    searchResults.appendChild(row);
+  }
+}
+
 async function handleTaskDelete(task) {
   try {
     const res = await fetch(`/tasks/${task.id}`, { method: 'DELETE' });
@@ -401,6 +518,17 @@ async function init() {
   calBtn.addEventListener('click', openDrawer);
   settingsBtn.addEventListener('click', openSettings);
 
+  // Search
+  document.getElementById('search-btn').addEventListener('click', () => {
+    searchOverlay.classList.remove('hidden');
+    searchInput.value = '';
+    searchResults.innerHTML = '';
+    searchInput.focus();
+  });
+  document.getElementById('search-close').addEventListener('click', () => searchOverlay.classList.add('hidden'));
+  searchOverlay.addEventListener('click', e => { if (e.target === searchOverlay) searchOverlay.classList.add('hidden'); });
+  searchInput.addEventListener('input', () => runSearch(searchInput.value));
+
   // Calendar quick-add bar
   async function submitCalQuickAdd() {
     const text = calQuickAddInput.value.trim();
@@ -452,6 +580,10 @@ async function init() {
     if (!loaded) return;
     buildNav();
     render();
+    // Weather: detect location and load asynchronously (doesn't block render)
+    detectAndLoadWeather();
+    // Refresh weather every hour
+    setInterval(() => { loadWeather().then(() => render()); }, 60 * 60 * 1000);
   } catch (err) {
     syncError.textContent = 'Failed to load: ' + err.message;
     syncError.classList.remove('hidden');

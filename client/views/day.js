@@ -1,5 +1,5 @@
 import { state, calendarById } from '../app/state.js';
-import { localDateStr, getISOWeek } from '../app/utils.js';
+import { localDateStr, getISOWeek, weatherBadge } from '../app/utils.js';
 import {
   buildTimeColumn, buildHourLines, buildEventBlock,
   buildCurrentTimeLine, updateCurrentTimeLine, getTotalHeight, timeToTop,
@@ -133,13 +133,15 @@ function buildNavBar(date, isToday, callbacks) {
 
   const fmt = d => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   const weekTag = state.config.showWeekNumbers ? ` · W${getISOWeek(date)}` : '';
+  const wx = weatherBadge(localDateStr(date), state.weather);
+  const wxTag = wx ? ` · ${wx}` : '';
 
   // Tap on title opens date picker
   const titleWrap = document.createElement('span');
   titleWrap.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer';
   const title = document.createElement('span');
   title.className = 'view-nav-title';
-  title.textContent = (isToday ? 'Today · ' + fmt(date) : fmt(date)) + weekTag;
+  title.textContent = (isToday ? 'Today · ' + fmt(date) : fmt(date)) + weekTag + wxTag;
   const pickerInput = document.createElement('input');
   pickerInput.type = 'date';
   pickerInput.style.cssText = 'position:absolute;opacity:0;pointer-events:none;width:1px;height:1px';

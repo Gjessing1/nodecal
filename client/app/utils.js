@@ -93,6 +93,19 @@ export function formatShortDate(date, format = 'dmy', includeYear = false) {
 }
 
 /**
+ * Return a compact weather badge string for a given date from state.weather.
+ * Returns '' if no weather data is available for that date.
+ * @param {string} dateStr - 'YYYY-MM-DD'
+ * @param {object|null} weather - state.weather
+ * @returns {string}  e.g. "⛅ 14°"
+ */
+export function weatherBadge(dateStr, weather) {
+  if (!weather?.daily?.[dateStr]) return '';
+  const d = weather.daily[dateStr];
+  return `${d.emoji} ${d.tempMax}°`;
+}
+
+/**
  * ISO 8601 week number for a given date.
  * @param {Date} date
  * @returns {number}

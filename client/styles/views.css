@@ -225,6 +225,22 @@
 }
 .week-allday-cell .allday-chip { width: 100%; box-sizing: border-box; font-size: 10px; }
 
+/* ── Weather badges ─────────────────────────────────────── */
+.wdh-weather {
+  display: block;
+  font-size: 10px;
+  color: var(--color-text-muted);
+  text-align: center;
+  line-height: 1;
+  margin-top: 1px;
+}
+.month-weather {
+  font-size: 9px;
+  color: var(--color-text-muted);
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
 /* ── Month DnD drop target ──────────────────────────────── */
 .month-day.dnd-over {
   background: var(--color-accent-light);

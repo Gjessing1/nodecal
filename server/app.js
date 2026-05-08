@@ -19,6 +19,7 @@ app.use(require('./routes/sync'));
 app.use(require('./routes/settings'));
 app.use(require('./routes/nlp'));
 app.use(require('./routes/tasks'));
+app.use(require('./routes/weather'));
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', version: process.env.npm_package_version, ...store.getSyncState() });
