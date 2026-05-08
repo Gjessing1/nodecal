@@ -54,7 +54,6 @@ export function renderAgenda(container, onEventClick, onTaskClick) {
     fragments.push(header);
   }
 
-  flushEmptyRun();
   container.replaceChildren(...fragments);
 }
 
