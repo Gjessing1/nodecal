@@ -67,6 +67,19 @@ export function toTimeInputValue(date, timezone = 'UTC') {
  * @param {string} timezone - IANA timezone
  * @returns {Date}
  */
+/**
+ * ISO 8601 week number for a given date.
+ * @param {Date} date
+ * @returns {number}
+ */
+export function getISOWeek(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const day = d.getUTCDay() || 7; // Mon=1 .. Sun=7
+  d.setUTCDate(d.getUTCDate() + 4 - day); // Thursday of this ISO week
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+}
+
 export function localToUTC(dateStr, timeStr, timezone) {
   // Treat the naive datetime as UTC to parse it, then compute the real offset.
   const naive = new Date(`${dateStr}T${timeStr}:00Z`);

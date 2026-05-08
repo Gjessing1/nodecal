@@ -86,6 +86,13 @@ function renderForm() {
       <input type="number" id="s-default-event-dur" value="${cfg.defaultEventDuration || 60}" min="15" max="480" step="15">
     </div>
 
+    <div class="modal-field">
+      <label class="settings-toggle">
+        <input type="checkbox" id="s-weeknums" ${cfg.showWeekNumbers ? 'checked' : ''}>
+        <span>Show week numbers (ISO 8601)</span>
+      </label>
+    </div>
+
     <div class="modal-section-label">Tasks</div>
 
     <div id="s-task-sources-section"></div>
@@ -300,6 +307,7 @@ async function handleSave() {
   const taskSortOrder        = sheet.querySelector('#s-tasks-sort').value;
   const defaultEventTime     = sheet.querySelector('#s-default-event-time').value || '09:00';
   const defaultEventDuration = parseInt(sheet.querySelector('#s-default-event-dur').value) || 60;
+  const showWeekNumbers      = sheet.querySelector('#s-weeknums').checked;
 
   const payload = {
     enabledViews, defaultView, timeFormat, weekStart,
@@ -307,7 +315,7 @@ async function handleSave() {
     hiddenCategories: state.config.hiddenCategories || [],
     taskSources: state.taskSources || [],
     defaultTaskSource: state.config.defaultTaskSource || '',
-    defaultEventTime, defaultEventDuration,
+    defaultEventTime, defaultEventDuration, showWeekNumbers,
   };
   if (defaultCalRaw) payload.defaultCalendar = defaultCalRaw;
 

@@ -1,5 +1,5 @@
 import { state, calendarById } from '../app/state.js';
-import { localDateStr } from '../app/utils.js';
+import { localDateStr, getISOWeek } from '../app/utils.js';
 import {
   buildTimeColumn, buildHourLines, buildEventBlock,
   buildCurrentTimeLine, updateCurrentTimeLine, getTotalHeight, timeToTop,
@@ -132,13 +132,14 @@ function buildNavBar(date, isToday, callbacks) {
   });
 
   const fmt = d => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const weekTag = state.config.showWeekNumbers ? ` · W${getISOWeek(date)}` : '';
 
   // Tap on title opens date picker
   const titleWrap = document.createElement('span');
   titleWrap.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer';
   const title = document.createElement('span');
   title.className = 'view-nav-title';
-  title.textContent = isToday ? 'Today · ' + fmt(date) : fmt(date);
+  title.textContent = (isToday ? 'Today · ' + fmt(date) : fmt(date)) + weekTag;
   const pickerInput = document.createElement('input');
   pickerInput.type = 'date';
   pickerInput.style.cssText = 'position:absolute;opacity:0;pointer-events:none;width:1px;height:1px';

@@ -5,6 +5,9 @@
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
 }
+.month-weekday-row.with-weeknum {
+  grid-template-columns: 28px repeat(7, 1fr);
+}
 .month-weekday-label {
   text-align: center;
   font-size: 11px;
@@ -14,6 +17,7 @@
   letter-spacing: 0.04em;
   padding: var(--space-xs) 0;
 }
+.month-weeknum-label { color: var(--color-accent); font-size: 10px; }
 
 .month-grid {
   display: grid;
@@ -21,6 +25,22 @@
   grid-template-rows: repeat(6, 1fr);
   flex: 1;
   overflow: hidden;
+}
+.month-grid.with-weeknum {
+  grid-template-columns: 28px repeat(7, 1fr);
+}
+
+.month-weeknum-cell {
+  font-size: 9px;
+  color: var(--color-accent);
+  font-weight: 600;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 4px;
+  border-bottom: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
 }
 
 .month-day {
@@ -30,7 +50,8 @@
   min-height: 72px;
   overflow: hidden;
 }
-.month-day:nth-child(7n) { border-right: none; }
+.month-grid:not(.with-weeknum) .month-day:nth-child(7n) { border-right: none; }
+.month-grid.with-weeknum .month-day:nth-child(7n) { border-right: none; }
 
 .month-day.other-month { opacity: 0.38; }
 

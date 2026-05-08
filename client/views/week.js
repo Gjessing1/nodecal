@@ -1,5 +1,5 @@
 import { state, calendarById } from '../app/state.js';
-import { localDateStr } from '../app/utils.js';
+import { localDateStr, getISOWeek } from '../app/utils.js';
 import {
   buildTimeColumn, buildHourLines, buildEventBlock,
   buildCurrentTimeLine, updateCurrentTimeLine, getTotalHeight, timeToTop,
@@ -156,9 +156,10 @@ function buildNavBar(wStart, callbacks) {
   });
 
   const fmt = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const weekNum = getISOWeek(wStart);
   const title = document.createElement('span');
   title.className = 'view-nav-title';
-  title.textContent = `${fmt(wStart)} – ${fmt(wEnd)}`;
+  title.textContent = `W${weekNum} · ${fmt(wStart)} – ${fmt(wEnd)}`;
 
   const todayBtn = document.createElement('button');
   todayBtn.className = 'nav-today-btn';

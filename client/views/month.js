@@ -1,6 +1,6 @@
 import { state, calendarById } from '../app/state.js';
 import { initDayDnd, initLongPressCreate, initSwipe } from '../components/dnd.js';
-import { localDateStr } from '../app/utils.js';
+import { localDateStr, getISOWeek } from '../app/utils.js';
 
 /**
  * @param {HTMLElement} container
@@ -79,8 +79,15 @@ function buildNavBar(year, month, onEventClick, onDayClick) {
 }
 
 function buildWeekDayHeader() {
+  const showWN = state.config.showWeekNumbers;
   const row = document.createElement('div');
-  row.className = 'month-weekday-row';
+  row.className = 'month-weekday-row' + (showWN ? ' with-weeknum' : '');
+  if (showWN) {
+    const wn = document.createElement('div');
+    wn.className = 'month-weekday-label month-weeknum-label';
+    wn.textContent = 'W';
+    row.appendChild(wn);
+  }
   for (const d of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']) {
     const cell = document.createElement('div');
     cell.className = 'month-weekday-label';
@@ -91,8 +98,9 @@ function buildWeekDayHeader() {
 }
 
 function buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick, onLongPress) {
+  const showWN = state.config.showWeekNumbers;
   const grid = document.createElement('div');
-  grid.className = 'month-grid';
+  grid.className = 'month-grid' + (showWN ? ' with-weeknum' : '');
 
   // Monday-anchored start of the first displayed week
   const firstOfMonth = new Date(year, month, 1);
@@ -110,6 +118,13 @@ function buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick, o
     const raw = new Date(start.getTime() + i * 86400000);
     // Re-anchor to local midnight so DST transitions don't produce 01:00 cells
     const day = new Date(raw.getFullYear(), raw.getMonth(), raw.getDate());
+    // Insert week number cell at start of each week row
+    if (showWN && i % 7 === 0) {
+      const wn = document.createElement('div');
+      wn.className = 'month-weeknum-cell';
+      wn.textContent = 'W' + getISOWeek(day);
+      grid.appendChild(wn);
+    }
     grid.appendChild(buildDayCell(day, month, today, monthEvents, onEventClick, onDayClick, onTasksClick, onLongPress));
   }
   return grid;

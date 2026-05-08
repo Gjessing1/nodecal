@@ -28,6 +28,7 @@ export const state = {
     defaultTaskSource: '',
     defaultEventTime: '09:00',
     defaultEventDuration: 60,
+    showWeekNumbers: false,
   },
 };
 
