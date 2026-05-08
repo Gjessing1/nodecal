@@ -1,6 +1,6 @@
 const {
   listCalendars, listEventEtags, fetchEventsByHref,
-  getEffectiveTasksUrl, listTaskEtags, fetchTasksByHref,
+  getEffectiveTasksSources, listTaskEtags, fetchTasksByHref,
 } = require('./client');
 const store = require('../cache/store');
 const config = require('../config');
@@ -107,9 +107,9 @@ async function syncIncremental() {
   }
 
   let tasksChanged = 0;
-  const tasksUrl = getEffectiveTasksUrl();
-  if (tasksUrl) {
-    tasksChanged = await syncTasksIncremental(tasksUrl, now);
+  const taskSources = getEffectiveTasksSources();
+  for (const src of taskSources) {
+    tasksChanged += await syncTasksIncremental(src.url, src.name, now);
   }
 
   if (totalChanged + tasksChanged > 0) store.flushToDisk();
@@ -128,12 +128,14 @@ async function syncIncremental() {
 /**
  * Incremental task sync against a single VTODO collection.
  * @param {string} tasksUrl
+ * @param {string} sourceName  display name of this source
  * @param {Date} now
  * @returns {Promise<number>} number of changes
  */
-async function syncTasksIncremental(tasksUrl, now) {
+async function syncTasksIncremental(tasksUrl, sourceName, now) {
   const serverEtags = await withRetry(() => listTaskEtags(tasksUrl));
-  const cached = store.getTasks();
+  // Only consider cached tasks that belong to this source
+  const cached = store.getTasks().filter(t => !t.source || t.source === tasksUrl);
   const serverMap = new Map(serverEtags.map(e => [e.href, e.etag]));
   let changed = 0;
 
@@ -161,7 +163,7 @@ async function syncTasksIncremental(tasksUrl, now) {
         syncLog(`local overwrite applied (task): uid=${task.uid} localModifiedAt=${existing.localModifiedAt}`);
       }
       syncLog(`fetched remote change (task): uid=${task.uid}`);
-      store.setTaskSilent({ ...task, lastSyncedAt: now.toISOString() });
+      store.setTaskSilent({ ...task, source: tasksUrl, sourceName, lastSyncedAt: now.toISOString() });
       changed++;
     }
   }

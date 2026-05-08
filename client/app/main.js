@@ -1,4 +1,4 @@
-import { state, setCalendars, setEvents, setTasks, setConfig } from './state.js';
+import { state, setCalendars, setEvents, setTasks, setTaskSources, setConfig } from './state.js';
 import { renderAgenda } from '../views/agenda.js';
 import { renderDay, destroyDay } from '../views/day.js';
 import { renderWeek, destroyWeek } from '../views/week.js';
@@ -103,8 +103,9 @@ async function loadAll() {
     fetch('/calendars'),
     fetch(`/events?from=${rangeFrom()}&to=${rangeTo()}`),
     fetch('/tasks'),
+    fetch('/task-sources'),
   ];
-  const [settingsRes, calRes, evRes, tasksRes] = await Promise.all(fetches);
+  const [settingsRes, calRes, evRes, tasksRes, sourcesRes] = await Promise.all(fetches);
   if (settingsRes.status === 401) { showLogin(); return false; }
 
   const settings = await settingsRes.json();
@@ -112,6 +113,7 @@ async function loadAll() {
   setCalendars(await calRes.json());
   setEvents(await evRes.json());
   if (tasksRes.ok) setTasks(await tasksRes.json());
+  if (sourcesRes.ok) setTaskSources(await sourcesRes.json());
 
   if (!state._viewInitialized) {
     const calViews = settings.enabledViews || ['agenda'];
@@ -128,8 +130,9 @@ async function loadEvents() {
 }
 
 async function loadTasks() {
-  const res = await fetch('/tasks');
-  if (res.ok) setTasks(await res.json());
+  const [tasksRes, sourcesRes] = await Promise.all([fetch('/tasks'), fetch('/task-sources')]);
+  if (tasksRes.ok) setTasks(await tasksRes.json());
+  if (sourcesRes.ok) setTaskSources(await sourcesRes.json());
 }
 
 // ── Sync ──────────────────────────────────────────────────
@@ -246,12 +249,12 @@ async function handleTaskStar(task) {
   }
 }
 
-async function handleTaskAdd({ title, due, categories }) {
+async function handleTaskAdd({ title, due, categories, source }) {
   try {
     const res = await fetch('/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, due, ...(categories?.length ? { categories } : {}) }),
+      body: JSON.stringify({ title, due, ...(categories?.length ? { categories } : {}), ...(source ? { source } : {}) }),
     });
     if (!res.ok) throw new Error((await res.json()).error);
     await loadTasks();

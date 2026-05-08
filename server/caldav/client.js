@@ -8,13 +8,42 @@ function syncLog(msg) {
 
 /**
  * Return the tasks CalDAV URL, preferring a runtime override from settings.json.
+ * Kept for backward compatibility with routes that only need the default URL.
  */
 function getEffectiveTasksUrl() {
+  const sources = getEffectiveTasksSources();
+  return sources[0]?.url || null;
+}
+
+/**
+ * Return all configured task sources as [{ url, name }].
+ * Falls back to single tasksCalDAVUrl for backward compatibility.
+ */
+function getEffectiveTasksSources() {
   try {
     const s = JSON.parse(fs.readFileSync('/config/settings.json', 'utf8'));
-    if (s.tasksCalDAVUrl) return s.tasksCalDAVUrl;
+    if (Array.isArray(s.taskSources) && s.taskSources.length) {
+      return s.taskSources.filter(src => src?.url);
+    }
+    if (s.tasksCalDAVUrl) return [{ url: s.tasksCalDAVUrl, name: 'Tasks' }];
   } catch { /* no override file */ }
-  return config.caldav.tasksUrl || null;
+  if (config.caldav.tasksUrl) return [{ url: config.caldav.tasksUrl, name: 'Tasks' }];
+  return [];
+}
+
+/**
+ * Return the default source URL for new tasks.
+ * Uses defaultTaskSource setting if set and valid; otherwise first source.
+ */
+function getDefaultTaskSourceUrl() {
+  try {
+    const s = JSON.parse(fs.readFileSync('/config/settings.json', 'utf8'));
+    const sources = getEffectiveTasksSources();
+    if (s.defaultTaskSource && sources.find(src => src.url === s.defaultTaskSource)) {
+      return s.defaultTaskSource;
+    }
+  } catch {}
+  return getEffectiveTasksUrl();
 }
 
 function fullUrlFromBase(href, base) {
@@ -301,6 +330,6 @@ async function deleteTask(href, etag = null) {
 
 module.exports = {
   listCalendars, listEventEtags, fetchEventsByHref, putEvent, deleteEvent,
-  getEffectiveTasksUrl,
+  getEffectiveTasksUrl, getEffectiveTasksSources, getDefaultTaskSourceUrl,
   listTaskEtags, fetchTasksByHref, putTask, deleteTask,
 };

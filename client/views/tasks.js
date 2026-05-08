@@ -82,6 +82,41 @@ export function renderTasks(container, callbacks) {
   controls.appendChild(leftFilters);
   controls.appendChild(rightControls);
 
+  // ── Source filter (only when multiple sources) ──────────────
+  let currentSourceFilter = '';
+  const sourceFilterRow = document.createElement('div');
+  sourceFilterRow.className = 'tasks-cat-filter-row';
+
+  function buildSourceFilter() {
+    sourceFilterRow.innerHTML = '';
+    const sources = state.taskSources;
+    if (!sources || sources.length < 2) return;
+
+    const label = document.createElement('span');
+    label.className = 'tasks-cat-filter-label';
+    label.textContent = 'Source:';
+    sourceFilterRow.appendChild(label);
+
+    const allChip = document.createElement('button');
+    allChip.className = 'tasks-cat-chip-filter' + (!currentSourceFilter ? ' active' : '');
+    allChip.textContent = 'All';
+    allChip.addEventListener('click', () => { currentSourceFilter = ''; buildSourceFilter(); rerender(); });
+    sourceFilterRow.appendChild(allChip);
+
+    for (const src of sources) {
+      const chip = document.createElement('button');
+      chip.className = 'tasks-cat-chip-filter' + (currentSourceFilter === src.url ? ' active' : '');
+      chip.textContent = src.name || src.url;
+      chip.addEventListener('click', () => {
+        currentSourceFilter = currentSourceFilter === src.url ? '' : src.url;
+        buildSourceFilter();
+        rerender();
+      });
+      sourceFilterRow.appendChild(chip);
+    }
+  }
+  buildSourceFilter();
+
   // ── Category filter row ─────────────────────────────────────
   const catFilterRow = document.createElement('div');
   catFilterRow.className = 'tasks-cat-filter-row';
@@ -122,15 +157,17 @@ export function renderTasks(container, callbacks) {
   list.className = 'tasks-list';
 
   function rerender() {
+    buildSourceFilter();
     buildCatFilter();
-    renderList(list, filterState, sortSel.value, currentGroupBy, currentFilterCat, callbacks);
+    renderList(list, filterState, sortSel.value, currentGroupBy, currentFilterCat, currentSourceFilter, callbacks);
   }
 
-  renderList(list, filterState, sortSel.value, currentGroupBy, currentFilterCat, callbacks);
+  renderList(list, filterState, sortSel.value, currentGroupBy, currentFilterCat, currentSourceFilter, callbacks);
 
   const quickAdd = buildQuickAdd(callbacks);
 
   wrap.appendChild(controls);
+  wrap.appendChild(sourceFilterRow);
   wrap.appendChild(catFilterRow);
   wrap.appendChild(list);
   wrap.appendChild(quickAdd);
@@ -144,13 +181,14 @@ export function focusTaskQuickAdd() {
 
 // ── List rendering ─────────────────────────────────────────
 
-function renderList(container, filterState, sortOrder, groupBy, filterCat, callbacks) {
+function renderList(container, filterState, sortOrder, groupBy, filterCat, filterSource, callbacks) {
   container.innerHTML = '';
 
   const hidden = state.config.hiddenCategories || [];
   let tasks = state.tasks.filter(t => filterState.showDone || t.status !== 'COMPLETED');
   if (filterState.starredOnly) tasks = tasks.filter(t => t.important);
   if (filterCat) tasks = tasks.filter(t => (t.categories || []).includes(filterCat));
+  if (filterSource) tasks = tasks.filter(t => t.source === filterSource);
   tasks = sortTasks(tasks, sortOrder);
 
   if (groupBy === 'category') {
@@ -372,6 +410,34 @@ function buildQuickAdd(callbacks) {
   dates.appendChild(pickBtn);
   dates.appendChild(datePicker);
 
+  // Source selector (only shown when multiple sources configured)
+  let selectedSource = null;
+  const sourceRow = document.createElement('div');
+  sourceRow.className = 'tasks-quickadd-dates';
+  sourceRow.style.display = 'none';
+
+  function buildSourceSelector() {
+    const sources = state.taskSources;
+    if (!sources || sources.length < 2) { sourceRow.style.display = 'none'; return; }
+    sourceRow.style.display = '';
+    sourceRow.innerHTML = '';
+    const lbl = document.createElement('span');
+    lbl.className = 'tasks-cat-filter-label';
+    lbl.textContent = 'To:';
+    sourceRow.appendChild(lbl);
+    for (const src of sources) {
+      const btn = document.createElement('button');
+      btn.className = 'tasks-date-shortcut' + (selectedSource === src.url ? ' active' : '');
+      btn.textContent = src.name || src.url;
+      btn.addEventListener('click', () => {
+        selectedSource = selectedSource === src.url ? null : src.url;
+        buildSourceSelector();
+      });
+      sourceRow.appendChild(btn);
+    }
+  }
+  buildSourceSelector();
+
   async function submit() {
     const raw = input.value.trim();
     if (!raw) return;
@@ -381,7 +447,8 @@ function buildQuickAdd(callbacks) {
     const due = selectedDue;
     selectedDue = null;
     updateActive();
-    await callbacks.onAdd({ title, due, categories: tags.length ? tags : undefined });
+    const source = selectedSource || undefined;
+    await callbacks.onAdd({ title, due, categories: tags.length ? tags : undefined, source });
   }
 
   const submitBtn = document.createElement('button');
@@ -397,6 +464,7 @@ function buildQuickAdd(callbacks) {
 
   bar.appendChild(row);
   bar.appendChild(dates);
+  bar.appendChild(sourceRow);
   return bar;
 }
 

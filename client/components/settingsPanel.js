@@ -1,4 +1,4 @@
-import { state, setConfig } from '../app/state.js';
+import { state, setConfig, setTaskSources } from '../app/state.js';
 import { getAllCategories } from '../app/taskUtils.js';
 
 const ALL_VIEWS = [
@@ -76,18 +76,7 @@ function renderForm() {
 
     <div class="modal-section-label">Tasks</div>
 
-    <div class="modal-field">
-      <label>Tasks calendar</label>
-      <select id="s-tasks-cal">
-        <option value="">— None —</option>
-        ${state.calendars.map(c => `<option value="${esc(c.id)}" ${cfg.tasksCalDAVUrl === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
-        <option value="__custom__" ${cfg.tasksCalDAVUrl && !state.calendars.find(c => c.id === cfg.tasksCalDAVUrl) ? 'selected' : ''}>Custom URL…</option>
-      </select>
-    </div>
-    <div class="modal-field" id="s-tasks-custom-row" style="${cfg.tasksCalDAVUrl && !state.calendars.find(c => c.id === cfg.tasksCalDAVUrl) ? '' : 'display:none'}">
-      <label>Custom CalDAV URL</label>
-      <input type="url" id="s-tasks-url" value="${esc(cfg.tasksCalDAVUrl || '')}" placeholder="https://…/user/tasks/">
-    </div>
+    <div id="s-task-sources-section"></div>
 
     <div class="modal-field">
       <label class="settings-toggle">
@@ -122,10 +111,8 @@ function renderForm() {
     </div>
   `;
 
-  sheet.querySelector('#s-tasks-cal').addEventListener('change', e => {
-    const customRow = sheet.querySelector('#s-tasks-custom-row');
-    customRow.style.display = e.target.value === '__custom__' ? '' : 'none';
-  });
+  // Task sources section (replaces single tasksCalDAVUrl)
+  renderTaskSourcesSection(sheet, cfg);
 
   // Categories section — show all categories with hide/unhide controls
   renderCategoriesSection(sheet, cfg);
@@ -135,6 +122,88 @@ function renderForm() {
   if (cfg.authEnabled) {
     sheet.querySelector('#s-logout').addEventListener('click', handleLogout);
   }
+}
+
+function renderTaskSourcesSection(sheet, cfg) {
+  const section = sheet.querySelector('#s-task-sources-section');
+  const sources = [...(state.taskSources || [])];
+  const defUrl  = cfg.defaultTaskSource || sources[0]?.url || '';
+
+  section.innerHTML = '';
+
+  const addRow = (src, idx) => {
+    const row = document.createElement('div');
+    row.className = 'modal-field';
+    row.style.cssText = 'gap:6px;margin-bottom:8px';
+
+    const urlRow = document.createElement('div');
+    urlRow.style.cssText = 'display:flex;gap:6px;align-items:center';
+
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'task-src-default';
+    radio.value = src.url;
+    radio.checked = src.url === defUrl || (!defUrl && idx === 0);
+    radio.title = 'Set as default source';
+    radio.addEventListener('change', () => {
+      state.config.defaultTaskSource = src.url;
+    });
+
+    const urlInput = document.createElement('input');
+    urlInput.type = 'url';
+    urlInput.value = src.url;
+    urlInput.placeholder = 'https://…/user/tasks/';
+    urlInput.style.flex = '1';
+    urlInput.addEventListener('change', () => { sources[idx].url = urlInput.value.trim(); });
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.value = src.name || '';
+    nameInput.placeholder = 'Name (optional)';
+    nameInput.style.cssText = 'width:100px;flex-shrink:0';
+    nameInput.addEventListener('input', () => { sources[idx].name = nameInput.value.trim() || src.url; });
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn btn-ghost';
+    removeBtn.style.cssText = 'padding:4px 8px;font-size:var(--font-size-sm);color:var(--color-danger);flex-shrink:0';
+    removeBtn.textContent = '×';
+    removeBtn.addEventListener('click', () => {
+      sources.splice(idx, 1);
+      state.taskSources = [...sources];
+      renderTaskSourcesSection(sheet, { ...cfg, defaultTaskSource: state.config.defaultTaskSource });
+    });
+
+    urlRow.appendChild(radio);
+    urlRow.appendChild(urlInput);
+    urlRow.appendChild(nameInput);
+    urlRow.appendChild(removeBtn);
+    row.appendChild(urlRow);
+    section.appendChild(row);
+  };
+
+  if (sources.length) {
+    const label = document.createElement('div');
+    label.className = 'modal-field';
+    label.innerHTML = '<label style="margin-bottom:4px">Task sources <span style="font-weight:normal;font-size:11px">(● = default for new tasks)</span></label>';
+    section.appendChild(label);
+    sources.forEach((src, i) => addRow(src, i));
+  }
+
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'btn btn-ghost';
+  addBtn.style.cssText = 'font-size:var(--font-size-sm);padding:4px 12px;margin-bottom:var(--space-md)';
+  addBtn.textContent = '+ Add task source';
+  addBtn.addEventListener('click', () => {
+    sources.push({ url: '', name: '' });
+    state.taskSources = [...sources];
+    renderTaskSourcesSection(sheet, cfg);
+  });
+  section.appendChild(addBtn);
+
+  // Persist sources to state so handleSave picks them up
+  state.taskSources = [...sources];
 }
 
 function renderCategoriesSection(sheet, cfg) {
@@ -214,11 +283,7 @@ async function handleSave() {
   const defaultView   = sheet.querySelector('#s-default').value;
   const timeFormat    = sheet.querySelector('#s-timefmt').value;
   const weekStart     = sheet.querySelector('#s-weekstart').value;
-  const defaultCalRaw = sheet.querySelector('#s-defcal').value;
-  const tasksCal = sheet.querySelector('#s-tasks-cal').value;
-  const tasksCalDAVUrl = tasksCal === '__custom__'
-    ? (sheet.querySelector('#s-tasks-url')?.value.trim() || '')
-    : tasksCal;
+  const defaultCalRaw        = sheet.querySelector('#s-defcal').value;
   const showTasksOnCalendar  = sheet.querySelector('#s-tasks-on-cal').checked;
   const taskSortOrder        = sheet.querySelector('#s-tasks-sort').value;
 
@@ -226,9 +291,10 @@ async function handleSave() {
     enabledViews, defaultView, timeFormat, weekStart,
     enableTasksView, showTasksOnCalendar, taskSortOrder,
     hiddenCategories: state.config.hiddenCategories || [],
+    taskSources: state.taskSources || [],
+    defaultTaskSource: state.config.defaultTaskSource || '',
   };
   if (defaultCalRaw) payload.defaultCalendar = defaultCalRaw;
-  if (tasksCalDAVUrl) payload.tasksCalDAVUrl = tasksCalDAVUrl;
 
   try {
     const res = await fetch('/settings', {
@@ -238,6 +304,7 @@ async function handleSave() {
     });
     if (!res.ok) throw new Error((await res.json()).error);
     setConfig({ ...payload, defaultCalendar: defaultCalRaw || null });
+    if (payload.taskSources) setTaskSources(payload.taskSources);
     closeSettings();
     onChangeCb();
   } catch (err) {

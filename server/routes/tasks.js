@@ -1,5 +1,5 @@
 const { Router } = require('express');
-const { putTask, deleteTask, getEffectiveTasksUrl } = require('../caldav/client');
+const { putTask, deleteTask, getEffectiveTasksUrl, getDefaultTaskSourceUrl, getEffectiveTasksSources } = require('../caldav/client');
 const { serializeTask } = require('../caldav/parser');
 const { computeNextDue } = require('../caldav/recurrence');
 const store = require('../cache/store');
@@ -12,16 +12,24 @@ router.get('/tasks', (req, res) => {
   res.json(store.getTasks().map(toApiShape));
 });
 
+// ── GET /task-sources ─────────────────────────────────────
+
+router.get('/task-sources', (req, res) => {
+  res.json(getEffectiveTasksSources());
+});
+
 // ── POST /tasks ───────────────────────────────────────────
 
 router.post('/tasks', async (req, res) => {
-  const tasksUrl = getEffectiveTasksUrl();
-  if (!tasksUrl) return res.status(503).json({ error: 'Tasks CalDAV URL not configured' });
+  const sources = getEffectiveTasksSources();
+  if (!sources.length) return res.status(503).json({ error: 'Tasks CalDAV URL not configured' });
+
+  const { title, due, description, categories, rrule, xRecurringType, xRecurringInterval, source } = req.body;
+  if (!title) return res.status(400).json({ error: 'title required' });
+
+  const targetSrc = sources.find(s => s.url === source) || sources[0];
 
   try {
-    const { title, due, description, categories, rrule, xRecurringType, xRecurringInterval } = req.body;
-    if (!title) return res.status(400).json({ error: 'title required' });
-
     const uid = crypto.randomUUID();
     const now = new Date().toISOString();
     const task = {
@@ -37,9 +45,11 @@ router.post('/tasks', async (req, res) => {
       xRecurringType: xRecurringType || null,
       xRecurringInterval: xRecurringInterval || null,
       createdAt: now,
+      source: targetSrc.url,
+      sourceName: targetSrc.name,
     };
     const ics = serializeTask(task);
-    const { href, etag } = await putTask(tasksUrl, uid, ics);
+    const { href, etag } = await putTask(targetSrc.url, uid, ics);
     const stored = { ...task, href, etag, localModifiedAt: now, lastSyncedAt: now };
     store.setTask(stored);
     res.status(201).json(toApiShape(stored));
@@ -157,6 +167,8 @@ function toApiShape(task) {
     recurringInterval: task.xRecurringInterval || null,
     rrule: task.rrule || null,
     createdAt: task.createdAt || null,
+    source: task.source || null,
+    sourceName: task.sourceName || null,
   };
 }
 
