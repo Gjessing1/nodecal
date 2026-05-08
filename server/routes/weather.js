@@ -37,7 +37,8 @@ const SYMBOL_EMOJI = {
   lightsleet:                        '🌧️',
   lightsleetshowers:                 '🌧️',
   lightsleetandthunder:              '⛈️',
-  lightssleetshowersandthunder:      '⛈️', // met.no typo variant (double s)
+  lightsleetshowersandthunder:       '⛈️', // correct spelling (future API version)
+  lightssleetshowersandthunder:      '⛈️', // current API typo (extra 's' after 'light')
   // Sleet
   sleet:                             '🌧️',
   sleetshowers:                      '🌧️',
@@ -52,7 +53,8 @@ const SYMBOL_EMOJI = {
   lightsnow:                         '🌨️',
   lightsnowshowers:                  '🌨️',
   lightsnowandthunder:               '⛈️',
-  lightssnowshowersandthunder:       '⛈️', // met.no typo variant (double s)
+  lightsnowshowersandthunder:        '⛈️', // correct spelling (future API version)
+  lightssnowshowersandthunder:       '⛈️', // current API typo (extra 's' after 'light')
   // Snow
   snow:                              '❄️',
   snowshowers:                       '🌨️',
