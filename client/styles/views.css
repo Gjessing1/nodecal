@@ -82,7 +82,7 @@
 .internal-scroll .grid-scroll { min-height: 0; }
 
 /* ── Time grid shared ───────────────────────────────────── */
-.grid-scroll { flex: 1; overflow-y: auto; }
+.grid-scroll { flex: 1; overflow-y: auto; scrollbar-gutter: stable; }
 
 .day-grid, .week-grid {
   display: flex;
@@ -223,7 +223,7 @@
   padding: 2px;
   border-left: 1px solid var(--color-border);
 }
-.week-allday-cell .allday-chip { max-width: 100%; font-size: 10px; }
+.week-allday-cell .allday-chip { width: 100%; box-sizing: border-box; font-size: 10px; }
 
 /* ── Month DnD drop target ──────────────────────────────── */
 .month-day.dnd-over {
