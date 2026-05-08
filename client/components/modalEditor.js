@@ -83,7 +83,7 @@ function buildTimeWheel(id, date, timezone = 'UTC') {
   return pair;
 }
 
-let overlay, sheet, onSaveCb, onDeleteCb;
+let overlay, sheet, onSaveCb, onDeleteCb, onDuplicateCb;
 
 export function initModal() {
   overlay = document.getElementById('modal-overlay');
@@ -99,6 +99,7 @@ export function initModal() {
 export function openNewEventModal(defaultDate, onSave) {
   onSaveCb = onSave;
   onDeleteCb = null;
+  onDuplicateCb = null;
   renderForm(null, defaultDate);
   overlay.classList.remove('hidden');
 }
@@ -107,11 +108,13 @@ export function openNewEventModal(defaultDate, onSave) {
  * Open the modal for editing an existing event.
  * @param {object} event
  * @param {function(data): void} onSave
- * @param {function(id): void} onDelete
+ * @param {function(event, scope): void} onDelete
+ * @param {function(event): void} [onDuplicate]
  */
-export function openEditEventModal(event, onSave, onDelete) {
+export function openEditEventModal(event, onSave, onDelete, onDuplicate) {
   onSaveCb = onSave;
   onDeleteCb = onDelete;
+  onDuplicateCb = onDuplicate || null;
   renderForm(event, null);
   overlay.classList.remove('hidden');
 }
@@ -120,11 +123,23 @@ export function closeModal() {
   overlay.classList.add('hidden');
 }
 
+function computeDefaultStart(date, tz) {
+  const todayStr = toDateInputValue(new Date(), tz);
+  const dateStr  = toDateInputValue(date, tz);
+  if (dateStr === todayStr) {
+    const rounded = Math.ceil(Date.now() / (15 * 60000)) * (15 * 60000);
+    return new Date(rounded);
+  }
+  const t = state.config.defaultEventTime || '09:00';
+  return localToUTC(dateStr, t, tz);
+}
+
 function renderForm(event, defaultDate) {
   const isNew = !event;
-  const start = event ? new Date(event.start) : (defaultDate || new Date());
-  const end = event ? new Date(event.end) : new Date(start.getTime() + 3600000);
   const tz = state.config.timezone;
+  const durMs = (state.config.defaultEventDuration || 60) * 60000;
+  const start = event ? new Date(event.start) : computeDefaultStart(defaultDate || new Date(), tz);
+  const end = event ? new Date(event.end) : new Date(start.getTime() + durMs);
   // For all-day events, slice the UTC date string directly — never convert through local timezone.
   const allDayDateVal = event?.allDay ? event.start.slice(0, 10) : toDateInputValue(start, tz);
   const is24h = state.config.timeFormat === '24h';
@@ -187,6 +202,7 @@ function renderForm(event, defaultDate) {
     </div>
     <div class="modal-actions">
       <button class="btn btn-primary" id="f-save">Save</button>
+      ${!isNew ? '<button class="btn btn-ghost" id="f-duplicate">Duplicate</button>' : ''}
       ${!isNew ? '<button class="btn btn-danger" id="f-delete">Delete</button>' : ''}
       <button class="btn btn-ghost" id="f-cancel">Cancel</button>
     </div>
@@ -251,6 +267,13 @@ function renderForm(event, defaultDate) {
       closeModal();
       onDeleteCb(event, scope);
     });
+    const dupBtn = sheet.querySelector('#f-duplicate');
+    if (dupBtn) {
+      dupBtn.addEventListener('click', () => {
+        closeModal();
+        if (onDuplicateCb) onDuplicateCb(event);
+      });
+    }
   }
   if (isNew) sheet.querySelector('#f-title').focus();
 }
@@ -310,11 +333,17 @@ async function applyNlp(text) {
     sheet.querySelector('#f-title').value = data.title;
     const start = new Date(data.start);
     const end = new Date(data.end);
+    const tz = state.config.timezone;
     if (!data.allDay) {
-      sheet.querySelector('#f-start-date').value = toDateInputValue(start);
-      sheet.querySelector('#f-end-date').value = toDateInputValue(end);
-      sheet.querySelector('#f-start-time').value = toTimeInputValue(start);
-      sheet.querySelector('#f-end-time').value = toTimeInputValue(end);
+      sheet.querySelector('#f-start-date').value = toDateInputValue(start, tz);
+      sheet.querySelector('#f-end-date').value = toDateInputValue(end, tz);
+      const startTimeVal = toTimeInputValue(start, tz);
+      const endTimeVal   = toTimeInputValue(end, tz);
+      // Update both <input type="time"> and the wheel hidden input (24h mode)
+      const stEl = sheet.querySelector('#f-start-time');
+      const etEl = sheet.querySelector('#f-end-time');
+      if (stEl) stEl.value = startTimeVal;
+      if (etEl) etEl.value = endTimeVal;
       sheet.querySelector('#f-allday').checked = false;
       sheet.querySelector('#allday-date-row').style.display = 'none';
       sheet.querySelector('#time-row').style.display = '';

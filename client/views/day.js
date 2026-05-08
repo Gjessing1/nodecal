@@ -4,7 +4,8 @@ import {
   buildTimeColumn, buildHourLines, buildEventBlock,
   buildCurrentTimeLine, updateCurrentTimeLine, getTotalHeight, timeToTop,
 } from '../components/timeGrid.js';
-import { initDnd, initSwipe } from '../components/dnd.js';
+import { initDnd, initSwipe, initLongPressCreate } from '../components/dnd.js';
+import { HOUR_HEIGHT } from '../components/timeGrid.js';
 
 let timerId = null;
 let _container = null;
@@ -17,7 +18,7 @@ let _container = null;
 export function renderDay(container, callbacks) {
   _container = container;
   container.classList.add('internal-scroll');
-  const { onEventClick, onEventMove, onEventResize, onTaskClick } = callbacks;
+  const { onEventClick, onEventMove, onEventResize, onTaskClick, onLongPress } = callbacks;
   if (timerId) { clearInterval(timerId); timerId = null; }
 
   const date = state.selectedDate;
@@ -93,6 +94,20 @@ export function renderDay(container, callbacks) {
     () => { state.selectedDate = new Date(dayStart.getTime() - 86400000); renderDay(container, callbacks); },
     () => { state.selectedDate = new Date(dayStart.getTime() + 86400000); renderDay(container, callbacks); },
   );
+
+  // Long-press on empty time grid → create event at that time
+  if (onLongPress) {
+    initLongPressCreate(eventsCol, {
+      skipSelector: '.event-block',
+      onLongPress(clientX, clientY) {
+        const rect = eventsCol.getBoundingClientRect();
+        const y = clientY - rect.top + scroll.scrollTop;
+        const totalMinutes = Math.round(y / HOUR_HEIGHT * 60 / 15) * 15;
+        const eventDate = new Date(dayStart.getTime() + Math.min(Math.max(totalMinutes, 0), 23 * 60) * 60000);
+        onLongPress(eventDate);
+      },
+    });
+  }
 
   // Always scroll to a useful time: current time for today, 8 AM for other days
   requestAnimationFrame(() => {

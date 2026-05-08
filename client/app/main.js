@@ -10,13 +10,15 @@ import { initSettingsPanel, openSettings } from '../components/settingsPanel.js'
 import { initInstallPrompt } from './installPrompt.js';
 import { initTheme } from './theme.js';
 
-const viewContainer = document.getElementById('view-container');
-const syncBtn       = document.getElementById('sync-btn');
-const syncError     = document.getElementById('sync-error');
-const fab           = document.getElementById('fab');
-const calBtn        = document.getElementById('cal-btn');
-const settingsBtn   = document.getElementById('settings-btn');
-const bottomNav     = document.getElementById('bottom-nav');
+const viewContainer   = document.getElementById('view-container');
+const syncBtn         = document.getElementById('sync-btn');
+const syncError       = document.getElementById('sync-error');
+const fab             = document.getElementById('fab');
+const calBtn          = document.getElementById('cal-btn');
+const settingsBtn     = document.getElementById('settings-btn');
+const bottomNav       = document.getElementById('bottom-nav');
+const calQuickAdd     = document.getElementById('cal-quickadd');
+const calQuickAddInput = document.getElementById('cal-quickadd-input');
 
 const VIEW_META = {
   agenda: { icon: '≡', label: 'Agenda' },
@@ -66,6 +68,7 @@ const viewCallbacks = {
   onEventMove:   handleEventMove,
   onEventResize: handleEventResize,
   onTaskClick:   handleTaskEdit,
+  onLongPress:   handleLongPressCreate,
 };
 
 const taskCallbacks = {
@@ -79,10 +82,12 @@ const taskCallbacks = {
 function render() {
   destroyDay();
   destroyWeek();
+  // Show/hide calendar quick-add bar (not shown in tasks view which has its own)
+  calQuickAdd.classList.toggle('hidden', state.activeView === 'tasks');
   if      (state.activeView === 'tasks') renderTasks(viewContainer, taskCallbacks);
   else if (state.activeView === 'day')   renderDay(viewContainer, viewCallbacks);
   else if (state.activeView === 'week')  renderWeek(viewContainer, viewCallbacks);
-  else if (state.activeView === 'month') renderMonth(viewContainer, handleEventClick, handleDayClick, handleEventMove, () => switchView('tasks'));
+  else if (state.activeView === 'month') renderMonth(viewContainer, handleEventClick, handleDayClick, handleEventMove, () => switchView('tasks'), handleLongPressCreate);
   else                                   renderAgenda(viewContainer, handleEventClick, handleTaskEdit);
 }
 
@@ -158,7 +163,23 @@ async function handleSync() {
 // ── Event CRUD ────────────────────────────────────────────
 
 function handleEventClick(event) {
-  openEditEventModal(event, data => saveEvent(event.id, data), (ev, scope) => deleteEvent(ev, scope));
+  openEditEventModal(event, data => saveEvent(event.id, data), (ev, scope) => deleteEvent(ev, scope), handleDuplicateEvent);
+}
+
+function handleLongPressCreate(date) {
+  openNewEventModal(date, data => saveEvent(null, data));
+}
+
+function handleDuplicateEvent(event) {
+  const copy = {
+    title: event.title + ' (copy)',
+    start: event.start,
+    end: event.end,
+    allDay: event.allDay,
+    calendarId: event.calendarId,
+    description: event.description || '',
+  };
+  openNewEventModal(new Date(event.start), data => saveEvent(null, { ...copy, ...data }));
 }
 
 function handleEventMove(eventId, day, startMin) {
@@ -351,6 +372,45 @@ async function init() {
   syncBtn.addEventListener('click', handleSync);
   calBtn.addEventListener('click', openDrawer);
   settingsBtn.addEventListener('click', openSettings);
+
+  // Calendar quick-add bar
+  async function submitCalQuickAdd() {
+    const text = calQuickAddInput.value.trim();
+    if (!text) return;
+    calQuickAddInput.value = '';
+    try {
+      const res = await fetch('/nlp/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      if (data.parsed) {
+        await saveEvent(null, {
+          title: data.title,
+          start: data.start,
+          end: data.end,
+          allDay: data.allDay,
+          calendarId: state.config.defaultCalendar || state.calendars[0]?.id,
+          description: '',
+          ...(data.rrule ? { rrule: data.rrule } : {}),
+        });
+      } else {
+        // NLP didn't parse — open modal with just the title pre-filled
+        const d = state.selectedDate || new Date();
+        openNewEventModal(d, eventData => saveEvent(null, eventData));
+        setTimeout(() => {
+          document.getElementById('f-title').value = text;
+        }, 50);
+      }
+    } catch {
+      // On error, open modal
+      openNewEventModal(state.selectedDate || new Date(), data => saveEvent(null, data));
+    }
+  }
+  calQuickAddInput.addEventListener('keydown', e => { if (e.key === 'Enter') submitCalQuickAdd(); });
+  document.getElementById('cal-quickadd-submit').addEventListener('click', submitCalQuickAdd);
+
   fab.addEventListener('click', () => {
     if (state.activeView === 'tasks') {
       focusTaskQuickAdd();

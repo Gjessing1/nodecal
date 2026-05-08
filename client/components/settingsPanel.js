@@ -74,6 +74,18 @@ function renderForm() {
       </select>
     </div>
 
+    <div class="modal-section-label">Events</div>
+
+    <div class="modal-field">
+      <label>Default event time (future dates)</label>
+      <input type="time" id="s-default-event-time" value="${cfg.defaultEventTime || '09:00'}">
+    </div>
+
+    <div class="modal-field">
+      <label>Default event duration (minutes)</label>
+      <input type="number" id="s-default-event-dur" value="${cfg.defaultEventDuration || 60}" min="15" max="480" step="15">
+    </div>
+
     <div class="modal-section-label">Tasks</div>
 
     <div id="s-task-sources-section"></div>
@@ -286,6 +298,8 @@ async function handleSave() {
   const defaultCalRaw        = sheet.querySelector('#s-defcal').value;
   const showTasksOnCalendar  = sheet.querySelector('#s-tasks-on-cal').checked;
   const taskSortOrder        = sheet.querySelector('#s-tasks-sort').value;
+  const defaultEventTime     = sheet.querySelector('#s-default-event-time').value || '09:00';
+  const defaultEventDuration = parseInt(sheet.querySelector('#s-default-event-dur').value) || 60;
 
   const payload = {
     enabledViews, defaultView, timeFormat, weekStart,
@@ -293,6 +307,7 @@ async function handleSave() {
     hiddenCategories: state.config.hiddenCategories || [],
     taskSources: state.taskSources || [],
     defaultTaskSource: state.config.defaultTaskSource || '',
+    defaultEventTime, defaultEventDuration,
   };
   if (defaultCalRaw) payload.defaultCalendar = defaultCalRaw;
 

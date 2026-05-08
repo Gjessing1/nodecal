@@ -26,6 +26,8 @@ export const state = {
     tasksCalDAVUrl: '',
     hiddenCategories: [],
     defaultTaskSource: '',
+    defaultEventTime: '09:00',
+    defaultEventDuration: 60,
   },
 };
 

@@ -36,6 +36,7 @@ router.put('/settings', (req, res) => {
     'defaultView', 'timeFormat', 'weekStart', 'enabledViews', 'defaultCalendar',
     'enableTasksView', 'showTasksOnCalendar', 'taskSortOrder', 'tasksCalDAVUrl',
     'hiddenCategories', 'taskSources', 'defaultTaskSource',
+    'defaultEventTime', 'defaultEventDuration',
   ];
   const toSave = {};
   for (const k of allowed) {

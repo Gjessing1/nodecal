@@ -178,6 +178,38 @@ export function initDayDnd(containerEl, { chipSelector, daySelector, onMove }) {
  * Detect horizontal swipe on a scroll container.
  * Only triggers if horizontal motion dominates and vertical scroll didn't happen.
  */
+/**
+ * Detect a long-press on an element (for creating new events by pressing on empty space).
+ * Fires onLongPress(clientX, clientY) after LONG_PRESS_MS if pointer hasn't moved.
+ * @param {HTMLElement} el
+ * @param {{ onLongPress: function, skipSelector?: string }} opts
+ */
+export function initLongPressCreate(el, { onLongPress, skipSelector }) {
+  let timer = null;
+  let startX = 0, startY = 0;
+  const MOVE_TOL = 8;
+
+  el.addEventListener('pointerdown', e => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    if (skipSelector && e.target.closest(skipSelector)) return;
+    startX = e.clientX;
+    startY = e.clientY;
+    timer = setTimeout(() => {
+      timer = null;
+      onLongPress(e.clientX, e.clientY);
+    }, LONG_PRESS_MS);
+  });
+
+  const cancel = () => { clearTimeout(timer); timer = null; };
+
+  el.addEventListener('pointermove', e => {
+    if (!timer) return;
+    if (Math.abs(e.clientX - startX) > MOVE_TOL || Math.abs(e.clientY - startY) > MOVE_TOL) cancel();
+  });
+  el.addEventListener('pointerup', cancel);
+  el.addEventListener('pointercancel', cancel);
+}
+
 export function initSwipe(el, onPrev, onNext) {
   let startX, startY, startScrollTop;
   el.addEventListener('touchstart', e => {

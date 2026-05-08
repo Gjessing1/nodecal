@@ -102,7 +102,37 @@ input, textarea, select {
 .app-header .sync-btn:hover { background: var(--color-surface); }
 .app-header .sync-btn.syncing { animation: spin 1s linear infinite; }
 
-#view-container { flex: 1; overflow-y: auto; padding-bottom: var(--space-xl); }
+#view-container { flex: 1; overflow-y: auto; padding-bottom: var(--space-xl); min-height: 0; }
+
+/* ── Calendar quick-add bar ─────────────────────────────── */
+.cal-quickadd {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg);
+  flex-shrink: 0;
+}
+.cal-quickadd.hidden { display: none; }
+.cal-quickadd-input {
+  flex: 1;
+  border-radius: var(--radius-md);
+  padding: 10px var(--space-md);
+  font-size: var(--font-size-md);
+}
+.cal-quickadd-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
 
 /* ── Agenda view ────────────────────────────────────────── */
 .agenda-group { padding: 0 var(--space-md); }

@@ -5,7 +5,8 @@ import {
   buildCurrentTimeLine, updateCurrentTimeLine, getTotalHeight, timeToTop,
   TIME_COL_WIDTH,
 } from '../components/timeGrid.js';
-import { initDnd, initSwipe } from '../components/dnd.js';
+import { initDnd, initSwipe, initLongPressCreate } from '../components/dnd.js';
+import { HOUR_HEIGHT } from '../components/timeGrid.js';
 
 let timerId = null;
 let _container = null;
@@ -28,7 +29,7 @@ function weekStart(date) {
 export function renderWeek(container, callbacks) {
   _container = container;
   container.classList.add('internal-scroll');
-  const { onEventClick, onEventMove, onEventResize } = callbacks;
+  const { onEventClick, onEventMove, onEventResize, onLongPress } = callbacks;
   if (timerId) { clearInterval(timerId); timerId = null; }
 
   const wStart = weekStart(state.selectedDate);
@@ -111,6 +112,24 @@ export function renderWeek(container, callbacks) {
     () => { state.selectedDate = new Date(wStart.getTime() - 7 * 86400000); renderWeek(container, callbacks); },
     () => { state.selectedDate = new Date(wStart.getTime() + 7 * 86400000); renderWeek(container, callbacks); },
   );
+
+  // Long-press on empty time grid → create event at that day/time
+  if (onLongPress) {
+    initLongPressCreate(grid, {
+      skipSelector: '.event-block',
+      onLongPress(clientX, clientY) {
+        const gridRect = grid.getBoundingClientRect();
+        const x = clientX - gridRect.left - TIME_COL_WIDTH;
+        const colW = (gridRect.width - TIME_COL_WIDTH) / 7;
+        const dayIdx = Math.max(0, Math.min(6, Math.floor(x / colW)));
+        const y = clientY - gridRect.top + scroll.scrollTop;
+        const totalMinutes = Math.round(y / HOUR_HEIGHT * 60 / 15) * 15;
+        const day = days[dayIdx];
+        const eventDate = new Date(day.getTime() + Math.min(Math.max(totalMinutes, 0), 23 * 60) * 60000);
+        onLongPress(eventDate);
+      },
+    });
+  }
 
   // Scroll to current time
   requestAnimationFrame(() => {

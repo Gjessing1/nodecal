@@ -1,5 +1,5 @@
 import { state, calendarById } from '../app/state.js';
-import { initDayDnd } from '../components/dnd.js';
+import { initDayDnd, initLongPressCreate } from '../components/dnd.js';
 import { localDateStr } from '../app/utils.js';
 
 /**
@@ -8,8 +8,9 @@ import { localDateStr } from '../app/utils.js';
  * @param {function(Date): void} onDayClick
  * @param {function(id, day, startMin): void} onEventMove
  * @param {function(): void} [onTasksClick] - called when "N tasks" pill is clicked
+ * @param {function(Date): void} [onLongPress] - called with the day Date on long-press
  */
-export function renderMonth(container, onEventClick, onDayClick, onEventMove, onTasksClick) {
+export function renderMonth(container, onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress) {
   const anchor = state.selectedDate;
   const year = anchor.getFullYear();
   const month = anchor.getMonth();
@@ -18,7 +19,7 @@ export function renderMonth(container, onEventClick, onDayClick, onEventMove, on
   container.innerHTML = '';
   container.appendChild(buildNavBar(year, month, onEventClick, onDayClick));
   container.appendChild(buildWeekDayHeader());
-  const grid = buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick);
+  const grid = buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick, onLongPress);
   container.appendChild(grid);
 
   if (onEventMove) {
@@ -83,7 +84,7 @@ function buildWeekDayHeader() {
   return row;
 }
 
-function buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick) {
+function buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick, onLongPress) {
   const grid = document.createElement('div');
   grid.className = 'month-grid';
 
@@ -103,12 +104,12 @@ function buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick) {
     const raw = new Date(start.getTime() + i * 86400000);
     // Re-anchor to local midnight so DST transitions don't produce 01:00 cells
     const day = new Date(raw.getFullYear(), raw.getMonth(), raw.getDate());
-    grid.appendChild(buildDayCell(day, month, today, monthEvents, onEventClick, onDayClick, onTasksClick));
+    grid.appendChild(buildDayCell(day, month, today, monthEvents, onEventClick, onDayClick, onTasksClick, onLongPress));
   }
   return grid;
 }
 
-function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, onTasksClick) {
+function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, onTasksClick, onLongPress) {
   const isToday = day.toDateString() === today.toDateString();
   const isOther = day.getMonth() !== curMonth;
 
@@ -159,6 +160,14 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, on
     }
     cell.appendChild(pill);
   }
+
+  if (onLongPress) {
+    initLongPressCreate(cell, {
+      skipSelector: '.month-event-chip,.month-more,.month-task-pill,.month-day-num',
+      onLongPress() { onLongPress(new Date(day)); },
+    });
+  }
+
   return cell;
 }
 
