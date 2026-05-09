@@ -2,6 +2,12 @@ const chrono = require('chrono-node');
 
 // Norwegian → English substitutions applied before parsing
 const NO_TO_EN = [
+  // "om N dager/uker/måneder" → "in N days/weeks/months" (must come before singular forms)
+  [/\bom\s+(\d+)\s+dag(?:er)?\b/gi, (_, n) => `in ${n} day${n==='1'?'':'s'}`],
+  [/\bom\s+(\d+)\s+uke(?:r)?\b/gi,  (_, n) => `in ${n} week${n==='1'?'':'s'}`],
+  [/\bom\s+(\d+)\s+m[åa]ned(?:er)?\b/gi, (_, n) => `in ${n} month${n==='1'?'':'s'}`],
+  [/\bi overmorgen\b/gi,        'day after tomorrow'],
+  [/\biovermorgen\b/gi,         'day after tomorrow'],
   [/\bi morgen\b/gi,          'tomorrow'],
   [/\bimorgen\b/gi,           'tomorrow'],
   [/\bi dag\b/gi,             'today'],
@@ -68,7 +74,7 @@ const RRULE_TASK = [
 
 function translateNorwegian(text) {
   let t = text;
-  for (const [re, en] of NO_TO_EN) t = t.replace(re, en);
+  for (const [re, en] of NO_TO_EN) t = t.replace(re, typeof en === 'function' ? (m, ...args) => en(m, ...args) : en);
   return t;
 }
 

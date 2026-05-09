@@ -102,6 +102,13 @@ function renderForm() {
       </label>
     </div>
 
+    <div class="modal-field">
+      <label class="settings-toggle">
+        <input type="checkbox" id="s-weekend-bg" ${cfg.showWeekendBg !== false ? 'checked' : ''}>
+        <span>Highlight weekends in month view</span>
+      </label>
+    </div>
+
     <div class="modal-section-label">Tasks</div>
 
     <div id="s-task-sources-section"></div>
@@ -141,9 +148,15 @@ function renderForm() {
       </div>
       <button type="button" id="s-weather-detect" class="btn btn-ghost" style="margin-top:var(--space-xs);font-size:var(--font-size-sm)">📍 Detect my location</button>
     </div>
-    <div class="modal-field">
-      <label>Show weather for (days ahead)</label>
-      <input type="number" id="s-weather-days" value="${cfg.weatherDays ?? 6}" min="1" max="14" step="1">
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Forecast: week view (days)</label>
+        <input type="number" id="s-weather-days-week" value="${cfg.weatherDaysWeek ?? 9}" min="1" max="14" step="1">
+      </div>
+      <div class="modal-field">
+        <label>Forecast: month view (days)</label>
+        <input type="number" id="s-weather-days-month" value="${cfg.weatherDaysMonth ?? 4}" min="1" max="14" step="1">
+      </div>
     </div>
 
     <div class="modal-actions">
@@ -328,11 +341,29 @@ function renderCategoriesSection(sheet, cfg) {
   if (!allCats.length) { section.innerHTML = ''; return; }
 
   const hidden = cfg.hiddenCategories || [];
-  section.innerHTML = `<div class="modal-section-label">Categories</div>`;
+  section.innerHTML = '';
 
-  const list = document.createElement('div');
-  list.className = 'modal-field';
-  list.style.gap = '6px';
+  const header = document.createElement('div');
+  header.className = 'modal-section-label settings-collapse-header';
+
+  const arrow = document.createElement('span');
+  arrow.className = 'settings-collapse-arrow';
+  arrow.textContent = '▶';
+  header.appendChild(arrow);
+  header.appendChild(document.createTextNode(' Categories'));
+
+  const listWrap = document.createElement('div');
+  listWrap.className = 'modal-field settings-collapse-body';
+  listWrap.style.gap = '6px';
+  listWrap.hidden = true;
+
+  header.addEventListener('click', () => {
+    listWrap.hidden = !listWrap.hidden;
+    arrow.textContent = listWrap.hidden ? '▶' : '▼';
+  });
+
+  section.appendChild(header);
+  section.appendChild(listWrap);
 
   for (const cat of allCats) {
     const row = document.createElement('div');
@@ -371,9 +402,8 @@ function renderCategoriesSection(sheet, cfg) {
 
     row.appendChild(name);
     row.appendChild(btn);
-    list.appendChild(row);
+    listWrap.appendChild(row);
   }
-  section.appendChild(list);
 }
 
 async function handleLogout() {
@@ -408,7 +438,9 @@ async function handleSave() {
   const dateFormat           = sheet.querySelector('#s-datefmt').value;
   const weatherLat           = sheet.querySelector('#s-weather-lat').value.trim();
   const weatherLon           = sheet.querySelector('#s-weather-lon').value.trim();
-  const weatherDays          = parseInt(sheet.querySelector('#s-weather-days').value) || 6;
+  const weatherDaysWeek      = parseInt(sheet.querySelector('#s-weather-days-week').value) || 9;
+  const weatherDaysMonth     = parseInt(sheet.querySelector('#s-weather-days-month').value) || 4;
+  const showWeekendBg        = sheet.querySelector('#s-weekend-bg').checked;
 
   const payload = {
     enabledViews, defaultView, timeFormat, weekStart,
@@ -417,7 +449,7 @@ async function handleSave() {
     taskSources: state.taskSources || [],
     defaultTaskSource: state.config.defaultTaskSource || '',
     defaultEventTime, defaultEventDuration, showWeekNumbers, dateFormat,
-    weatherLat, weatherLon, weatherDays,
+    weatherLat, weatherLon, weatherDaysWeek, weatherDaysMonth, showWeekendBg,
   };
   if (defaultCalRaw) payload.defaultCalendar = defaultCalRaw;
 

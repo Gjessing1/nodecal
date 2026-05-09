@@ -409,3 +409,77 @@
   letter-spacing: 0.05em;
   padding: var(--space-md) var(--space-md) 0;
 }
+
+/* ── Collapsible categories section in settings ──────────── */
+.settings-collapse-header {
+  cursor: pointer;
+  user-select: none;
+  padding: var(--space-md) var(--space-md) 0;
+}
+.settings-collapse-header:hover { color: var(--color-accent); }
+.settings-collapse-arrow { font-size: 10px; margin-right: 2px; }
+.settings-collapse-body { padding: 0 var(--space-md); }
+
+/* ── Quick-add + button (opens full task modal) ──────────── */
+.tasks-quickadd-new {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-accent);
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.tasks-quickadd-new:hover { background: var(--color-accent-light); }
+
+/* ── Inline category tag-input (task modal) ──────────────── */
+.tm-cats-combined {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  min-height: 40px;
+  position: relative;
+  cursor: text;
+}
+.tm-cats-combined:focus-within { border-color: var(--color-accent); }
+.tm-cats-chips-inline { display: contents; }
+.tm-cats-combined input {
+  flex: 1;
+  min-width: 80px;
+  border: none;
+  padding: 2px 4px;
+  font: inherit;
+  background: transparent;
+  color: inherit;
+  outline: none;
+}
+.tm-cat-add-btn {
+  padding: 2px 8px !important;
+  flex-shrink: 0;
+}
+.tm-cat-autocomplete {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  right: 0;
+}
+
+/* ── Repeat + Completed on same row ──────────────────────── */
+.tm-repeat-complete-row {
+  align-items: flex-end;
+}
+.tm-complete-col {
+  flex: none !important;
+  margin-bottom: 0 !important;
+  padding-bottom: 2px;
+  white-space: nowrap;
+}

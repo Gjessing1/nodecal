@@ -93,7 +93,7 @@ function render() {
   if      (state.activeView === 'tasks') renderTasks(viewContainer, taskCallbacks);
   else if (state.activeView === 'day')   renderDay(viewContainer, viewCallbacks);
   else if (state.activeView === 'week')  renderWeek(viewContainer, viewCallbacks);
-  else if (state.activeView === 'month') renderMonth(viewContainer, handleEventClick, handleDayClick, handleEventMove, () => switchView('tasks'), handleLongPressCreate);
+  else if (state.activeView === 'month') renderMonth(viewContainer, handleEventClick, handleDayClick, handleEventMove, () => switchView('tasks'), handleLongPressCreate, handleTaskComplete, handleTaskEdit);
   else                                   renderAgenda(viewContainer, handleEventClick, handleTaskEdit);
 }
 
@@ -307,7 +307,7 @@ async function handleTaskStar(task) {
   }
 }
 
-async function handleTaskAdd({ title, due, categories, source, rrule, xRecurringType, xRecurringInterval }) {
+async function handleTaskAdd({ title, due, categories, source, rrule, xRecurringType, xRecurringInterval, description }) {
   try {
     const body = { title, due };
     if (categories?.length) body.categories = categories;
@@ -315,6 +315,7 @@ async function handleTaskAdd({ title, due, categories, source, rrule, xRecurring
     if (rrule) body.rrule = rrule;
     if (xRecurringType) body.xRecurringType = xRecurringType;
     if (xRecurringInterval) body.xRecurringInterval = xRecurringInterval;
+    if (description) body.description = description;
     const res = await fetch('/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -496,6 +497,44 @@ function initLogin() {
   });
 }
 
+// ── Back-button / PWA history handling ───────────────────
+// Push a state entry each time an overlay opens so the Android/PWA back
+// button closes the overlay instead of exiting the app.
+
+function pushOverlayState() {
+  history.pushState({ overlay: true }, '');
+}
+
+function initBackButton() {
+  window.addEventListener('popstate', e => {
+    // Try to close the topmost open overlay in priority order
+    const monthPopup  = document.getElementById('month-day-popup');
+    const modalOverlay = document.getElementById('modal-overlay');
+    const settingsOverlay = document.getElementById('settings-overlay');
+    const calDrawer    = document.getElementById('cal-drawer');
+    const searchOv     = document.getElementById('search-overlay');
+
+    if (monthPopup) { monthPopup.remove(); history.pushState({ overlay: true }, ''); return; }
+    if (modalOverlay && !modalOverlay.classList.contains('hidden')) {
+      modalOverlay.classList.add('hidden'); history.pushState({ overlay: true }, ''); return;
+    }
+    if (settingsOverlay && !settingsOverlay.classList.contains('hidden')) {
+      settingsOverlay.classList.add('hidden'); history.pushState({ overlay: true }, ''); return;
+    }
+    if (searchOv && !searchOv.classList.contains('hidden')) {
+      searchOv.classList.add('hidden'); history.pushState({ overlay: true }, ''); return;
+    }
+    if (calDrawer && !calDrawer.classList.contains('hidden')) {
+      calDrawer.classList.add('hidden'); history.pushState({ overlay: true }, ''); return;
+    }
+    // Nothing open — push a new state so the next back still doesn't exit
+    if (e.state?.overlay) history.pushState({ overlay: true }, '');
+  });
+
+  // Seed the initial history entry so there's always something to go back from
+  if (!history.state?.overlay) history.pushState({ overlay: true }, '');
+}
+
 // ── Boot ──────────────────────────────────────────────────
 
 async function init() {
@@ -510,6 +549,7 @@ async function init() {
     loadWeather().then(() => render()).catch(() => {});
   });
   initInstallPrompt();
+  initBackButton();
 
   window.addEventListener('offline', () => {
     syncError.textContent = 'Offline — showing cached events';
@@ -620,7 +660,7 @@ async function init() {
 
   fab.addEventListener('click', () => {
     if (state.activeView === 'tasks') {
-      focusTaskQuickAdd();
+      openTaskModal({}, { onSave: data => handleTaskAdd(data), onDelete: () => {} });
       return;
     }
     openNewEventModal(state.selectedDate || new Date(), data => saveEvent(null, data));

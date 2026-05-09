@@ -1,3 +1,5 @@
+import { state } from '../app/state.js';
+
 export const HOUR_HEIGHT = 64; // px per hour
 export const TIME_COL_WIDTH = 44; // px for the hour-label column
 const TOTAL_HEIGHT = HOUR_HEIGHT * 24;
@@ -70,6 +72,18 @@ export function buildEventBlock(ev, color, onClick, timezone = 'UTC') {
   block.className = 'event-block';
   block.style.cssText = `top:${top}px;height:${height}px;background:${color};`;
   block.dataset.id = ev.id;
+
+  // Show time label when block is tall enough to fit it alongside the title
+  if (height >= 40) {
+    const tz = state.config?.timezone || 'UTC';
+    const is12h = state.config?.timeFormat === '12h';
+    const timeLabel = document.createElement('span');
+    timeLabel.className = 'event-block-time';
+    timeLabel.textContent = start.toLocaleTimeString('en-US', {
+      hour: 'numeric', minute: '2-digit', hour12: is12h, timeZone: tz,
+    });
+    block.appendChild(timeLabel);
+  }
 
   const title = document.createElement('span');
   title.className = 'event-block-title';

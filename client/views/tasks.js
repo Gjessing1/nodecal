@@ -248,7 +248,7 @@ function renderByDateGroups(container, tasks, callbacks) {
   }
   if (noDue.length) groups.push({ key: 'none', label: 'No due date', items: noDue });
 
-  renderGroups(container, groups, callbacks, tasks.length);
+  renderGroups(container, groups, callbacks, tasks.length, false);
 }
 
 function renderByCategoryGroups(container, tasks, hidden, callbacks) {
@@ -257,10 +257,10 @@ function renderByCategoryGroups(container, tasks, hidden, callbacks) {
   for (const [key, items] of grouped) {
     groups.push({ key: key || '__none__', label: key || 'Uncategorized', items });
   }
-  renderGroups(container, groups, callbacks, tasks.length);
+  renderGroups(container, groups, callbacks, tasks.length, true);
 }
 
-function renderGroups(container, groups, callbacks, totalCount) {
+function renderGroups(container, groups, callbacks, totalCount, showDue = false) {
   let isEmpty = true;
   for (const group of groups) {
     if (!group.items.length) continue;
@@ -281,6 +281,7 @@ function renderGroups(container, groups, callbacks, totalCount) {
         onStar:     t => callbacks.onStar(t),
         onClick:    t => callbacks.onEdit(t),
         onSnooze:   t => callbacks.onSnooze?.(t),
+        showDue,
       }));
     }
     section.appendChild(ul);
@@ -392,7 +393,7 @@ function buildQuickAdd(callbacks) {
     const btn = document.createElement('button');
     btn.className = 'tasks-date-shortcut';
     btn.textContent = label;
-    btn.addEventListener('click', () => { selectedDue = value; updateActive(); });
+    btn.addEventListener('click', () => { selectedDue = selectedDue === value ? null : value; updateActive(); });
     return btn;
   }
 
@@ -503,13 +504,22 @@ function buildQuickAdd(callbacks) {
   const submitBtn = document.createElement('button');
   submitBtn.className = 'tasks-quickadd-submit';
   submitBtn.textContent = '↵';
-  submitBtn.setAttribute('aria-label', 'Add task');
+  submitBtn.setAttribute('aria-label', 'Quick add task');
   submitBtn.addEventListener('click', submit);
+
+  const newBtn = document.createElement('button');
+  newBtn.className = 'tasks-quickadd-new';
+  newBtn.textContent = '+';
+  newBtn.setAttribute('aria-label', 'New task (full form)');
+  newBtn.addEventListener('click', () => {
+    openTaskModal({}, { onSave: data => callbacks.onAdd(data), onDelete: () => {} });
+  });
 
   const row = document.createElement('div');
   row.className = 'tasks-quickadd-row';
   row.appendChild(inputWrap);
   row.appendChild(submitBtn);
+  row.appendChild(newBtn);
 
   bar.appendChild(row);
   bar.appendChild(dates);
@@ -533,7 +543,6 @@ export function openTaskModal(task, { onSave, onDelete }) {
 
   sheet.innerHTML = `
     <div class="modal-handle"></div>
-    <div class="modal-title">${task.uid ? 'Edit task' : 'New task'}</div>
 
     <div class="modal-field">
       <label>Title</label>
@@ -552,39 +561,38 @@ export function openTaskModal(task, { onSave, onDelete }) {
 
     <div class="modal-field">
       <label>Categories</label>
-      <div id="tm-cats-chips" class="tm-cats-chips">
-        ${taskCats.map(c => `<span class="task-cat-chip tm-cat-chip-rm" data-cat="${esc(c)}">${esc(c)} ×</span>`).join('')}
-      </div>
-      <div class="tm-cats-add-row">
-        <input type="text" id="tm-cat-input" placeholder="Add category…" autocomplete="off" list="tm-cat-datalist">
-        <datalist id="tm-cat-datalist">
-          ${existingCats.map(c => `<option value="${esc(c)}">`).join('')}
-        </datalist>
-        <button type="button" id="tm-cat-add" class="btn btn-ghost" style="padding:4px 10px">+</button>
+      <div class="tm-cats-combined">
+        <div id="tm-cats-chips" class="tm-cats-chips-inline">
+          ${taskCats.map(c => `<span class="task-cat-chip tm-cat-chip-rm" data-cat="${esc(c)}">${esc(c)} ×</span>`).join('')}
+        </div>
+        <input type="text" id="tm-cat-input" placeholder="Add category…" autocomplete="off">
+        <button type="button" id="tm-cat-add" class="btn btn-ghost tm-cat-add-btn">+</button>
+        <ul class="tasks-autocomplete tm-cat-autocomplete" style="display:none"></ul>
       </div>
     </div>
 
-    <div class="modal-field">
-      <label>Repeat</label>
-      <select id="tm-recurring">
-        <option value="">None</option>
-        <option value="rrule-daily"   ${isRecRrule && task.rrule?.includes('DAILY')   ? 'selected' : ''}>Daily</option>
-        <option value="rrule-weekly"  ${isRecRrule && task.rrule?.includes('WEEKLY')  ? 'selected' : ''}>Weekly</option>
-        <option value="rrule-monthly" ${isRecRrule && task.rrule?.includes('MONTHLY') ? 'selected' : ''}>Monthly</option>
-        <option value="after-custom"  ${isRecAfterCompletion ? 'selected' : ''}>__ days after completion</option>
-      </select>
+    <div class="modal-row tm-repeat-complete-row">
+      <div class="modal-field">
+        <label>Repeat</label>
+        <select id="tm-recurring">
+          <option value="">None</option>
+          <option value="rrule-daily"   ${isRecRrule && task.rrule?.includes('DAILY')   ? 'selected' : ''}>Daily</option>
+          <option value="rrule-weekly"  ${isRecRrule && task.rrule?.includes('WEEKLY')  ? 'selected' : ''}>Weekly</option>
+          <option value="rrule-monthly" ${isRecRrule && task.rrule?.includes('MONTHLY') ? 'selected' : ''}>Monthly</option>
+          <option value="after-custom"  ${isRecAfterCompletion ? 'selected' : ''}>After completion</option>
+        </select>
+      </div>
+      <div class="modal-field modal-field-checkbox tm-complete-col">
+        <label>
+          <input type="checkbox" id="tm-completed" ${isCompleted ? 'checked' : ''}>
+          Completed
+        </label>
+      </div>
     </div>
 
     <div class="modal-field" id="tm-interval-field" style="${isRecAfterCompletion ? '' : 'display:none'}">
       <label>Interval (e.g. 3d, 2w)</label>
       <input type="text" id="tm-interval" value="${esc(task.recurringInterval || '')}" placeholder="e.g. 3d, 2w">
-    </div>
-
-    <div class="modal-field modal-field-checkbox">
-      <label>
-        <input type="checkbox" id="tm-completed" ${isCompleted ? 'checked' : ''}>
-        Mark as completed
-      </label>
     </div>
 
     <div class="modal-actions">
@@ -613,7 +621,7 @@ export function openTaskModal(task, { onSave, onDelete }) {
       chipsEl.appendChild(chip);
     }
   }
-  // Wire up existing chip remove buttons
+  // Wire up existing chip remove buttons from innerHTML
   sheet.querySelectorAll('.tm-cat-chip-rm').forEach(chip => {
     chip.addEventListener('click', () => {
       const cat = chip.dataset.cat;
@@ -628,17 +636,45 @@ export function openTaskModal(task, { onSave, onDelete }) {
     if (c && !modalCats.includes(c)) { modalCats.push(c); renderCatChips(); }
   }
 
+  // Category autocomplete dropdown
+  const catInput = sheet.querySelector('#tm-cat-input');
+  const catAutoList = sheet.querySelector('.tm-cat-autocomplete');
+
+  function showCatAutocomplete() {
+    const q = catInput.value.trim().toLowerCase();
+    const matches = existingCats.filter(c => !modalCats.includes(c) && c.startsWith(q));
+    if (!matches.length) { catAutoList.style.display = 'none'; return; }
+    catAutoList.innerHTML = '';
+    for (const cat of matches.slice(0, 8)) {
+      const li = document.createElement('li');
+      li.textContent = cat;
+      li.addEventListener('mousedown', e => {
+        e.preventDefault();
+        addCategory(cat);
+        catInput.value = '';
+        catAutoList.style.display = 'none';
+      });
+      catAutoList.appendChild(li);
+    }
+    catAutoList.style.display = '';
+  }
+
+  catInput.addEventListener('input', showCatAutocomplete);
+  catInput.addEventListener('blur', () => setTimeout(() => { catAutoList.style.display = 'none'; }, 150));
+
   sheet.querySelector('#tm-cat-add').addEventListener('click', () => {
-    const inp = sheet.querySelector('#tm-cat-input');
-    addCategory(inp.value);
-    inp.value = '';
+    addCategory(catInput.value);
+    catInput.value = '';
+    catAutoList.style.display = 'none';
   });
-  sheet.querySelector('#tm-cat-input').addEventListener('keydown', e => {
+  catInput.addEventListener('keydown', e => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      addCategory(e.target.value);
-      e.target.value = '';
+      addCategory(catInput.value);
+      catInput.value = '';
+      catAutoList.style.display = 'none';
     }
+    if (e.key === 'Escape') catAutoList.style.display = 'none';
   });
 
   sheet.querySelector('#tm-recurring').addEventListener('change', e => {

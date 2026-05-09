@@ -1,6 +1,6 @@
 import { state, calendarById } from '../app/state.js';
 import { initDayDnd, initLongPressCreate, initSwipe } from '../components/dnd.js';
-import { localDateStr, getISOWeek, weatherIcon } from '../app/utils.js';
+import { localDateStr, getISOWeek, weatherIcon, weatherBadge } from '../app/utils.js';
 
 /**
  * @param {HTMLElement} container
@@ -9,8 +9,10 @@ import { localDateStr, getISOWeek, weatherIcon } from '../app/utils.js';
  * @param {function(id, day, startMin): void} onEventMove
  * @param {function(): void} [onTasksClick] - called when "N tasks" pill is clicked
  * @param {function(Date): void} [onLongPress] - called with the day Date on long-press
+ * @param {function(task): void} [onTaskComplete] - toggle task completion from popup
+ * @param {function(task): void} [onTaskClick] - open task for editing from popup
  */
-export function renderMonth(container, onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress) {
+export function renderMonth(container, onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress, onTaskComplete, onTaskClick) {
   const anchor = state.selectedDate;
   const year = anchor.getFullYear();
   const month = anchor.getMonth();
@@ -19,7 +21,7 @@ export function renderMonth(container, onEventClick, onDayClick, onEventMove, on
   container.innerHTML = '';
   container.appendChild(buildNavBar(year, month, onEventClick, onDayClick));
   container.appendChild(buildWeekDayHeader());
-  const grid = buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick, onLongPress);
+  const grid = buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick, onLongPress, onTaskComplete, onTaskClick);
   container.appendChild(grid);
 
   if (onEventMove) {
@@ -32,8 +34,8 @@ export function renderMonth(container, onEventClick, onDayClick, onEventMove, on
 
   // Swipe left/right to navigate months
   initSwipe(grid,
-    () => { state.selectedDate = new Date(year, month - 1, 1); renderMonth(container, onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress); },
-    () => { state.selectedDate = new Date(year, month + 1, 1); renderMonth(container, onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress); },
+    () => { state.selectedDate = new Date(year, month - 1, 1); renderMonth(container, onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress, onTaskComplete, onTaskClick); },
+    () => { state.selectedDate = new Date(year, month + 1, 1); renderMonth(container, onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress, onTaskComplete, onTaskClick); },
   );
 }
 
@@ -97,7 +99,7 @@ function buildWeekDayHeader() {
   return row;
 }
 
-function buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick, onLongPress) {
+function buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick, onLongPress, onTaskComplete, onTaskClick) {
   const showWN = state.config.showWeekNumbers;
   const grid = document.createElement('div');
   grid.className = 'month-grid' + (showWN ? ' with-weeknum' : '');
@@ -125,17 +127,19 @@ function buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick, o
       wn.textContent = 'W' + getISOWeek(day);
       grid.appendChild(wn);
     }
-    grid.appendChild(buildDayCell(day, month, today, monthEvents, onEventClick, onDayClick, onTasksClick, onLongPress));
+    grid.appendChild(buildDayCell(day, month, today, monthEvents, onEventClick, onDayClick, onTasksClick, onLongPress, onTaskComplete, onTaskClick));
   }
   return grid;
 }
 
-function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, onTasksClick, onLongPress) {
+function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, onTasksClick, onLongPress, onTaskComplete, onTaskClick) {
   const isToday = day.toDateString() === today.toDateString();
   const isOther = day.getMonth() !== curMonth;
+  const dow = day.getDay();
+  const isWeekend = (dow === 0 || dow === 6) && state.config.showWeekendBg !== false;
 
   const cell = document.createElement('div');
-  cell.className = 'month-day' + (isToday ? ' today' : '') + (isOther ? ' other-month' : '');
+  cell.className = 'month-day' + (isToday ? ' today' : '') + (isOther ? ' other-month' : '') + (isWeekend ? ' weekend' : '');
   cell.dataset.day = `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
 
   const numWrap = document.createElement('div');
@@ -143,7 +147,7 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, on
   const numSpan = document.createElement('span');
   numSpan.textContent = day.getDate();
   numWrap.appendChild(numSpan);
-  const wx = weatherIcon(localDateStr(day), state.weather, state.config.weatherDays ?? 6);
+  const wx = weatherIcon(localDateStr(day), state.weather, state.config.weatherDaysMonth ?? state.config.weatherDays ?? 4);
   if (wx && !isOther) {
     const wxEl = document.createElement('span');
     wxEl.className = 'month-weather';
@@ -152,7 +156,7 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, on
   }
   numWrap.addEventListener('click', e => {
     e.stopPropagation();
-    showDayPopup(day, dayStr, onEventClick, onDayClick);
+    showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick);
   });
   cell.appendChild(numWrap);
 
@@ -178,19 +182,28 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, on
     const more = document.createElement('div');
     more.className = 'month-more';
     more.textContent = `+${dayEvs.length - MAX}`;
-    more.addEventListener('click', () => onDayClick && onDayClick(new Date(day)));
+    more.addEventListener('click', e => { e.stopPropagation(); onDayClick && onDayClick(new Date(day)); });
     cell.appendChild(more);
   }
   if (dayTasks.length > 0) {
     const pill = document.createElement('div');
     pill.className = 'month-task-pill';
-    pill.textContent = dayTasks.length === 1 ? '1 task' : `${dayTasks.length} tasks`;
+    const MAX_TASK_TITLE = 16;
+    const taskLabel = dayTasks.length === 1
+      ? (dayTasks[0].title.length > MAX_TASK_TITLE
+          ? dayTasks[0].title.slice(0, MAX_TASK_TITLE) + '…'
+          : dayTasks[0].title)
+      : `${dayTasks.length} tasks`;
+    pill.textContent = taskLabel;
     if (onTasksClick) {
       pill.style.cursor = 'pointer';
       pill.addEventListener('click', e => { e.stopPropagation(); onTasksClick(); });
     }
     cell.appendChild(pill);
   }
+
+  // Clicking empty cell space opens popup (chips/pill/num all stopPropagation)
+  cell.addEventListener('click', () => showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick));
 
   if (onLongPress) {
     initLongPressCreate(cell, {
@@ -216,21 +229,18 @@ function buildChip(ev, onClick) {
     chip.style.background = color;
     chip.textContent = ev.title;
   } else {
-    // Timed events: colored left border + light background, show time
+    // Timed events: colored left border, title only (no time prefix — more room for text)
     chip.className = 'month-event-chip month-event-timed';
     chip.style.borderLeftColor = color;
     chip.style.color = color;
-    const h = start.getHours();
-    const m = String(start.getMinutes()).padStart(2, '0');
-    chip.textContent = `${h}:${m} ${ev.title}`;
+    chip.textContent = ev.title;
   }
 
   chip.addEventListener('click', e => { e.stopPropagation(); onClick(ev); });
   return chip;
 }
 
-function showDayPopup(day, dayStr, onEventClick, onDayClick) {
-  // Remove any existing popup
+function showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick) {
   document.getElementById('month-day-popup')?.remove();
 
   const tz = state.config.timezone;
@@ -244,6 +254,10 @@ function showDayPopup(day, dayStr, onEventClick, onDayClick) {
     })
     .sort((a, b) => (a.allDay ? -1 : 1) - (b.allDay ? -1 : 1) || new Date(a.start) - new Date(b.start));
 
+  const dayTasks = state.config.showTasksOnCalendar
+    ? state.tasks.filter(t => t.due === dayStr && t.status !== 'COMPLETED')
+    : [];
+
   const overlay = document.createElement('div');
   overlay.id = 'month-day-popup';
   overlay.className = 'month-popup-overlay';
@@ -253,47 +267,83 @@ function showDayPopup(day, dayStr, onEventClick, onDayClick) {
   panel.className = 'month-popup-panel';
   panel.addEventListener('click', e => e.stopPropagation());
 
+  // Heading: date + weather badge + close button
   const heading = document.createElement('div');
   heading.className = 'month-popup-heading';
-  heading.textContent = day.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-
+  const headingLeft = document.createElement('div');
+  headingLeft.className = 'month-popup-heading-left';
+  headingLeft.textContent = day.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const wx = weatherBadge(dayStr, state.weather, state.config.weatherDaysMonth ?? state.config.weatherDays ?? 4);
+  if (wx) {
+    const wxSpan = document.createElement('span');
+    wxSpan.className = 'month-popup-weather';
+    wxSpan.textContent = wx;
+    headingLeft.appendChild(wxSpan);
+  }
   const closeBtn = document.createElement('button');
   closeBtn.className = 'month-popup-close';
   closeBtn.textContent = '✕';
   closeBtn.addEventListener('click', () => overlay.remove());
+  heading.appendChild(headingLeft);
   heading.appendChild(closeBtn);
   panel.appendChild(heading);
 
-  if (!dayEvs.length) {
+  if (!dayEvs.length && !dayTasks.length) {
     const empty = document.createElement('p');
     empty.className = 'month-popup-empty';
-    empty.textContent = 'No events';
+    empty.textContent = 'Nothing scheduled';
     panel.appendChild(empty);
-  } else {
-    for (const ev of dayEvs) {
-      const row = document.createElement('div');
-      row.className = 'month-popup-event';
-      const cal = calendarById(ev.calendarId);
-      const dot = document.createElement('span');
-      dot.className = 'month-popup-dot';
-      dot.style.background = cal?.color || '#4a90d9';
-      const info = document.createElement('div');
-      info.className = 'month-popup-info';
-      const title = document.createElement('div');
-      title.className = 'month-popup-title';
-      title.textContent = ev.title;
-      info.appendChild(title);
-      if (!ev.allDay) {
-        const time = document.createElement('div');
-        time.className = 'month-popup-time';
-        time.textContent = new Date(ev.start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: state.config.timeFormat === '12h', timeZone: tz });
-        info.appendChild(time);
-      }
-      row.appendChild(dot);
-      row.appendChild(info);
-      row.addEventListener('click', () => { overlay.remove(); onEventClick(ev); });
-      panel.appendChild(row);
+  }
+
+  // Events first
+  for (const ev of dayEvs) {
+    const row = document.createElement('div');
+    row.className = 'month-popup-event';
+    const cal = calendarById(ev.calendarId);
+    const dot = document.createElement('span');
+    dot.className = 'month-popup-dot';
+    dot.style.background = cal?.color || '#4a90d9';
+    const info = document.createElement('div');
+    info.className = 'month-popup-info';
+    const title = document.createElement('div');
+    title.className = 'month-popup-title';
+    title.textContent = ev.title;
+    info.appendChild(title);
+    if (!ev.allDay) {
+      const time = document.createElement('div');
+      time.className = 'month-popup-time';
+      time.textContent = new Date(ev.start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: state.config.timeFormat === '12h', timeZone: tz });
+      info.appendChild(time);
     }
+    row.appendChild(dot);
+    row.appendChild(info);
+    row.addEventListener('click', () => { overlay.remove(); onEventClick(ev); });
+    panel.appendChild(row);
+  }
+
+  // Tasks after events
+  for (const task of dayTasks) {
+    const row = document.createElement('div');
+    row.className = 'month-popup-task';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'month-popup-task-check';
+    checkbox.checked = task.status === 'COMPLETED';
+    checkbox.addEventListener('click', e => {
+      e.stopPropagation();
+      if (onTaskComplete) onTaskComplete(task);
+      overlay.remove();
+    });
+
+    const title = document.createElement('div');
+    title.className = 'month-popup-title';
+    title.textContent = task.title;
+
+    row.appendChild(checkbox);
+    row.appendChild(title);
+    row.addEventListener('click', () => { overlay.remove(); if (onTaskClick) onTaskClick(task); });
+    panel.appendChild(row);
   }
 
   if (onDayClick) {

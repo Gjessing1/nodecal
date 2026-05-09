@@ -55,6 +55,7 @@
 
 .month-day.other-month { opacity: 0.38; }
 .month-day.today { background: var(--color-today-bg); }
+.month-day.weekend:not(.today) { background: var(--color-weekend-bg); }
 
 /* Date number + weather icon sit on the same row */
 .month-day-num {
@@ -117,8 +118,19 @@
   font-size: var(--font-size-md);
   margin-bottom: var(--space-md);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: var(--space-sm);
+}
+.month-popup-heading-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.month-popup-weather {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  font-weight: 400;
 }
 .month-popup-close {
   color: var(--color-text-muted);
@@ -140,6 +152,23 @@
 .month-popup-title { font-size: var(--font-size-md); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .month-popup-time { font-size: var(--font-size-sm); color: var(--color-text-muted); }
 .month-popup-empty { color: var(--color-text-muted); font-size: var(--font-size-sm); padding: var(--space-sm) 0; }
+.month-popup-task {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+}
+.month-popup-task:last-of-type { border-bottom: none; }
+.month-popup-task:hover { background: var(--color-surface); border-radius: var(--radius-sm); }
+.month-popup-task-check {
+  width: 18px; height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--color-accent);
+  border: none; padding: 0;
+  cursor: pointer;
+}
 .month-popup-view-day { width: 100%; margin-top: var(--space-sm); font-size: var(--font-size-sm); }
 
 /* Event chips inside month cells */

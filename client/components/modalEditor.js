@@ -187,6 +187,38 @@ function computeDefaultStart(date, tz) {
   return localToUTC(dateStr, t, tz);
 }
 
+const DAYS_SHORT = ['SU','MO','TU','WE','TH','FR','SA'];
+const DAYS_LONG  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+function ordinal(n) { return n + (n===1?'st':n===2?'nd':n===3?'rd':'th'); }
+
+function repeatOptionsHtml(date, currentRrule) {
+  const dow   = date.getDay();
+  const dom   = date.getDate();
+  const weeklyVal  = `FREQ=WEEKLY;BYDAY=${DAYS_SHORT[dow]}`;
+  const monthlyVal = `FREQ=MONTHLY;BYMONTHDAY=${dom}`;
+
+  function matchPreset(r) {
+    if (!r) return '';
+    const norm = r.toUpperCase();
+    if (/FREQ=DAILY/.test(norm) && !/INTERVAL=[2-9]|INTERVAL=\d{2}/.test(norm)) return 'FREQ=DAILY';
+    if (/FREQ=WEEKLY/.test(norm) && !/INTERVAL=[2-9]|INTERVAL=\d{2}/.test(norm)) return weeklyVal;
+    if (/FREQ=MONTHLY/.test(norm) && !/INTERVAL=[2-9]|INTERVAL=\d{2}/.test(norm)) return monthlyVal;
+    if (/FREQ=YEARLY/.test(norm)) return 'FREQ=YEARLY';
+    return '__custom__';
+  }
+
+  const sel = matchPreset(currentRrule);
+  const opts = [
+    ['', 'None'],
+    ['FREQ=DAILY', 'Daily'],
+    [weeklyVal, `Weekly on ${DAYS_LONG[dow]}`],
+    [monthlyVal, `Monthly on ${ordinal(dom)}`],
+    ['FREQ=YEARLY', 'Yearly'],
+  ];
+  if (sel === '__custom__') opts.push(['__custom__', `Custom (${currentRrule.split(';')[0]})`]);
+  return opts.map(([v, l]) => `<option value="${esc(v)}"${sel===v?' selected':''}>${esc(l)}</option>`).join('');
+}
+
 function renderForm(event, defaultDate) {
   const isNew = !event;
   const tz = state.config.timezone;
@@ -202,15 +234,10 @@ function renderForm(event, defaultDate) {
 
   sheet.innerHTML = `
     <div class="modal-handle"></div>
-    <div class="modal-title">${isNew ? 'New Event' : 'Edit Event'}</div>
     <div class="modal-field">
       <label>Title</label>
       <input type="text" id="f-title" value="${esc(event?.title || '')}" placeholder="${isNew ? 'e.g. Meeting tomorrow 14:00' : 'Event title'}" autocomplete="off">
       ${isNew ? '<div class="nlp-feedback hidden" id="nlp-fb"></div>' : ''}
-    </div>
-    <div class="modal-field modal-toggle-field">
-      <label for="f-allday">All day</label>
-      <input type="checkbox" id="f-allday" ${event?.allDay ? 'checked' : ''}>
     </div>
     <div class="modal-field" id="allday-date-row"${!event?.allDay ? ' style="display:none"' : ''}>
       <label>Date</label>
@@ -229,10 +256,22 @@ function renderForm(event, defaultDate) {
         <div id="f-end-time-wrap"></div>
       </div>
     </div>
+    <div class="modal-cal-allday-row">
+      <div class="modal-field modal-cal-field">
+        <label>Calendar</label>
+        <select id="f-calendar">
+          ${state.calendars.map(c => `<option value="${esc(c.id)}" ${defaultCalId === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="modal-allday-toggle">
+        <label for="f-allday">All day</label>
+        <input type="checkbox" id="f-allday" ${event?.allDay ? 'checked' : ''}>
+      </div>
+    </div>
     <div class="modal-field">
-      <label>Calendar</label>
-      <select id="f-calendar">
-        ${state.calendars.map(c => `<option value="${esc(c.id)}" ${defaultCalId === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
+      <label>Repeat</label>
+      <select id="f-repeat">
+        ${repeatOptionsHtml(start, event?.rrule || null)}
       </select>
     </div>
     ${event?.recurring ? `
@@ -244,13 +283,15 @@ function renderForm(event, defaultDate) {
         <option value="all">All events in series</option>
       </select>
     </div>` : ''}
-    <div class="modal-field">
-      <label>Location</label>
-      <input type="text" id="f-location" value="${esc(event?.location || '')}" placeholder="Location (optional)" autocomplete="off">
-    </div>
-    <div class="modal-field">
-      <label>URL</label>
-      <input type="url" id="f-url" value="${esc(event?.url || '')}" placeholder="https://… (video call link, etc.)">
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Location</label>
+        <input type="text" id="f-location" value="${esc(event?.location || '')}" placeholder="Location (optional)" autocomplete="off">
+      </div>
+      <div class="modal-field">
+        <label>URL</label>
+        <input type="url" id="f-url" value="${esc(event?.url || '')}" placeholder="https://…">
+      </div>
     </div>
     <div class="modal-field">
       <label>Description</label>
@@ -284,7 +325,9 @@ function renderForm(event, defaultDate) {
     if (endBtn) endBtn.textContent = newEndVal;
   }
 
-  if (is24h) {
+  const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+  if (is24h && isTouchDevice) {
+    // Mobile 24h: scroll-wheel picker
     let prevStartVal = toTimeInputValue(start, tz);
     startWrap.appendChild(buildTimeButton('f-start-time', start, tz, newVal => {
       shiftEnd(prevStartVal, newVal);
@@ -292,14 +335,14 @@ function renderForm(event, defaultDate) {
     }));
     endWrap.appendChild(buildTimeButton('f-end-time', end, tz));
   } else {
+    // Desktop or 12h: native time input
     startWrap.innerHTML = `<input type="time" id="f-start-time" value="${toTimeInputValue(start, tz)}" style="width:100%">`;
     endWrap.innerHTML = `<input type="time" id="f-end-time" value="${toTimeInputValue(end, tz)}" style="width:100%">`;
-    // For 12h: shift end when start changes
     const startEl = sheet.querySelector('#f-start-time');
-    let prevStart12 = startEl.value;
+    let prevStartVal = startEl.value;
     startEl.addEventListener('change', () => {
-      shiftEnd(prevStart12, startEl.value);
-      prevStart12 = startEl.value;
+      shiftEnd(prevStartVal, startEl.value);
+      prevStartVal = startEl.value;
     });
   }
 
@@ -319,7 +362,7 @@ function renderForm(event, defaultDate) {
     }
   });
 
-  // When start date changes, shift end date by the same delta
+  // When start date changes: shift end date by the same delta; refresh repeat options
   const startDateEl = sheet.querySelector('#f-start-date');
   if (startDateEl) {
     let prevStartVal = startDateEl.value;
@@ -331,6 +374,13 @@ function renderForm(event, defaultDate) {
       const shifted = new Date(new Date(endDateEl.value + 'T00:00').getTime() + delta);
       endDateEl.value = toDateInputValue(shifted);
       prevStartVal = startDateEl.value;
+
+      // Refresh repeat options so Weekly/Monthly labels reflect the new day/date
+      const repeatSel = sheet.querySelector('#f-repeat');
+      if (repeatSel) {
+        const prevRepeat = repeatSel.value;
+        repeatSel.innerHTML = repeatOptionsHtml(next, prevRepeat === '__custom__' ? (event?.rrule || null) : prevRepeat || null);
+      }
     });
   }
 
@@ -394,9 +444,13 @@ function handleSave(event) {
     }
   }
 
-  const nlpRrule = !event ? (sheet.dataset.nlpRrule || null) : null;
+  // Determine rrule: UI repeat select takes precedence over NLP detection
+  const repeatVal = sheet.querySelector('#f-repeat')?.value;
+  const nlpRrule  = !event ? (sheet.dataset.nlpRrule || null) : null;
+  const rrule = (repeatVal && repeatVal !== '__custom__') ? repeatVal : nlpRrule;
+
   const data = { title, start: startDt.toISOString(), end: endDt.toISOString(), allDay, calendarId, description, location, url,
-    ...(nlpRrule ? { rrule: nlpRrule } : {}) };
+    rrule: rrule || null };
   if (event?.recurring) {
     data.recurringScope = sheet.querySelector('#f-scope')?.value || 'single';
     data.uid = event.uid;

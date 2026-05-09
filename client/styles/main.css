@@ -10,6 +10,7 @@
   --color-danger:       #dc2626;
   --color-today-bg:     #eff6ff;
   --color-today-text:   #1d4ed8;
+  --color-weekend-bg:   #f4f5f7;
 
   --space-xs:  4px;
   --space-sm:  8px;
@@ -42,6 +43,7 @@
     --color-danger:       #f87171;
     --color-today-bg:     #1e3254;
     --color-today-text:   #93c5fd;
+    --color-weekend-bg:   #161618;
   }
 }
 
@@ -57,6 +59,7 @@
   --color-danger:       #f87171;
   --color-today-bg:     #1e3254;
   --color-today-text:   #93c5fd;
+  --color-weekend-bg:   #161618;
 }
 
 /* ── Reset ──────────────────────────────────────────────── */
@@ -304,22 +307,32 @@ input, textarea, select {
 .modal-row .modal-field { flex: 1; }
 .modal-actions { display: flex; gap: var(--space-sm); padding-top: var(--space-sm); }
 
-/* All-day toggle */
-.modal-toggle-field {
-  flex-direction: row;
+/* Calendar + All-day combined row */
+.modal-cal-allday-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+.modal-cal-field { flex: 1; margin-bottom: 0 !important; }
+.modal-allday-toggle {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  gap: 4px;
+  flex-shrink: 0;
+  padding-bottom: 2px;
 }
-.modal-toggle-field > label {
-  font-size: var(--font-size-md);
-  color: var(--color-text);
-  font-weight: 400;
+.modal-allday-toggle label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  font-weight: 500;
+  white-space: nowrap;
 }
-.modal-toggle-field input[type="checkbox"] {
+.modal-allday-toggle input[type="checkbox"] {
   width: 20px; height: 20px;
   accent-color: var(--color-accent);
   border: none; padding: 0;
-  flex-shrink: 0;
 }
 .recurring-scope-field { background: var(--color-accent-light); border-radius: var(--radius-sm); padding: var(--space-sm); }
 .btn { padding: var(--space-sm) var(--space-md); border-radius: var(--radius-sm); font-weight: 500; }
@@ -567,4 +580,21 @@ mark.nlp-match {
   font-size: var(--font-size-sm);
   text-align: center;
   padding: var(--space-xs) 0;
+}
+
+/* ── Mobile landscape / rotation ──────────────────────────
+   Allow the app shell to adapt naturally in landscape mode.
+   The bottom nav shrinks, modals stay usable, and the time
+   grid gains horizontal space (handled by flex layout already). */
+@media (orientation: landscape) and (max-height: 500px) {
+  :root {
+    --nav-height: 44px;
+    --header-height: 40px;
+  }
+  .modal-sheet {
+    max-height: 96dvh;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+  }
+  .nav-btn { font-size: 11px; }
+  .nav-icon { font-size: 16px; }
 }

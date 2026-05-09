@@ -97,6 +97,13 @@ function normalizeTimeRanges(text) {
 
 // Norwegian date words → English
 const NO_TO_EN_EVENT = [
+  // "om N dager/uker/måneder/år" → "in N days/weeks/months/years"
+  [/\bom\s+(\d+)\s+dag(?:er)?\b/gi, (_, n) => `in ${n} day${n === '1' ? '' : 's'}`],
+  [/\bom\s+(\d+)\s+uke(?:r)?\b/gi, (_, n) => `in ${n} week${n === '1' ? '' : 's'}`],
+  [/\bom\s+(\d+)\s+m[åa]ned(?:er)?\b/gi, (_, n) => `in ${n} month${n === '1' ? '' : 's'}`],
+  [/\bom\s+(\d+)\s+[åa]r\b/gi, (_, n) => `in ${n} year${n === '1' ? '' : 's'}`],
+  [/\bi overmorgen\b/gi, 'day after tomorrow'],
+  [/\biovermorgen\b/gi, 'day after tomorrow'],
   [/\bi morgen\b/gi, 'tomorrow'],
   [/\bimorgen\b/gi, 'tomorrow'],
   [/\bi dag\b/gi, 'today'],
@@ -138,6 +145,54 @@ function normalizeNorwegian(text) {
 }
 
 /**
+ * Normalize text and build a map from each normalized character index back
+ * to [origStart, origEnd] in the original text. Used to map chrono's match
+ * position back to the original (possibly Norwegian) input for highlighting.
+ */
+function buildNormMap(text) {
+  const normSpans = []; // normSpans[j] = [origStart, origEnd]
+  let normalized = '';
+  let pos = 0;
+
+  while (pos < text.length) {
+    let matched = false;
+    for (const [re, en] of NO_TO_EN_EVENT) {
+      // Enforce word boundary at pos if pattern requires it
+      if (re.source.startsWith('\\b') && pos > 0 && /\w/.test(text[pos - 1])) continue;
+
+      const flags = (re.flags || '').replace(/g/g, '');
+      const m = new RegExp(re.source, flags).exec(text.slice(pos));
+      if (!m || m.index !== 0) continue;
+
+      const origLen = m[0].length;
+      // Call like String.replace callback: fn(fullMatch, group1, group2, ...)
+      const rep = typeof en === 'function' ? en(m[0], ...m.slice(1)) : en;
+      if (typeof rep !== 'string') continue;
+
+      for (let j = 0; j < rep.length; j++) normSpans.push([pos, pos + origLen]);
+      normalized += rep;
+      pos += origLen;
+      matched = true;
+      break;
+    }
+    if (!matched) {
+      normSpans.push([pos, pos + 1]);
+      normalized += text[pos++];
+    }
+  }
+
+  return {
+    normalized,
+    getOrigSpan(normStart, normLen) {
+      if (!normLen || !normSpans.length) return '';
+      const s = normSpans[normStart];
+      const e = normSpans[Math.min(normStart + normLen - 1, normSpans.length - 1)];
+      return s && e ? text.slice(s[0], e[1]) : '';
+    },
+  };
+}
+
+/**
  * Parse a natural language event description into structured fields.
  * @param {string} text
  * @param {Date} [refDate]
@@ -157,12 +212,15 @@ function parse(text, refDate = new Date(), timezone = 'UTC') {
   if (rruleResult?.matchText) {
     textForParsing = trimmed.replace(new RegExp(escapeRegex(rruleResult.matchText), 'i'), '').replace(/\s{2,}/g, ' ').trim();
   }
-  const normalized = normalizeTimeRanges(normalizeNorwegian(textForParsing));
+
+  // Build position map while normalizing, so we can map chrono's result back to original text
+  const normMap = buildNormMap(textForParsing);
+  const normalized = normalizeTimeRanges(normMap.normalized);
 
   const results = chrono.parse(normalized, refDate, { forwardDate: true, timezone });
 
   if (!results.length) {
-    const baseTitle = normalized.trim() || trimmed;
+    const baseTitle = normMap.normalized.trim() || trimmed;
     return { parsed: !!rrule, title: baseTitle, rrule };
   }
 
@@ -176,13 +234,32 @@ function parse(text, refDate = new Date(), timezone = 'UTC') {
   const after  = normalized.slice(result.index + result.text.length).trim();
   const title  = [before, after].filter(Boolean).join(' ').trim() || normalized.trim() || trimmed;
 
+  // Map chrono's match position back to the original (possibly Norwegian) input.
+  // normalizeTimeRanges runs after buildNormMap and can lengthen the text (e.g. "18-21" →
+  // "18:00-21:00"), so we try two strategies:
+  // 1. Find the English parsedText verbatim in normMap.normalized (works when no time expansion)
+  // 2. Fall back to result.index in normMap.normalized (works when time range was expanded)
+  const normParsed = result.text;
+  const normIdx = normMap.normalized.toLowerCase().indexOf(normParsed.toLowerCase());
+  let parsedText;
+  if (normIdx !== -1) {
+    parsedText = normMap.getOrigSpan(normIdx, normParsed.length);
+  } else if (result.index < normMap.normalized.length) {
+    // Use result.index in normMap.normalized; normalizeTimeRanges only lengthens,
+    // so normParsed.length >= equivalent span in normMap.normalized — cap safely.
+    const spanLen = Math.min(normParsed.length, normMap.normalized.length - result.index);
+    parsedText = normMap.getOrigSpan(result.index, spanLen);
+  } else {
+    parsedText = normParsed; // last resort: English text
+  }
+
   return {
     parsed: true,
     title,
     start: start.toISOString(),
     end: end.toISOString(),
     allDay: !hasTime,
-    parsedText: result.text,
+    parsedText,
     rrule,
   };
 }
