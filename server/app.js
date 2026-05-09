@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const config = require('./config');
 const { syncIncremental } = require('./caldav/sync');
 const store = require('./cache/store');
@@ -25,7 +26,15 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', version: process.env.npm_package_version, ...store.getSyncState() });
 });
 
-const BACKGROUND_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+const SETTINGS_FILE = '/config/settings.json';
+function getSyncIntervalMs() {
+  try {
+    const s = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
+    const min = parseInt(s.syncIntervalMinutes);
+    if (min >= 1) return min * 60 * 1000;
+  } catch { /* use default */ }
+  return 2 * 60 * 1000; // default 2 minutes
+}
 
 async function start() {
   try {
@@ -39,15 +48,19 @@ async function start() {
     console.log(`Nodecal running on port ${config.app.port}`);
   });
 
-  // Background auto-sync — runs every 5 minutes after startup
-  setInterval(async () => {
-    try {
-      await syncIncremental();
-    } catch (err) {
-      console.error('Background sync failed:', err.message);
-      store.setSyncState({ error: err.message });
-    }
-  }, BACKGROUND_INTERVAL_MS);
+  // Background auto-sync — interval read from settings on each tick (default 2 min)
+  function scheduleSync() {
+    setTimeout(async () => {
+      try {
+        await syncIncremental();
+      } catch (err) {
+        console.error('Background sync failed:', err.message);
+        store.setSyncState({ error: err.message });
+      }
+      scheduleSync(); // reschedule with potentially updated interval
+    }, getSyncIntervalMs());
+  }
+  scheduleSync();
 }
 
 start();

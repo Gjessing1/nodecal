@@ -41,7 +41,7 @@ router.put('/settings', (req, res) => {
     'showWeekendBg',
     'showTasksOnDay', 'showTasksOnWeek', 'showTasksOnMonth', 'showTasksOnAgenda',
     'showWeekNumbersDay', 'showWeekNumbersMonth', 'showWeekNumbersAgenda',
-    'syncHistoryDays', 'syncFutureDays',
+    'syncIntervalMinutes', 'syncHistoryDays', 'syncFutureDays',
   ];
   const toSave = {};
   for (const k of allowed) {

@@ -1,5 +1,17 @@
 const CRLF = '\r\n';
 
+// RFC 5545 §3.1: fold long content lines at 75 octets
+function foldLine(line) {
+  if (line.length <= 75) return line;
+  const parts = [line.slice(0, 75)];
+  let pos = 75;
+  while (pos < line.length) {
+    parts.push(' ' + line.slice(pos, pos + 74));
+    pos += 74;
+  }
+  return parts.join(CRLF);
+}
+
 function unfold(icsText) {
   return icsText.replace(/\r?\n[ \t]/g, '');
 }
@@ -168,7 +180,7 @@ function serializeEvent(event) {
   if (event.location) lines.push(`LOCATION:${escapeIcsText(event.location)}`);
   if (event.url) lines.push(`URL:${event.url}`);
   lines.push('END:VEVENT', 'END:VCALENDAR');
-  return lines.join(CRLF) + CRLF;
+  return lines.map(foldLine).join(CRLF) + CRLF;
 }
 
 /**
@@ -256,7 +268,7 @@ function serializeTask(task) {
   if (task.xRecurringInterval) lines.push(`X-RECURRING-INTERVAL:${task.xRecurringInterval}`);
   if (task.description) lines.push(`DESCRIPTION:${escapeIcsText(task.description)}`);
   lines.push('END:VTODO', 'END:VCALENDAR');
-  return lines.join(CRLF) + CRLF;
+  return lines.map(foldLine).join(CRLF) + CRLF;
 }
 
 module.exports = { parseIcs, serializeEvent, formatIcsDate, parseVtodo, serializeTask };

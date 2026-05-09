@@ -689,6 +689,19 @@ async function init() {
     detectAndLoadWeather();
     // Refresh weather every hour
     setInterval(() => { loadWeather().then(() => render()); }, 60 * 60 * 1000);
+    // Auto-refresh events + tasks on the same interval as the server background sync
+    // so the UI stays current without a manual sync press
+    function scheduleClientRefresh() {
+      const ms = Math.max(1, state.config.syncIntervalMinutes ?? 2) * 60 * 1000;
+      setTimeout(async () => {
+        try {
+          await Promise.all([loadEvents(), loadTasks()]);
+          render();
+        } catch { /* silent — sync banner will show if server is unreachable */ }
+        scheduleClientRefresh();
+      }, ms);
+    }
+    scheduleClientRefresh();
   } catch (err) {
     syncError.textContent = 'Failed to load: ' + err.message;
     syncError.classList.remove('hidden');

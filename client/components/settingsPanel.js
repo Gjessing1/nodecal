@@ -83,6 +83,14 @@ function renderForm() {
       </select>
     </div>
 
+    <div class="modal-section-label">Sync</div>
+
+    <div class="modal-field">
+      <label>Auto-sync interval (minutes)</label>
+      <input type="number" id="s-sync-interval" value="${cfg.syncIntervalMinutes ?? 2}" min="1" max="60" step="1">
+      <span style="font-size:var(--font-size-sm);color:var(--color-text-muted)">Server syncs CalDAV + client refreshes display. Default: 2 min.</span>
+    </div>
+
     <div class="modal-section-label">Events</div>
 
     <div class="modal-field">
@@ -475,6 +483,7 @@ async function handleSave() {
   const showWeekNumbersMonth = sheet.querySelector('#s-weeknums-month').checked;
   const showWeekNumbersAgenda= sheet.querySelector('#s-weeknums-agenda').checked;
   const showWeekNumbers      = showWeekNumbersDay || showWeekNumbersMonth || showWeekNumbersAgenda;
+  const syncIntervalMinutes  = parseInt(sheet.querySelector('#s-sync-interval').value) || 2;
   const syncHistoryDays      = parseInt(sheet.querySelector('#s-sync-history').value) || 730;
   const syncFutureDays       = parseInt(sheet.querySelector('#s-sync-future').value) || 0;
   const dateFormat           = sheet.querySelector('#s-datefmt').value;
@@ -491,7 +500,7 @@ async function handleSave() {
     hiddenCategories: state.config.hiddenCategories || [],
     taskSources: state.taskSources || [],
     defaultTaskSource: state.config.defaultTaskSource || '',
-    defaultEventTime, defaultEventDuration, showWeekNumbers,
+    syncIntervalMinutes, defaultEventTime, defaultEventDuration, showWeekNumbers,
     showWeekNumbersDay, showWeekNumbersMonth, showWeekNumbersAgenda,
     syncHistoryDays, syncFutureDays, dateFormat,
     weatherLat, weatherLon, weatherDaysWeek, weatherDaysMonth, showWeekendBg,
