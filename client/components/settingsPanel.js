@@ -83,6 +83,26 @@ function renderForm() {
       </select>
     </div>
 
+    <div class="modal-section-label">Notifications</div>
+
+    <div class="modal-field">
+      <label class="settings-toggle">
+        <input type="checkbox" id="s-notif-enable" ${cfg.enableNotifications ? 'checked' : ''}>
+        <span>Enable event reminders (browser notifications)</span>
+      </label>
+    </div>
+    <div class="modal-field">
+      <label>Default reminder</label>
+      <select id="s-alarm-default">
+        <option value="0"  ${(cfg.alarmDefaultMinutes ?? 0) === 0    ? 'selected' : ''}>No reminder</option>
+        <option value="5"  ${cfg.alarmDefaultMinutes === 5    ? 'selected' : ''}>5 min before</option>
+        <option value="10" ${cfg.alarmDefaultMinutes === 10   ? 'selected' : ''}>10 min before</option>
+        <option value="15" ${cfg.alarmDefaultMinutes === 15   ? 'selected' : ''}>15 min before</option>
+        <option value="30" ${cfg.alarmDefaultMinutes === 30   ? 'selected' : ''}>30 min before</option>
+        <option value="60" ${cfg.alarmDefaultMinutes === 60   ? 'selected' : ''}>1 hour before</option>
+      </select>
+    </div>
+
     <div class="modal-section-label">Sync</div>
 
     <div class="modal-field">
@@ -207,6 +227,20 @@ function renderForm() {
       ${cfg.authEnabled ? '<button class="btn btn-ghost" id="s-logout" style="color:var(--color-danger)">Log out</button>' : ''}
     </div>
   `;
+
+  // Notification permission — request when user enables
+  const notifCheck = sheet.querySelector('#s-notif-enable');
+  if (notifCheck) {
+    notifCheck.addEventListener('change', async () => {
+      if (!notifCheck.checked) return;
+      if (!('Notification' in window)) { notifCheck.checked = false; alert('Notifications not supported by this browser'); return; }
+      if (Notification.permission === 'denied') { notifCheck.checked = false; alert('Notification permission was denied. Please enable it in browser settings.'); return; }
+      if (Notification.permission === 'default') {
+        const r = await Notification.requestPermission();
+        if (r !== 'granted') { notifCheck.checked = false; }
+      }
+    });
+  }
 
   // Task sources section (replaces single tasksCalDAVUrl)
   renderTaskSourcesSection(sheet, cfg);
@@ -483,6 +517,8 @@ async function handleSave() {
   const showWeekNumbersMonth = sheet.querySelector('#s-weeknums-month').checked;
   const showWeekNumbersAgenda= sheet.querySelector('#s-weeknums-agenda').checked;
   const showWeekNumbers      = showWeekNumbersDay || showWeekNumbersMonth || showWeekNumbersAgenda;
+  const enableNotifications  = sheet.querySelector('#s-notif-enable').checked;
+  const alarmDefaultMinutes  = parseInt(sheet.querySelector('#s-alarm-default').value) || 0;
   const syncIntervalMinutes  = parseInt(sheet.querySelector('#s-sync-interval').value) || 2;
   const syncHistoryDays      = parseInt(sheet.querySelector('#s-sync-history').value) || 730;
   const syncFutureDays       = parseInt(sheet.querySelector('#s-sync-future').value) || 0;
@@ -500,6 +536,7 @@ async function handleSave() {
     hiddenCategories: state.config.hiddenCategories || [],
     taskSources: state.taskSources || [],
     defaultTaskSource: state.config.defaultTaskSource || '',
+    enableNotifications, alarmDefaultMinutes,
     syncIntervalMinutes, defaultEventTime, defaultEventDuration, showWeekNumbers,
     showWeekNumbersDay, showWeekNumbersMonth, showWeekNumbersAgenda,
     syncHistoryDays, syncFutureDays, dateFormat,

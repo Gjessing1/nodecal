@@ -1,5 +1,6 @@
 import { state, calendarById } from '../app/state.js';
 import { localDateStr, getISOWeek, weatherBadge } from '../app/utils.js';
+import { showDatePicker } from '../components/datePicker.js';
 import {
   buildTimeColumn, buildHourLines, buildEventBlock,
   buildCurrentTimeLine, updateCurrentTimeLine, getTotalHeight, timeToTop,
@@ -136,26 +137,19 @@ function buildNavBar(date, isToday, callbacks) {
   const wx = weatherBadge(localDateStr(date), state.weather, state.config.weatherDays ?? 6);
   const wxTag = wx ? ` · ${wx}` : '';
 
-  // Tap on title opens date picker
+  // Tap on title opens custom date picker (respects weekStart — native picker ignores it on iOS)
   const titleWrap = document.createElement('span');
   titleWrap.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer';
   const title = document.createElement('span');
   title.className = 'view-nav-title';
   title.textContent = (isToday ? 'Today · ' + fmt(date) : fmt(date)) + weekTag + wxTag;
-  const pickerInput = document.createElement('input');
-  pickerInput.type = 'date';
-  pickerInput.style.cssText = 'position:absolute;opacity:0;pointer-events:none;width:1px;height:1px';
-  const y = date.getFullYear(), m = String(date.getMonth()+1).padStart(2,'0'), d = String(date.getDate()).padStart(2,'0');
-  pickerInput.value = `${y}-${m}-${d}`;
-  pickerInput.addEventListener('change', () => {
-    if (!pickerInput.value) return;
-    const [py, pm, pd] = pickerInput.value.split('-').map(Number);
-    state.selectedDate = new Date(py, pm - 1, pd);
-    renderDay(prev.closest('#view-container'), callbacks);
-  });
   titleWrap.appendChild(title);
-  titleWrap.appendChild(pickerInput);
-  titleWrap.addEventListener('click', () => pickerInput.showPicker?.() || pickerInput.click());
+  titleWrap.addEventListener('click', () => {
+    showDatePicker(date, selected => {
+      state.selectedDate = selected;
+      renderDay(prev.closest('#view-container'), callbacks);
+    });
+  });
 
   const todayBtn = document.createElement('button');
   todayBtn.className = 'nav-today-btn';

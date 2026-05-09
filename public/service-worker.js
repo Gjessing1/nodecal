@@ -78,3 +78,14 @@ self.addEventListener('fetch', event => {
       }))
   );
 });
+
+// ── Notification click — focus/open the app ───────────────
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(all => {
+      for (const c of all) if ('focus' in c) return c.focus();
+      return clients.openWindow('/');
+    })
+  );
+});

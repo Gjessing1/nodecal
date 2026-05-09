@@ -146,7 +146,45 @@ async function loadAll() {
 
 async function loadEvents() {
   const res = await fetch(`/events?from=${rangeFrom()}&to=${rangeTo()}`);
-  setEvents(await res.json());
+  const events = await res.json();
+  setEvents(events);
+  scheduleNotifications(events);
+}
+
+// ── Notifications ─────────────────────────────────────────
+
+const _notifTimers = [];
+
+function scheduleNotifications(events) {
+  // Clear old timers
+  while (_notifTimers.length) clearTimeout(_notifTimers.pop());
+  if (!state.config.enableNotifications) return;
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+  const now = Date.now();
+  for (const ev of events) {
+    if (!ev.alarmMinutes || ev.allDay) continue;
+    const alarmAt = new Date(ev.start).getTime() - ev.alarmMinutes * 60000;
+    const delay = alarmAt - now;
+    if (delay > 0 && delay < 48 * 60 * 60 * 1000) {
+      _notifTimers.push(setTimeout(() => {
+        const start = new Date(ev.start);
+        const timeStr = start.toLocaleTimeString('en-US', {
+          hour: 'numeric', minute: '2-digit', hour12: state.config.timeFormat === '12h',
+          timeZone: state.config.timezone,
+        });
+        new Notification(ev.title, { body: timeStr, tag: `ev-${ev.id}`, icon: '/icon-192.png' });
+      }, delay));
+    }
+  }
+}
+
+async function requestNotificationPermission() {
+  if (!('Notification' in window)) return false;
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission === 'denied') return false;
+  const result = await Notification.requestPermission();
+  return result === 'granted';
 }
 
 async function loadTasks() {

@@ -29,13 +29,14 @@ router.get('/events', (req, res) => {
 
 router.post('/events', async (req, res) => {
   try {
-    const { calendarId, title, start, end, allDay, description, location, url, rrule } = req.body;
+    const { calendarId, title, start, end, allDay, description, location, url, rrule, alarmMinutes } = req.body;
     if (!calendarId || !title || !start) return res.status(400).json({ error: 'calendarId, title, start required' });
 
     const uid = crypto.randomUUID();
     const now = new Date().toISOString();
     const event = { uid, calendarId, title, start, end: end || start, allDay: !!allDay,
-      description: description || '', location: location || '', url: url || '', rrule: rrule || null };
+      description: description || '', location: location || '', url: url || '', rrule: rrule || null,
+      alarmMinutes: alarmMinutes != null ? parseInt(alarmMinutes) : null };
     const ics = serializeEvent(event);
     const { href, etag } = await putEvent(calendarId, uid, ics);
     const stored = { ...event, href, etag, localModifiedAt: now, lastSyncedAt: now };
@@ -193,6 +194,7 @@ function toApiShape(ev) {
     recurring: ev.recurring || !!ev.rrule,
     rrule: ev.rrule || null,
     occurrenceDate: ev.occurrenceDate || null,
+    alarmMinutes: ev.alarmMinutes ?? null,
   };
 }
 

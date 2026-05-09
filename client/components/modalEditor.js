@@ -187,6 +187,22 @@ function computeDefaultStart(date, tz) {
   return localToUTC(dateStr, t, tz);
 }
 
+const ALARM_OPTS = [
+  [0,    'No reminder'],
+  [5,    '5 min before'],
+  [10,   '10 min before'],
+  [15,   '15 min before'],
+  [30,   '30 min before'],
+  [60,   '1 hour before'],
+  [120,  '2 hours before'],
+  [1440, '1 day before'],
+];
+function alarmOptionsHtml(currentMinutes) {
+  return ALARM_OPTS.map(([v, l]) =>
+    `<option value="${v}"${(currentMinutes ?? 0) === v ? ' selected' : ''}>${esc(l)}</option>`
+  ).join('');
+}
+
 const DAYS_SHORT = ['SU','MO','TU','WE','TH','FR','SA'];
 const DAYS_LONG  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 function ordinal(n) { return n + (n===1?'st':n===2?'nd':n===3?'rd':'th'); }
@@ -278,11 +294,19 @@ function renderForm(event, defaultDate) {
         <input type="checkbox" id="f-allday" ${event?.allDay ? 'checked' : ''}>
       </div>
     </div>
-    <div class="modal-field">
-      <label>Repeat</label>
-      <select id="f-repeat">
-        ${repeatOptionsHtml(start, event?.rrule || null)}
-      </select>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Repeat</label>
+        <select id="f-repeat">
+          ${repeatOptionsHtml(start, event?.rrule || null)}
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Remind me</label>
+        <select id="f-alarm">
+          ${alarmOptionsHtml(event?.alarmMinutes ?? (state.config.alarmDefaultMinutes ?? 0))}
+        </select>
+      </div>
     </div>
     ${event?.recurring ? `
     <div class="modal-field recurring-scope-field">
@@ -479,8 +503,11 @@ function handleSave(event) {
   const nlpRrule  = !event ? (sheet.dataset.nlpRrule || null) : null;
   const rrule = (repeatVal && repeatVal !== '__custom__') ? repeatVal : nlpRrule;
 
+  const alarmVal     = parseInt(sheet.querySelector('#f-alarm')?.value || '0');
+  const alarmMinutes = alarmVal > 0 ? alarmVal : null;
+
   const data = { title, start: startDt.toISOString(), end: endDt.toISOString(), allDay, calendarId, description, location, url,
-    rrule: rrule || null };
+    rrule: rrule || null, alarmMinutes };
   if (event?.recurring) {
     data.recurringScope = sheet.querySelector('#f-scope')?.value || 'single';
     data.uid = event.uid;

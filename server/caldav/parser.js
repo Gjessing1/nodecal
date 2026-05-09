@@ -114,6 +114,25 @@ function parseIcs(icsText, { timezone = 'UTC' } = {}) {
       endDate = new Date(startInfo.date.getTime() + (startInfo.allDay ? 86400000 : 3600000));
     }
 
+    // Parse VALARM sub-component (first one found wins)
+    let alarmMinutes = null;
+    const valarmRe = /BEGIN:VALARM([\s\S]*?)END:VALARM/g;
+    let vm;
+    while ((vm = valarmRe.exec(match[1])) !== null && alarmMinutes === null) {
+      for (const vline of vm[1].split(/\r?\n/).filter(Boolean)) {
+        if (/^TRIGGER/i.test(vline)) {
+          const vp = parseProperty(vline);
+          if (vp) {
+            const m2 = vp.value.match(/-P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?)?/i);
+            if (m2) {
+              const d2 = parseInt(m2[1] || 0), h2 = parseInt(m2[2] || 0), min2 = parseInt(m2[3] || 0);
+              alarmMinutes = d2 * 1440 + h2 * 60 + min2;
+            }
+          }
+        }
+      }
+    }
+
     // Collect EXDATE values (may appear multiple times, may be comma-separated)
     const exdates = [];
     for (const line of match[1].split(/\r?\n/).filter(Boolean)) {
@@ -135,6 +154,7 @@ function parseIcs(icsText, { timezone = 'UTC' } = {}) {
       rrule: props.RRULE?.value || null,
       exdates: exdates.length > 0 ? exdates : null,
       recurrenceId: props['RECURRENCE-ID']?.value || null,
+      alarmMinutes: alarmMinutes ?? null,
     });
   }
   return events;
@@ -179,6 +199,13 @@ function serializeEvent(event) {
   if (event.description) lines.push(`DESCRIPTION:${escapeIcsText(event.description)}`);
   if (event.location) lines.push(`LOCATION:${escapeIcsText(event.location)}`);
   if (event.url) lines.push(`URL:${event.url}`);
+  if (event.alarmMinutes > 0) {
+    const am = event.alarmMinutes;
+    const trigger = am >= 1440 && am % 1440 === 0 ? `-P${am / 1440}D`
+      : am >= 60 && am % 60 === 0 ? `-PT${am / 60}H`
+      : `-PT${am}M`;
+    lines.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Reminder', `TRIGGER:${trigger}`, 'END:VALARM');
+  }
   lines.push('END:VEVENT', 'END:VCALENDAR');
   return lines.map(foldLine).join(CRLF) + CRLF;
 }
