@@ -95,7 +95,7 @@ function render() {
   if      (state.activeView === 'tasks') renderTasks(viewContainer, taskCallbacks);
   else if (state.activeView === 'day')   renderDay(viewContainer, viewCallbacks);
   else if (state.activeView === 'week')  renderWeek(viewContainer, viewCallbacks);
-  else if (state.activeView === 'month') renderMonth(viewContainer, handleEventClick, handleDayClick, handleEventMove, () => switchView('tasks'), handleLongPressCreate, handleTaskComplete, handleTaskEdit);
+  else if (state.activeView === 'month') renderMonth(viewContainer, handleEventClick, handleDayClick, handleEventMove, () => switchView('tasks'), handleLongPressCreate, handleTaskComplete, handleTaskEdit, handleNewTaskForDay);
   else                                   renderAgenda(viewContainer, handleEventClick, handleTaskEdit, handleTaskComplete);
 }
 
@@ -161,7 +161,8 @@ async function loadWeather() {
 
 function detectAndLoadWeather() {
   if (state.config.weatherLat && state.config.weatherLon) {
-    loadWeather();
+    // Coordinates already saved — load and re-render so weather shows immediately
+    loadWeather().then(() => render()).catch(() => {});
     return;
   }
   if (!navigator.geolocation) return;
@@ -169,13 +170,12 @@ function detectAndLoadWeather() {
     const lat = pos.coords.latitude.toFixed(4);
     const lon = pos.coords.longitude.toFixed(4);
     setConfig({ weatherLat: lat, weatherLon: lon });
-    // Persist so subsequent loads skip the geolocation prompt
     fetch('/settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ weatherLat: lat, weatherLon: lon }),
     }).catch(() => {});
-    loadWeather();
+    loadWeather().then(() => render()).catch(() => {});
   }, () => { /* permission denied — no weather */ });
 }
 
@@ -336,6 +336,12 @@ function handleTaskEdit(task) {
     onSave:   data => saveTask(task.id, data),
     onDelete: t    => handleTaskDelete(t),
   });
+}
+
+function handleNewTaskForDay(day) {
+  const d = day;
+  const due = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  openTaskModal({ due }, { onSave: data => handleTaskAdd(data), onDelete: () => {} });
 }
 
 async function saveTask(id, data) {

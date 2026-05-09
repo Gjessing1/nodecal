@@ -372,15 +372,54 @@ function buildQuickAdd(callbacks) {
     autocompleteList.style.display = '';
   }
 
-  input.addEventListener('input', showAutocomplete);
+  // NLP feedback shown below the input (similar to calendar quick-add)
+  const nlpFb = document.createElement('div');
+  nlpFb.className = 'nlp-feedback hidden';
+
+  let nlpTimer = null;
+  function updateNlpFeedback() {
+    const raw = input.value.trim();
+    if (!raw || raw.startsWith('#') || selectedDue) { nlpFb.classList.add('hidden'); return; }
+    clearTimeout(nlpTimer);
+    nlpTimer = setTimeout(async () => {
+      try {
+        const res = await fetch('/nlp/parse-task', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: raw }),
+        });
+        const data = await res.json();
+        if (!data.parsed) { nlpFb.classList.add('hidden'); return; }
+        const parts = [];
+        if (data.due) {
+          const d = new Date(data.due + 'T00:00:00');
+          const today = localDateString(new Date());
+          const tomorrow = localDateString(new Date(Date.now() + 86400000));
+          if (data.due === today) parts.push('Today');
+          else if (data.due === tomorrow) parts.push('Tomorrow');
+          else parts.push(d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
+        }
+        if (data.rrule) parts.push('Repeats');
+        else if (data.xRecurringType) parts.push('Repeats after done');
+        if (parts.length) {
+          nlpFb.textContent = parts.join(' · ');
+          nlpFb.classList.remove('hidden');
+        } else {
+          nlpFb.classList.add('hidden');
+        }
+      } catch { nlpFb.classList.add('hidden'); }
+    }, 300);
+  }
+
+  input.addEventListener('input', () => { showAutocomplete(); updateNlpFeedback(); });
   input.addEventListener('keydown', e => {
     if (e.key === 'Escape') { autocompleteList.style.display = 'none'; }
-    if (e.key === 'Enter') { autocompleteList.style.display = 'none'; submit(); }
+    if (e.key === 'Enter') { autocompleteList.style.display = 'none'; nlpFb.classList.add('hidden'); submit(); }
   });
   input.addEventListener('blur', () => { setTimeout(() => { autocompleteList.style.display = 'none'; }, 150); });
 
   inputWrap.appendChild(input);
   inputWrap.appendChild(autocompleteList);
+  inputWrap.appendChild(nlpFb);
 
   const dates = document.createElement('div');
   dates.className = 'tasks-quickadd-dates';
@@ -462,6 +501,7 @@ function buildQuickAdd(callbacks) {
     const { title: rawTitle, tags } = parseTagsFromTitle(raw);
     if (!rawTitle) { input.value = ''; return; }
     input.value = '';
+    nlpFb.classList.add('hidden');
     const source = selectedSource || undefined;
 
     // If user has selected a specific due date, use it and skip NLP date parsing

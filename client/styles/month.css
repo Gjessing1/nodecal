@@ -170,7 +170,10 @@
   border: none; padding: 0;
   cursor: pointer;
 }
-.month-popup-view-day { width: 100%; margin-top: var(--space-sm); font-size: var(--font-size-sm); }
+.month-popup-footer { display: flex; gap: var(--space-sm); margin-top: var(--space-sm); }
+.month-popup-footer .btn { flex: 1; font-size: var(--font-size-sm); }
+.month-popup-view-day { font-size: var(--font-size-sm); }
+.month-popup-new-task { color: var(--color-accent); }
 
 /* Event chips inside month cells */
 .month-event-chip {

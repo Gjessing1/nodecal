@@ -11,8 +11,9 @@ import { localDateStr, getISOWeek, weatherIcon, weatherBadge } from '../app/util
  * @param {function(Date): void} [onLongPress] - called with the day Date on long-press
  * @param {function(task): void} [onTaskComplete] - toggle task completion from popup
  * @param {function(task): void} [onTaskClick] - open task for editing from popup
+ * @param {function(Date): void} [onNewTask] - open new task modal for a given day
  */
-export function renderMonth(container, onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress, onTaskComplete, onTaskClick) {
+export function renderMonth(container, onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask) {
   const anchor = state.selectedDate;
   const year = anchor.getFullYear();
   const month = anchor.getMonth();
@@ -21,7 +22,7 @@ export function renderMonth(container, onEventClick, onDayClick, onEventMove, on
   container.innerHTML = '';
   container.appendChild(buildNavBar(year, month, onEventClick, onDayClick));
   container.appendChild(buildWeekDayHeader());
-  const grid = buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick, onLongPress, onTaskComplete, onTaskClick);
+  const grid = buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask);
   container.appendChild(grid);
 
   if (onEventMove) {
@@ -34,8 +35,8 @@ export function renderMonth(container, onEventClick, onDayClick, onEventMove, on
 
   // Swipe left/right to navigate months
   initSwipe(grid,
-    () => { state.selectedDate = new Date(year, month - 1, 1); renderMonth(container, onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress, onTaskComplete, onTaskClick); },
-    () => { state.selectedDate = new Date(year, month + 1, 1); renderMonth(container, onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress, onTaskComplete, onTaskClick); },
+    () => { state.selectedDate = new Date(year, month - 1, 1); renderMonth(container, onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask); },
+    () => { state.selectedDate = new Date(year, month + 1, 1); renderMonth(container, onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask); },
   );
 }
 
@@ -99,7 +100,7 @@ function buildWeekDayHeader() {
   return row;
 }
 
-function buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick, onLongPress, onTaskComplete, onTaskClick) {
+function buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask) {
   const showWN = state.config.showWeekNumbers;
   const grid = document.createElement('div');
   grid.className = 'month-grid' + (showWN ? ' with-weeknum' : '');
@@ -127,12 +128,12 @@ function buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick, o
       wn.textContent = 'W' + getISOWeek(day);
       grid.appendChild(wn);
     }
-    grid.appendChild(buildDayCell(day, month, today, monthEvents, onEventClick, onDayClick, onTasksClick, onLongPress, onTaskComplete, onTaskClick));
+    grid.appendChild(buildDayCell(day, month, today, monthEvents, onEventClick, onDayClick, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask));
   }
   return grid;
 }
 
-function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, onTasksClick, onLongPress, onTaskComplete, onTaskClick) {
+function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask) {
   const isToday = day.toDateString() === today.toDateString();
   const isOther = day.getMonth() !== curMonth;
   const dow = day.getDay();
@@ -156,7 +157,7 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, on
   }
   numWrap.addEventListener('click', e => {
     e.stopPropagation();
-    showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick);
+    showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask);
   });
   cell.appendChild(numWrap);
 
@@ -195,15 +196,14 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, on
           : dayTasks[0].title)
       : `${dayTasks.length} tasks`;
     pill.textContent = taskLabel;
-    if (onTasksClick) {
-      pill.style.cursor = 'pointer';
-      pill.addEventListener('click', e => { e.stopPropagation(); onTasksClick(); });
-    }
+    // Clicking the task pill opens the day popup (same as clicking the date number)
+    pill.style.cursor = 'pointer';
+    pill.addEventListener('click', e => { e.stopPropagation(); showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask); });
     cell.appendChild(pill);
   }
 
   // Clicking empty cell space opens popup (chips/pill/num all stopPropagation)
-  cell.addEventListener('click', () => showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick));
+  cell.addEventListener('click', () => showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask));
 
   if (onLongPress) {
     initLongPressCreate(cell, {
@@ -240,7 +240,7 @@ function buildChip(ev, onClick) {
   return chip;
 }
 
-function showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick) {
+function showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask) {
   document.getElementById('month-day-popup')?.remove();
 
   const tz = state.config.timezone;
@@ -346,13 +346,24 @@ function showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onT
     panel.appendChild(row);
   }
 
+  const footer = document.createElement('div');
+  footer.className = 'month-popup-footer';
+
+  if (onNewTask) {
+    const newTaskBtn = document.createElement('button');
+    newTaskBtn.className = 'btn btn-ghost month-popup-new-task';
+    newTaskBtn.textContent = '+ New task';
+    newTaskBtn.addEventListener('click', () => { overlay.remove(); onNewTask(new Date(day)); });
+    footer.appendChild(newTaskBtn);
+  }
   if (onDayClick) {
     const viewBtn = document.createElement('button');
     viewBtn.className = 'month-popup-view-day btn btn-ghost';
     viewBtn.textContent = 'Open day view →';
     viewBtn.addEventListener('click', () => { overlay.remove(); onDayClick(new Date(day)); });
-    panel.appendChild(viewBtn);
+    footer.appendChild(viewBtn);
   }
+  if (footer.children.length) panel.appendChild(footer);
 
   overlay.appendChild(panel);
   document.getElementById('app')?.appendChild(overlay);
