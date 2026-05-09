@@ -94,7 +94,7 @@ function render() {
   else if (state.activeView === 'day')   renderDay(viewContainer, viewCallbacks);
   else if (state.activeView === 'week')  renderWeek(viewContainer, viewCallbacks);
   else if (state.activeView === 'month') renderMonth(viewContainer, handleEventClick, handleDayClick, handleEventMove, () => switchView('tasks'), handleLongPressCreate, handleTaskComplete, handleTaskEdit);
-  else                                   renderAgenda(viewContainer, handleEventClick, handleTaskEdit);
+  else                                   renderAgenda(viewContainer, handleEventClick, handleTaskEdit, handleTaskComplete);
 }
 
 function handleDayClick(date) {

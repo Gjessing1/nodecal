@@ -241,8 +241,8 @@ function renderByDateGroups(container, tasks, callbacks) {
 
   const groups = [];
   if (overdue.length)       groups.push({ key: 'overdue',  label: 'Overdue',   overdue: true, items: overdue });
-  if (todayItems.length)    groups.push({ key: 'today',    label: 'Today',     items: todayItems });
-  if (tomorrowItems.length) groups.push({ key: 'tomorrow', label: 'Tomorrow',  items: tomorrowItems });
+  if (todayItems.length)    groups.push({ key: 'today',    label: `Today · ${formatDateHeader(today)}`,         items: todayItems });
+  if (tomorrowItems.length) groups.push({ key: 'tomorrow', label: `Tomorrow · ${formatDateHeader(tomorrow)}`,   items: tomorrowItems });
   for (const [date, items] of [...byDate.entries()].sort()) {
     groups.push({ key: date, label: formatDateHeader(date), items });
   }
@@ -571,15 +571,15 @@ export function openTaskModal(task, { onSave, onDelete }) {
       </div>
     </div>
 
-    <div class="modal-row tm-repeat-complete-row">
-      <div class="modal-field">
+    <div class="tm-repeat-complete-row">
+      <div class="modal-field tm-repeat-field">
         <label>Repeat</label>
         <select id="tm-recurring">
           <option value="">None</option>
           <option value="rrule-daily"   ${isRecRrule && task.rrule?.includes('DAILY')   ? 'selected' : ''}>Daily</option>
           <option value="rrule-weekly"  ${isRecRrule && task.rrule?.includes('WEEKLY')  ? 'selected' : ''}>Weekly</option>
           <option value="rrule-monthly" ${isRecRrule && task.rrule?.includes('MONTHLY') ? 'selected' : ''}>Monthly</option>
-          <option value="after-custom"  ${isRecAfterCompletion ? 'selected' : ''}>After completion</option>
+          <option value="after-custom"  ${isRecAfterCompletion ? 'selected' : ''}>After done</option>
         </select>
       </div>
       <div class="modal-field modal-field-checkbox tm-complete-col">

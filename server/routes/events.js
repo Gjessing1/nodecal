@@ -191,6 +191,7 @@ function toApiShape(ev) {
     url: ev.url || '',
     calendarId: ev.calendarId,
     recurring: ev.recurring || !!ev.rrule,
+    rrule: ev.rrule || null,
     occurrenceDate: ev.occurrenceDate || null,
   };
 }

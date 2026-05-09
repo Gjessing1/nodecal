@@ -475,10 +475,19 @@
 
 /* ── Repeat + Completed on same row ──────────────────────── */
 .tm-repeat-complete-row {
+  display: flex;
   align-items: flex-end;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
 }
+.tm-repeat-field {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0 !important;
+}
+.tm-repeat-field select { width: 100%; }
 .tm-complete-col {
-  flex: none !important;
+  flex-shrink: 0;
   margin-bottom: 0 !important;
   padding-bottom: 2px;
   white-space: nowrap;

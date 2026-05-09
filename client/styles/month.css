@@ -51,7 +51,8 @@
   overflow: hidden;
 }
 .month-grid:not(.with-weeknum) .month-day:nth-child(7n) { border-right: none; }
-.month-grid.with-weeknum .month-day:nth-child(7n) { border-right: none; }
+/* With week numbers each row has 8 children (weeknum + 7 days), so Sunday is the 8th child */
+.month-grid.with-weeknum .month-day:nth-child(8n) { border-right: none; }
 
 .month-day.other-month { opacity: 0.38; }
 .month-day.today { background: var(--color-today-bg); }

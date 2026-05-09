@@ -9,8 +9,9 @@ const AGENDA_DAYS = 90;
  * @param {HTMLElement} container
  * @param {function(event): void} onEventClick
  * @param {function(task): void} [onTaskClick]
+ * @param {function(task): void} [onTaskComplete]
  */
-export function renderAgenda(container, onEventClick, onTaskClick) {
+export function renderAgenda(container, onEventClick, onTaskClick, onTaskComplete) {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const fragments = [];
@@ -42,7 +43,7 @@ export function renderAgenda(container, onEventClick, onTaskClick) {
         header.appendChild(buildEventCard(ev, onEventClick));
       }
       for (const task of dayTasks) {
-        header.appendChild(buildTaskCard(task, onTaskClick));
+        header.appendChild(buildTaskCard(task, onTaskClick, onTaskComplete));
       }
     }
 
@@ -83,24 +84,28 @@ function buildEventCard(ev, onClick) {
   return card;
 }
 
-function buildTaskCard(task, onTaskClick) {
+function buildTaskCard(task, onTaskClick, onTaskComplete) {
   const card = document.createElement('div');
   card.className = 'event-card task-agenda-card';
-  card.style.cursor = 'pointer';
-  if (onTaskClick) card.addEventListener('click', () => onTaskClick(task));
 
-  const dot = document.createElement('div');
-  dot.className = 'event-dot task-dot';
+  const check = document.createElement('button');
+  check.className = 'task-check' + (task.status === 'COMPLETED' ? ' checked' : '');
+  check.setAttribute('aria-label', task.status === 'COMPLETED' ? 'Mark incomplete' : 'Complete task');
+  if (onTaskComplete) {
+    check.addEventListener('click', e => { e.stopPropagation(); onTaskComplete(task); });
+  }
 
   const info = document.createElement('div');
   info.className = 'event-info';
+  info.style.cursor = 'pointer';
+  if (onTaskClick) info.addEventListener('click', () => onTaskClick(task));
 
   const title = document.createElement('div');
   title.className = 'event-title';
   title.textContent = task.title;
 
   info.appendChild(title);
-  card.appendChild(dot);
+  card.appendChild(check);
   card.appendChild(info);
   return card;
 }
