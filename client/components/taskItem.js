@@ -43,7 +43,8 @@ export function buildTaskItem(task, { onComplete, onStar, onClick, onSnooze, sho
 
   if (showDue && task.due) {
     const badge = document.createElement('span');
-    badge.className = 'task-due-badge' + (isDueOverdue(task.due) ? ' overdue' : '');
+    const isOverdue = task.status !== 'COMPLETED' && isDueOverdue(task.due);
+    badge.className = 'task-due-badge' + (isOverdue ? ' overdue' : '');
     badge.textContent = formatDue(task.due);
     meta.appendChild(badge);
   }

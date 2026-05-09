@@ -152,6 +152,7 @@ function serializeEvent(event) {
     'PRODID:-//Nodecal//EN',
     'BEGIN:VEVENT',
     `UID:${event.uid}`,
+    `DTSTAMP:${new Date().toISOString().replace(/[-:.]/g,'').slice(0,15)}Z`,
     `SUMMARY:${escapeIcsText(event.title)}`,
     `DTSTART${event.allDay ? ';VALUE=DATE' : ''}:${formatIcsDate(new Date(event.start), event.allDay)}`,
     `DTEND${event.allDay ? ';VALUE=DATE' : ''}:${formatIcsDate(new Date(event.end), event.allDay)}`,
@@ -240,6 +241,7 @@ function serializeTask(task) {
     'PRODID:-//Nodecal//EN',
     'BEGIN:VTODO',
     `UID:${task.uid}`,
+    `DTSTAMP:${new Date().toISOString().replace(/[-:.]/g,'').slice(0,15)}Z`,
     `SUMMARY:${escapeIcsText(task.title || '')}`,
     `STATUS:${task.status || 'NEEDS-ACTION'}`,
   ];

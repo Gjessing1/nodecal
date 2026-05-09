@@ -198,6 +198,7 @@
 .tasks-quickadd-row {
   display: flex;
   gap: var(--space-sm);
+  margin-top: var(--space-md);
 }
 
 .tasks-quickadd-input-wrap {

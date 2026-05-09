@@ -215,7 +215,9 @@ function renderList(container, filterState, sortOrder, groupBy, filterCat, filte
     tasks = sortTasks(tasks, sortOrder);
   }
 
-  if (groupBy === 'category') {
+  if (filterState.showDone) {
+    renderByCompletionGroups(container, tasks, callbacks);
+  } else if (groupBy === 'category') {
     renderByCategoryGroups(container, tasks, hidden, callbacks);
   } else {
     renderByDateGroups(container, tasks, callbacks);
@@ -257,6 +259,23 @@ function renderByDateGroups(container, tasks, callbacks) {
   if (noDue.length) groups.push({ key: 'none', label: 'No due date', items: noDue });
 
   renderGroups(container, groups, callbacks, tasks.length, false);
+}
+
+function renderByCompletionGroups(container, tasks, callbacks) {
+  const byDate = new Map();
+  const noDate = [];
+  for (const task of tasks) {
+    const dateStr = task.completed ? task.completed.slice(0, 10) : null;
+    if (!dateStr) { noDate.push(task); continue; }
+    if (!byDate.has(dateStr)) byDate.set(dateStr, []);
+    byDate.get(dateStr).push(task);
+  }
+  const groups = [];
+  for (const [date, items] of [...byDate.entries()].sort().reverse()) {
+    groups.push({ key: date, label: formatDateHeader(date), items });
+  }
+  if (noDate.length) groups.push({ key: 'none', label: 'No completion date', items: noDate });
+  renderGroups(container, groups, callbacks, tasks.length, true); // showDue=true: show due date on each card
 }
 
 function renderByCategoryGroups(container, tasks, hidden, callbacks) {

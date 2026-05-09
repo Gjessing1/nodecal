@@ -197,11 +197,20 @@ function repeatOptionsHtml(date, currentRrule) {
   const weeklyVal  = `FREQ=WEEKLY;BYDAY=${DAYS_SHORT[dow]}`;
   const monthlyVal = `FREQ=MONTHLY;BYMONTHDAY=${dom}`;
 
+  // "Nth weekday of month" — e.g. "3rd Thursday" or "Last Thursday"
+  const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  const isLastWeek  = dom + 7 > daysInMonth;
+  const weekOrdinal = isLastWeek ? -1 : Math.ceil(dom / 7);
+  const nthDayVal   = `FREQ=MONTHLY;BYDAY=${weekOrdinal}${DAYS_SHORT[dow]}`;
+  const ordLabels   = ['', 'First', 'Second', 'Third', 'Fourth'];
+  const nthDayLabel = `Monthly (${weekOrdinal === -1 ? 'Last' : ordLabels[weekOrdinal]} ${DAYS_LONG[dow]})`;
+
   function matchPreset(r) {
     if (!r) return '';
     const norm = r.toUpperCase();
     if (/FREQ=DAILY/.test(norm) && !/INTERVAL=[2-9]|INTERVAL=\d{2}/.test(norm)) return 'FREQ=DAILY';
     if (/FREQ=WEEKLY/.test(norm) && !/INTERVAL=[2-9]|INTERVAL=\d{2}/.test(norm)) return weeklyVal;
+    if (/FREQ=MONTHLY;BYDAY=/.test(norm) && !/INTERVAL=[2-9]|INTERVAL=\d{2}/.test(norm)) return nthDayVal;
     if (/FREQ=MONTHLY/.test(norm) && !/INTERVAL=[2-9]|INTERVAL=\d{2}/.test(norm)) return monthlyVal;
     if (/FREQ=YEARLY/.test(norm)) return 'FREQ=YEARLY';
     return '__custom__';
@@ -213,6 +222,7 @@ function repeatOptionsHtml(date, currentRrule) {
     ['FREQ=DAILY', 'Daily'],
     [weeklyVal, `Weekly on ${DAYS_LONG[dow]}`],
     [monthlyVal, `Monthly on ${ordinal(dom)}`],
+    [nthDayVal, nthDayLabel],
     ['FREQ=YEARLY', 'Yearly'],
   ];
   if (sel === '__custom__') opts.push(['__custom__', `Custom (${currentRrule.split(';')[0]})`]);
@@ -361,6 +371,26 @@ function renderForm(event, defaultDate) {
       }
     }
   });
+
+  // URL open link — appears beside the input when a URL is set
+  const urlInput = sheet.querySelector('#f-url');
+  if (urlInput) {
+    function updateUrlLink() {
+      const existing = sheet.querySelector('.url-open-link');
+      if (existing) existing.remove();
+      if (urlInput.value.trim()) {
+        const link = document.createElement('a');
+        link.href = urlInput.value.trim();
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = '↗ Open';
+        link.className = 'url-open-link btn btn-ghost';
+        urlInput.parentElement.appendChild(link);
+      }
+    }
+    updateUrlLink();
+    urlInput.addEventListener('input', updateUrlLink);
+  }
 
   // When start date changes: shift end date by the same delta; refresh repeat options
   const startDateEl = sheet.querySelector('#f-start-date');
