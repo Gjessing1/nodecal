@@ -1,5 +1,6 @@
 import { state, calendarById } from '../app/state.js';
 import { formatTime, localDateStr, getISOWeek, weatherBadge } from '../app/utils.js';
+import { initLongPressCreate } from '../components/dnd.js';
 
 const DAY_MS = 86400000;
 const AGENDA_DAYS = 90;
@@ -10,8 +11,9 @@ const AGENDA_DAYS = 90;
  * @param {function(event): void} onEventClick
  * @param {function(task): void} [onTaskClick]
  * @param {function(task): void} [onTaskComplete]
+ * @param {function(Date): void} [onLongPress] - long-press on a day opens new event for that date
  */
-export function renderAgenda(container, onEventClick, onTaskClick, onTaskComplete) {
+export function renderAgenda(container, onEventClick, onTaskClick, onTaskComplete, onLongPress) {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const fragments = [];
@@ -45,6 +47,14 @@ export function renderAgenda(container, onEventClick, onTaskClick, onTaskComplet
       for (const task of dayTasks) {
         header.appendChild(buildTaskCard(task, onTaskClick, onTaskComplete));
       }
+    }
+
+    if (onLongPress) {
+      const capturedDay = new Date(day);
+      initLongPressCreate(header, {
+        skipSelector: '.event-card,.task-check',
+        onLongPress() { onLongPress(capturedDay); },
+      });
     }
 
     fragments.push(header);

@@ -638,6 +638,16 @@ export function openTaskModal(task, { onSave, onDelete }) {
       </div>
     </div>
 
+    <div class="modal-field">
+      <label>Reminder</label>
+      <select id="tm-reminder">
+        <option value="none"           ${!task.taskReminder || task.taskReminder === 'none' ? 'selected' : ''}>None</option>
+        <option value="on-due"         ${task.taskReminder === 'on-due'          ? 'selected' : ''}>On due date (morning)</option>
+        <option value="evening-before" ${task.taskReminder === 'evening-before'  ? 'selected' : ''}>Evening before</option>
+        <option value="morning-before" ${task.taskReminder === 'morning-before'  ? 'selected' : ''}>Morning before</option>
+      </select>
+    </div>
+
     <div class="tm-repeat-complete-row">
       <div class="modal-field tm-repeat-field">
         <label>Repeat</label>
@@ -778,6 +788,7 @@ export function openTaskModal(task, { onSave, onDelete }) {
       status:      completedChecked ? 'COMPLETED' : 'NEEDS-ACTION',
       completed:   completedChecked ? new Date().toISOString() : null,
       rrule, xRecurringType, xRecurringInterval,
+      taskReminder: sheet.querySelector('#tm-reminder')?.value || 'none',
     });
     closeTaskModal();
   });

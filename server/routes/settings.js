@@ -41,7 +41,7 @@ router.put('/settings', (req, res) => {
     'showWeekendBg',
     'showTasksOnDay', 'showTasksOnWeek', 'showTasksOnMonth', 'showTasksOnAgenda',
     'showWeekNumbersDay', 'showWeekNumbersMonth', 'showWeekNumbersAgenda',
-    'enableNotifications', 'alarmDefaultMinutes',
+    'enableNotifications', 'alarmDefaultMinutes', 'taskReminderDefault', 'taskReminderMorningTime', 'taskReminderEveningTime',
     'syncIntervalMinutes', 'syncHistoryDays', 'syncFutureDays',
   ];
   const toSave = {};

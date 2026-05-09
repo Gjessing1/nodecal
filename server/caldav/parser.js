@@ -263,6 +263,7 @@ function parseVtodo(icsText) {
       rrule: props.RRULE?.value || null,
       xRecurringType: props['X-RECURRING-TYPE']?.value || null,
       xRecurringInterval: props['X-RECURRING-INTERVAL']?.value || null,
+      taskReminder: props['X-REMINDER']?.value || null,
     });
   }
   return result;
@@ -293,6 +294,7 @@ function serializeTask(task) {
   if (task.rrule) lines.push(`RRULE:${task.rrule}`);
   if (task.xRecurringType) lines.push(`X-RECURRING-TYPE:${task.xRecurringType}`);
   if (task.xRecurringInterval) lines.push(`X-RECURRING-INTERVAL:${task.xRecurringInterval}`);
+  if (task.taskReminder && task.taskReminder !== 'none') lines.push(`X-REMINDER:${task.taskReminder}`);
   if (task.description) lines.push(`DESCRIPTION:${escapeIcsText(task.description)}`);
   lines.push('END:VTODO', 'END:VCALENDAR');
   return lines.map(foldLine).join(CRLF) + CRLF;

@@ -96,7 +96,7 @@ function render() {
   else if (state.activeView === 'day')   renderDay(viewContainer, viewCallbacks);
   else if (state.activeView === 'week')  renderWeek(viewContainer, viewCallbacks);
   else if (state.activeView === 'month') renderMonth(viewContainer, handleEventClick, handleDayClick, handleEventMove, () => switchView('tasks'), handleLongPressCreate, handleTaskComplete, handleTaskEdit, handleNewTaskForDay);
-  else                                   renderAgenda(viewContainer, handleEventClick, handleTaskEdit, handleTaskComplete);
+  else                                   renderAgenda(viewContainer, handleEventClick, handleTaskEdit, handleTaskComplete, handleLongPressCreate);
 }
 
 function handleDayClick(date) {
@@ -155,25 +155,63 @@ async function loadEvents() {
 
 const _notifTimers = [];
 
+function taskAlarmDatetime(dueStr, reminderType, cfg) {
+  if (!dueStr || !reminderType || reminderType === 'none') return null;
+  const tz = cfg.timezone || 'UTC';
+  const morningTime = cfg.taskReminderMorningTime || '09:00';
+  const eveningTime = cfg.taskReminderEveningTime || '18:00';
+  let dateStr = dueStr, timeStr = morningTime;
+  if (reminderType === 'evening-before') {
+    const d = new Date(dueStr + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 1);
+    dateStr = d.toISOString().slice(0, 10); timeStr = eveningTime;
+  } else if (reminderType === 'morning-before') {
+    const d = new Date(dueStr + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 1);
+    dateStr = d.toISOString().slice(0, 10);
+  }
+  const [h, m] = timeStr.split(':').map(Number);
+  const naive = new Date(`${dateStr}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00Z`);
+  const parts = {};
+  for (const p of new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit',
+    hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: false,
+  }).formatToParts(naive)) parts[p.type] = p.value;
+  const hh = parts.hour === '24' ? '00' : parts.hour;
+  const shownAsUtc = new Date(`${parts.year}-${parts.month}-${parts.day}T${hh}:${parts.minute}:${parts.second}Z`);
+  return new Date(naive.getTime() + (naive.getTime() - shownAsUtc.getTime()));
+}
+
 function scheduleNotifications(events) {
-  // Clear old timers
   while (_notifTimers.length) clearTimeout(_notifTimers.pop());
   if (!state.config.enableNotifications) return;
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
   const now = Date.now();
-  for (const ev of events) {
+
+  // Event alarms
+  for (const ev of (events || state.events)) {
     if (!ev.alarmMinutes || ev.allDay) continue;
     const alarmAt = new Date(ev.start).getTime() - ev.alarmMinutes * 60000;
     const delay = alarmAt - now;
     if (delay > 0 && delay < 48 * 60 * 60 * 1000) {
       _notifTimers.push(setTimeout(() => {
-        const start = new Date(ev.start);
-        const timeStr = start.toLocaleTimeString('en-US', {
+        const timeStr = new Date(ev.start).toLocaleTimeString('en-US', {
           hour: 'numeric', minute: '2-digit', hour12: state.config.timeFormat === '12h',
           timeZone: state.config.timezone,
         });
         new Notification(ev.title, { body: timeStr, tag: `ev-${ev.id}`, icon: '/icon-192.png' });
+      }, delay));
+    }
+  }
+
+  // Task reminders
+  for (const task of state.tasks) {
+    if (task.status === 'COMPLETED' || !task.taskReminder || task.taskReminder === 'none') continue;
+    const alarmAt = taskAlarmDatetime(task.due, task.taskReminder, state.config);
+    if (!alarmAt) continue;
+    const delay = alarmAt.getTime() - now;
+    if (delay > 0 && delay < 48 * 60 * 60 * 1000) {
+      _notifTimers.push(setTimeout(() => {
+        new Notification(task.title, { body: `Due: ${task.due}`, tag: `task-${task.id}`, icon: '/icon-192.png' });
       }, delay));
     }
   }
@@ -191,6 +229,7 @@ async function loadTasks() {
   const [tasksRes, sourcesRes] = await Promise.all([fetch('/tasks'), fetch('/task-sources')]);
   if (tasksRes.ok) setTasks(await tasksRes.json());
   if (sourcesRes.ok) setTaskSources(await sourcesRes.json());
+  scheduleNotifications(); // re-run after tasks update to catch task reminders
 }
 
 async function loadWeather() {
@@ -693,6 +732,7 @@ async function init() {
           calendarId: state.config.defaultCalendar || state.calendars[0]?.id,
           description: '',
           ...(data.rrule ? { rrule: data.rrule } : {}),
+          alarmMinutes: state.config.alarmDefaultMinutes || null,
         });
       } else {
         // NLP didn't parse — open modal with just the title pre-filled

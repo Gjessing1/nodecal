@@ -91,16 +91,37 @@ function renderForm() {
         <span>Enable event reminders (browser notifications)</span>
       </label>
     </div>
-    <div class="modal-field">
-      <label>Default reminder</label>
-      <select id="s-alarm-default">
-        <option value="0"  ${(cfg.alarmDefaultMinutes ?? 0) === 0    ? 'selected' : ''}>No reminder</option>
-        <option value="5"  ${cfg.alarmDefaultMinutes === 5    ? 'selected' : ''}>5 min before</option>
-        <option value="10" ${cfg.alarmDefaultMinutes === 10   ? 'selected' : ''}>10 min before</option>
-        <option value="15" ${cfg.alarmDefaultMinutes === 15   ? 'selected' : ''}>15 min before</option>
-        <option value="30" ${cfg.alarmDefaultMinutes === 30   ? 'selected' : ''}>30 min before</option>
-        <option value="60" ${cfg.alarmDefaultMinutes === 60   ? 'selected' : ''}>1 hour before</option>
-      </select>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Default event reminder</label>
+        <select id="s-alarm-default">
+          <option value="0"  ${(cfg.alarmDefaultMinutes ?? 0) === 0    ? 'selected' : ''}>None</option>
+          <option value="5"  ${cfg.alarmDefaultMinutes === 5    ? 'selected' : ''}>5 min before</option>
+          <option value="10" ${cfg.alarmDefaultMinutes === 10   ? 'selected' : ''}>10 min before</option>
+          <option value="15" ${cfg.alarmDefaultMinutes === 15   ? 'selected' : ''}>15 min before</option>
+          <option value="30" ${cfg.alarmDefaultMinutes === 30   ? 'selected' : ''}>30 min before</option>
+          <option value="60" ${cfg.alarmDefaultMinutes === 60   ? 'selected' : ''}>1 hour before</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Default task reminder</label>
+        <select id="s-task-reminder-default">
+          <option value="none"           ${!cfg.taskReminderDefault || cfg.taskReminderDefault === 'none' ? 'selected' : ''}>None</option>
+          <option value="on-due"         ${cfg.taskReminderDefault === 'on-due'          ? 'selected' : ''}>On due date</option>
+          <option value="evening-before" ${cfg.taskReminderDefault === 'evening-before'  ? 'selected' : ''}>Evening before</option>
+          <option value="morning-before" ${cfg.taskReminderDefault === 'morning-before'  ? 'selected' : ''}>Morning before</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Morning time</label>
+        <input type="time" id="s-task-reminder-morning" value="${cfg.taskReminderMorningTime || '09:00'}">
+      </div>
+      <div class="modal-field">
+        <label>Evening time</label>
+        <input type="time" id="s-task-reminder-evening" value="${cfg.taskReminderEveningTime || '18:00'}">
+      </div>
     </div>
 
     <div class="modal-section-label">Sync</div>
@@ -517,8 +538,11 @@ async function handleSave() {
   const showWeekNumbersMonth = sheet.querySelector('#s-weeknums-month').checked;
   const showWeekNumbersAgenda= sheet.querySelector('#s-weeknums-agenda').checked;
   const showWeekNumbers      = showWeekNumbersDay || showWeekNumbersMonth || showWeekNumbersAgenda;
-  const enableNotifications  = sheet.querySelector('#s-notif-enable').checked;
-  const alarmDefaultMinutes  = parseInt(sheet.querySelector('#s-alarm-default').value) || 0;
+  const enableNotifications       = sheet.querySelector('#s-notif-enable').checked;
+  const alarmDefaultMinutes       = parseInt(sheet.querySelector('#s-alarm-default').value) || 0;
+  const taskReminderDefault       = sheet.querySelector('#s-task-reminder-default').value || 'none';
+  const taskReminderMorningTime   = sheet.querySelector('#s-task-reminder-morning').value || '09:00';
+  const taskReminderEveningTime   = sheet.querySelector('#s-task-reminder-evening').value || '18:00';
   const syncIntervalMinutes  = parseInt(sheet.querySelector('#s-sync-interval').value) || 2;
   const syncHistoryDays      = parseInt(sheet.querySelector('#s-sync-history').value) || 730;
   const syncFutureDays       = parseInt(sheet.querySelector('#s-sync-future').value) || 0;
@@ -536,7 +560,7 @@ async function handleSave() {
     hiddenCategories: state.config.hiddenCategories || [],
     taskSources: state.taskSources || [],
     defaultTaskSource: state.config.defaultTaskSource || '',
-    enableNotifications, alarmDefaultMinutes,
+    enableNotifications, alarmDefaultMinutes, taskReminderDefault, taskReminderMorningTime, taskReminderEveningTime,
     syncIntervalMinutes, defaultEventTime, defaultEventDuration, showWeekNumbers,
     showWeekNumbersDay, showWeekNumbersMonth, showWeekNumbersAgenda,
     syncHistoryDays, syncFutureDays, dateFormat,

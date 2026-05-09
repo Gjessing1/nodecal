@@ -24,7 +24,7 @@ router.post('/tasks', async (req, res) => {
   const sources = getEffectiveTasksSources();
   if (!sources.length) return res.status(503).json({ error: 'Tasks CalDAV URL not configured' });
 
-  const { title, due, description, categories, rrule, xRecurringType, xRecurringInterval, source } = req.body;
+  const { title, due, description, categories, rrule, xRecurringType, xRecurringInterval, taskReminder, source } = req.body;
   if (!title) return res.status(400).json({ error: 'title required' });
 
   const targetSrc = sources.find(s => s.url === source) || sources[0];
@@ -44,6 +44,7 @@ router.post('/tasks', async (req, res) => {
       rrule: rrule || null,
       xRecurringType: xRecurringType || null,
       xRecurringInterval: xRecurringInterval || null,
+      taskReminder: taskReminder || null,
       createdAt: now,
       source: targetSrc.url,
       sourceName: targetSrc.name,
@@ -69,7 +70,7 @@ router.put('/tasks/:id', async (req, res) => {
     const existing = store.getTask(req.params.id);
     if (!existing) return res.status(404).json({ error: 'Task not found' });
 
-    const allowed = ['title', 'due', 'description', 'categories', 'rrule', 'xRecurringType', 'xRecurringInterval', 'status', 'completed'];
+    const allowed = ['title', 'due', 'description', 'categories', 'rrule', 'xRecurringType', 'xRecurringInterval', 'status', 'completed', 'taskReminder'];
     const changes = {};
     for (const k of allowed) {
       if (k in req.body) changes[k] = req.body[k];
@@ -169,6 +170,7 @@ function toApiShape(task) {
     createdAt: task.createdAt || null,
     source: task.source || null,
     sourceName: task.sourceName || null,
+    taskReminder: task.taskReminder || null,
   };
 }
 
