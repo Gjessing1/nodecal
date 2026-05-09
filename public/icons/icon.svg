@@ -1,13 +1,50 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#2563eb"/>
-  <rect x="96" y="128" width="320" height="288" rx="24" fill="white"/>
-  <rect x="96" y="172" width="320" height="64" fill="#1d4ed8"/>
-  <rect x="160" y="96" width="40" height="80" rx="12" fill="white"/>
-  <rect x="312" y="96" width="40" height="80" rx="12" fill="white"/>
-  <rect x="136" y="276" width="44" height="44" rx="8" fill="#dbeafe"/>
-  <rect x="234" y="276" width="44" height="44" rx="8" fill="#2563eb"/>
-  <rect x="332" y="276" width="44" height="44" rx="8" fill="#dbeafe"/>
-  <rect x="136" y="340" width="44" height="44" rx="8" fill="#dbeafe"/>
-  <rect x="234" y="340" width="44" height="44" rx="8" fill="#dbeafe"/>
-  <rect x="332" y="340" width="44" height="44" rx="8" fill="#dbeafe"/>
+  <!-- Background -->
+  <rect width="512" height="512" rx="112" fill="#2563eb"/>
+
+  <!-- Calendar body -->
+  <rect x="80" y="140" width="352" height="300" rx="28" fill="white"/>
+
+  <!-- Header bar -->
+  <rect x="80" y="140" width="352" height="88" rx="28" fill="#1e40af"/>
+  <rect x="80" y="196" width="352" height="32" fill="#1e40af"/>
+
+  <!-- Month label: three white dashes (represents text) -->
+  <rect x="120" y="162" width="96" height="12" rx="6" fill="white" opacity="0.9"/>
+  <rect x="120" y="183" width="60" height="9" rx="4.5" fill="white" opacity="0.5"/>
+
+  <!-- Calendar binding rings -->
+  <rect x="168" y="108" width="36" height="72" rx="18" fill="#1e3a8a"/>
+  <rect x="308" y="108" width="36" height="72" rx="18" fill="#1e3a8a"/>
+  <rect x="172" y="112" width="28" height="64" rx="14" fill="white"/>
+  <rect x="312" y="112" width="28" height="64" rx="14" fill="white"/>
+
+  <!-- Grid: 7 day labels row -->
+  <rect x="108" y="248" width="40" height="8" rx="4" fill="#94a3b8"/>
+  <rect x="162" y="248" width="40" height="8" rx="4" fill="#94a3b8"/>
+  <rect x="216" y="248" width="40" height="8" rx="4" fill="#94a3b8"/>
+  <rect x="270" y="248" width="40" height="8" rx="4" fill="#94a3b8"/>
+  <rect x="324" y="248" width="40" height="8" rx="4" fill="#94a3b8"/>
+
+  <!-- Row 1 of dates -->
+  <rect x="108" y="272" width="40" height="36" rx="10" fill="#f1f5f9"/>
+  <rect x="162" y="272" width="40" height="36" rx="10" fill="#f1f5f9"/>
+  <!-- Today highlight -->
+  <rect x="216" y="272" width="40" height="36" rx="10" fill="#2563eb"/>
+  <rect x="270" y="272" width="40" height="36" rx="10" fill="#f1f5f9"/>
+  <rect x="324" y="272" width="40" height="36" rx="10" fill="#f1f5f9"/>
+
+  <!-- Row 2 of dates -->
+  <rect x="108" y="322" width="40" height="36" rx="10" fill="#f1f5f9"/>
+  <rect x="162" y="322" width="40" height="36" rx="10" fill="#f1f5f9"/>
+  <rect x="216" y="322" width="40" height="36" rx="10" fill="#f1f5f9"/>
+  <rect x="270" y="322" width="40" height="36" rx="10" fill="#dbeafe"/>
+  <rect x="324" y="322" width="40" height="36" rx="10" fill="#f1f5f9"/>
+
+  <!-- Row 3 of dates -->
+  <rect x="108" y="372" width="40" height="36" rx="10" fill="#f1f5f9"/>
+  <rect x="162" y="372" width="40" height="36" rx="10" fill="#f1f5f9"/>
+  <rect x="216" y="372" width="40" height="36" rx="10" fill="#f1f5f9"/>
+  <rect x="270" y="372" width="40" height="36" rx="10" fill="#f1f5f9"/>
+  <rect x="324" y="372" width="40" height="36" rx="10" fill="#dbeafe"/>
 </svg>

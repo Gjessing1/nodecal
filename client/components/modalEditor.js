@@ -187,20 +187,13 @@ function computeDefaultStart(date, tz) {
   return localToUTC(dateStr, t, tz);
 }
 
-const ALARM_OPTS = [
-  [0,    'No reminder'],
-  [5,    '5 min before'],
-  [10,   '10 min before'],
-  [15,   '15 min before'],
-  [30,   '30 min before'],
-  [60,   '1 hour before'],
-  [120,  '2 hours before'],
-  [1440, '1 day before'],
-];
+const ALARM_PRESETS = [[0,'None'],[5,'5 min before'],[15,'15 min before'],[60,'1 hour before']];
 function alarmOptionsHtml(currentMinutes) {
-  return ALARM_OPTS.map(([v, l]) =>
+  const known = ALARM_PRESETS.map(([v]) => v);
+  const isCustom = currentMinutes != null && currentMinutes > 0 && !known.includes(currentMinutes);
+  return ALARM_PRESETS.map(([v, l]) =>
     `<option value="${v}"${(currentMinutes ?? 0) === v ? ' selected' : ''}>${esc(l)}</option>`
-  ).join('');
+  ).join('') + `<option value="-1"${isCustom ? ' selected' : ''}>Custom…</option>`;
 }
 
 const DAYS_SHORT = ['SU','MO','TU','WE','TH','FR','SA'];
@@ -236,10 +229,10 @@ function repeatOptionsHtml(date, currentRrule) {
   const opts = [
     ['', 'None'],
     ['FREQ=DAILY', 'Daily'],
-    [weeklyVal, `Weekly on ${DAYS_LONG[dow]}`],
-    [monthlyVal, `Monthly on ${ordinal(dom)}`],
-    [nthDayVal, nthDayLabel],
+    [weeklyVal, 'Weekly'],
+    [monthlyVal, 'Monthly'],
     ['FREQ=YEARLY', 'Yearly'],
+    [nthDayVal, nthDayLabel],
   ];
   if (sel === '__custom__') opts.push(['__custom__', `Custom (${currentRrule.split(';')[0]})`]);
   return opts.map(([v, l]) => `<option value="${esc(v)}"${sel===v?' selected':''}>${esc(l)}</option>`).join('');
@@ -307,6 +300,10 @@ function renderForm(event, defaultDate) {
           ${alarmOptionsHtml(event?.alarmMinutes ?? (state.config.alarmDefaultMinutes ?? 0))}
         </select>
       </div>
+    </div>
+    <div class="modal-field" id="f-alarm-custom-row" style="${(()=>{const v=event?.alarmMinutes??state.config.alarmDefaultMinutes??0;return [0,5,15,60].includes(v)?'display:none':''})()}">
+      <label>Minutes before</label>
+      <input type="number" id="f-alarm-custom" value="${(()=>{const v=event?.alarmMinutes??state.config.alarmDefaultMinutes??0;return [0,5,15,60].includes(v)?'':(v||'')})()}" min="1" max="10080" placeholder="e.g. 45">
     </div>
     ${event?.recurring ? `
     <div class="modal-field recurring-scope-field">
@@ -395,6 +392,15 @@ function renderForm(event, defaultDate) {
       }
     }
   });
+
+  // Alarm select → show/hide custom minutes row
+  const alarmSel = sheet.querySelector('#f-alarm');
+  const alarmCustomRow = sheet.querySelector('#f-alarm-custom-row');
+  if (alarmSel && alarmCustomRow) {
+    alarmSel.addEventListener('change', () => {
+      alarmCustomRow.style.display = alarmSel.value === '-1' ? '' : 'none';
+    });
+  }
 
   // URL open link — appears beside the input when a URL is set
   const urlInput = sheet.querySelector('#f-url');
@@ -503,8 +509,10 @@ function handleSave(event) {
   const nlpRrule  = !event ? (sheet.dataset.nlpRrule || null) : null;
   const rrule = (repeatVal && repeatVal !== '__custom__') ? repeatVal : nlpRrule;
 
-  const alarmVal     = parseInt(sheet.querySelector('#f-alarm')?.value || '0');
-  const alarmMinutes = alarmVal > 0 ? alarmVal : null;
+  const alarmSelVal  = sheet.querySelector('#f-alarm')?.value || '0';
+  const alarmMinutes = alarmSelVal === '-1'
+    ? (parseInt(sheet.querySelector('#f-alarm-custom')?.value || '0') || null)
+    : (parseInt(alarmSelVal) > 0 ? parseInt(alarmSelVal) : null);
 
   const data = { title, start: startDt.toISOString(), end: endDt.toISOString(), allDay, calendarId, description, location, url,
     rrule: rrule || null, alarmMinutes };

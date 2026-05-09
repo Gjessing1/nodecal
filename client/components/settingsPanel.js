@@ -90,6 +90,10 @@ function renderForm() {
         <input type="checkbox" id="s-notif-enable" ${cfg.enableNotifications ? 'checked' : ''}>
         <span>Enable event reminders (browser notifications)</span>
       </label>
+      <div style="display:flex;gap:var(--space-sm);margin-top:var(--space-xs)">
+        <span id="s-notif-status" style="font-size:var(--font-size-sm);color:var(--color-text-muted);flex:1"></span>
+        <button type="button" id="s-notif-test" class="btn btn-ghost" style="font-size:var(--font-size-sm);padding:2px 12px">Test notification</button>
+      </div>
     </div>
     <div class="modal-row">
       <div class="modal-field">
@@ -249,17 +253,48 @@ function renderForm() {
     </div>
   `;
 
-  // Notification permission — request when user enables
+  // Notification permission + status + test
   const notifCheck = sheet.querySelector('#s-notif-enable');
+  const notifStatus = sheet.querySelector('#s-notif-status');
+  const notifTest   = sheet.querySelector('#s-notif-test');
+
+  function updateNotifStatus() {
+    if (!notifStatus) return;
+    if (!('Notification' in window)) {
+      notifStatus.textContent = 'Not supported by this browser';
+    } else {
+      const perm = Notification.permission;
+      notifStatus.textContent = perm === 'granted' ? '✓ Permission granted'
+        : perm === 'denied' ? '✗ Permission denied — enable in browser settings'
+        : 'Permission not yet requested';
+      notifStatus.style.color = perm === 'granted' ? 'var(--color-accent)'
+        : perm === 'denied' ? 'var(--color-danger)' : 'var(--color-text-muted)';
+    }
+  }
+  updateNotifStatus();
+
   if (notifCheck) {
     notifCheck.addEventListener('change', async () => {
       if (!notifCheck.checked) return;
       if (!('Notification' in window)) { notifCheck.checked = false; alert('Notifications not supported by this browser'); return; }
-      if (Notification.permission === 'denied') { notifCheck.checked = false; alert('Notification permission was denied. Please enable it in browser settings.'); return; }
+      if (Notification.permission === 'denied') { notifCheck.checked = false; alert('Permission denied — please enable in browser/OS settings.'); return; }
       if (Notification.permission === 'default') {
         const r = await Notification.requestPermission();
         if (r !== 'granted') { notifCheck.checked = false; }
       }
+      updateNotifStatus();
+    });
+  }
+
+  if (notifTest) {
+    notifTest.addEventListener('click', async () => {
+      if (!('Notification' in window)) { alert('Not supported'); return; }
+      if (Notification.permission !== 'granted') {
+        const r = await Notification.requestPermission();
+        updateNotifStatus();
+        if (r !== 'granted') return;
+      }
+      new Notification('Nodecal test', { body: 'Notifications are working!', icon: '/icons/icon.svg' });
     });
   }
 

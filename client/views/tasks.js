@@ -645,7 +645,12 @@ export function openTaskModal(task, { onSave, onDelete }) {
         <option value="on-due"         ${task.taskReminder === 'on-due'          ? 'selected' : ''}>On due date (morning)</option>
         <option value="evening-before" ${task.taskReminder === 'evening-before'  ? 'selected' : ''}>Evening before</option>
         <option value="morning-before" ${task.taskReminder === 'morning-before'  ? 'selected' : ''}>Morning before</option>
+        <option value="custom"         ${task.taskReminder?.startsWith('custom') ? 'selected' : ''}>Custom…</option>
       </select>
+    </div>
+    <div class="modal-field" id="tm-reminder-custom-row" style="${task.taskReminder?.startsWith('custom') ? '' : 'display:none'}">
+      <label>Hours before due date (morning)</label>
+      <input type="number" id="tm-reminder-custom-hours" value="${task.taskReminder?.startsWith('custom') ? task.taskReminder.replace('custom-','').replace('h','') : ''}" min="1" max="720" placeholder="e.g. 4">
     </div>
 
     <div class="tm-repeat-complete-row">
@@ -757,6 +762,9 @@ export function openTaskModal(task, { onSave, onDelete }) {
   sheet.querySelector('#tm-recurring').addEventListener('change', e => {
     sheet.querySelector('#tm-interval-field').style.display = e.target.value === 'after-custom' ? '' : 'none';
   });
+  sheet.querySelector('#tm-reminder').addEventListener('change', e => {
+    sheet.querySelector('#tm-reminder-custom-row').style.display = e.target.value === 'custom' ? '' : 'none';
+  });
 
   sheet.querySelector('#tm-save').addEventListener('click', () => {
     const title = sheet.querySelector('#tm-title').value.trim();
@@ -788,7 +796,14 @@ export function openTaskModal(task, { onSave, onDelete }) {
       status:      completedChecked ? 'COMPLETED' : 'NEEDS-ACTION',
       completed:   completedChecked ? new Date().toISOString() : null,
       rrule, xRecurringType, xRecurringInterval,
-      taskReminder: sheet.querySelector('#tm-reminder')?.value || 'none',
+      taskReminder: (() => {
+        const v = sheet.querySelector('#tm-reminder')?.value || 'none';
+        if (v === 'custom') {
+          const h = parseInt(sheet.querySelector('#tm-reminder-custom-hours')?.value || '0');
+          return h > 0 ? `custom-${h}h` : 'none';
+        }
+        return v;
+      })(),
     });
     closeTaskModal();
   });

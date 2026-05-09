@@ -51,6 +51,8 @@ function buildNav() {
   }
 }
 
+const _viewHistory = [];
+
 function switchView(viewName) {
   const calViews = state.config.enabledViews || ['agenda'];
   const tabs = [...calViews];
@@ -58,6 +60,10 @@ function switchView(viewName) {
   if (!tabs.includes(viewName)) return;
   if (viewName === 'day' && state.activeView === 'day') {
     state.selectedDate = new Date();
+  }
+  if (state.activeView && state.activeView !== viewName) {
+    _viewHistory.push(state.activeView);
+    if (_viewHistory.length > 10) _viewHistory.shift();
   }
   state.activeView = viewName;
   buildNav();
@@ -167,6 +173,11 @@ function taskAlarmDatetime(dueStr, reminderType, cfg) {
   } else if (reminderType === 'morning-before') {
     const d = new Date(dueStr + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 1);
     dateStr = d.toISOString().slice(0, 10);
+  } else if (reminderType.startsWith('custom-')) {
+    // custom-Xh: X hours before the morning time on the due date
+    const hours = parseInt(reminderType.replace('custom-','').replace('h','')) || 0;
+    const base = taskAlarmDatetime(dueStr, 'on-due', cfg);
+    return base ? new Date(base.getTime() - hours * 3600000) : null;
   }
   const [h, m] = timeStr.split(':').map(Number);
   const naive = new Date(`${dateStr}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00Z`);
@@ -618,7 +629,18 @@ function initBackButton() {
     if (calDrawer && !calDrawer.classList.contains('hidden')) {
       calDrawer.classList.add('hidden'); history.pushState({ overlay: true }, ''); return;
     }
-    // Nothing open — push a new state so the next back still doesn't exit
+    // No overlay — go back to the previous view if there is one
+    if (_viewHistory.length > 0) {
+      const prev = _viewHistory.pop();
+      if (prev !== state.activeView) {
+        state.activeView = prev;
+        buildNav();
+        render();
+      }
+      history.pushState({ overlay: true }, '');
+      return;
+    }
+    // Nothing to go back to — keep the history entry so we don't exit the PWA
     if (e.state?.overlay) history.pushState({ overlay: true }, '');
   });
 
