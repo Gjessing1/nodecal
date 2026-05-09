@@ -78,6 +78,7 @@ const viewCallbacks = {
   onEventResize: handleEventResize,
   onTaskClick:   handleTaskEdit,
   onLongPress:   handleLongPressCreate,
+  onDayClick:    handleDayClick,
 };
 
 const taskCallbacks = {
@@ -209,7 +210,7 @@ function scheduleNotifications(events) {
           hour: 'numeric', minute: '2-digit', hour12: state.config.timeFormat === '12h',
           timeZone: state.config.timezone,
         });
-        new Notification(ev.title, { body: timeStr, tag: `ev-${ev.id}`, icon: '/icon-192.png' });
+        showPwaNotification(ev.title, { body: timeStr, tag: `ev-${ev.id}`, icon: '/icons/icon.svg' });
       }, delay));
     }
   }
@@ -222,7 +223,7 @@ function scheduleNotifications(events) {
     const delay = alarmAt.getTime() - now;
     if (delay > 0 && delay < 48 * 60 * 60 * 1000) {
       _notifTimers.push(setTimeout(() => {
-        new Notification(task.title, { body: `Due: ${task.due}`, tag: `task-${task.id}`, icon: '/icon-192.png' });
+        showPwaNotification(task.title, { body: `Due: ${task.due}`, tag: `task-${task.id}`, icon: '/icons/icon.svg' });
       }, delay));
     }
   }
@@ -234,6 +235,19 @@ async function requestNotificationPermission() {
   if (Notification.permission === 'denied') return false;
   const result = await Notification.requestPermission();
   return result === 'granted';
+}
+
+async function showPwaNotification(title, options) {
+  // Use service worker showNotification() for PWA (required on Android Chrome);
+  // fall back to Notification constructor for desktop browsers
+  if ('serviceWorker' in navigator) {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification(title, options);
+      return;
+    } catch { /* fall through to legacy path */ }
+  }
+  new Notification(title, options);
 }
 
 async function loadTasks() {

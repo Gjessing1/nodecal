@@ -294,7 +294,15 @@ function renderForm() {
         updateNotifStatus();
         if (r !== 'granted') return;
       }
-      new Notification('Nodecal test', { body: 'Notifications are working!', icon: '/icons/icon.svg' });
+      // Use service worker showNotification for PWA (Android requires this)
+      if ('serviceWorker' in navigator) {
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          await reg.showNotification('Nodecal test', { body: 'Notifications are working! ✓', icon: '/icons/icon.svg' });
+          return;
+        } catch { /* fall through */ }
+      }
+      new Notification('Nodecal test', { body: 'Notifications are working! ✓', icon: '/icons/icon.svg' });
     });
   }
 

@@ -177,7 +177,8 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, on
 
   const MAX = 2;
   for (let i = 0; i < Math.min(dayEvs.length, MAX); i++) {
-    cell.appendChild(buildChip(dayEvs[i], onEventClick));
+    const popup = () => showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask);
+    cell.appendChild(buildChip(dayEvs[i], onEventClick, popup));
   }
   if (dayEvs.length > MAX) {
     const more = document.createElement('div');
@@ -215,7 +216,7 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, on
   return cell;
 }
 
-function buildChip(ev, onClick) {
+function buildChip(ev, onClick, onPopup) {
   const cal = calendarById(ev.calendarId);
   const color = cal?.color || '#4a90d9';
   const chip = document.createElement('div');
@@ -236,7 +237,15 @@ function buildChip(ev, onClick) {
     chip.textContent = ev.title;
   }
 
-  chip.addEventListener('click', e => { e.stopPropagation(); onClick(ev); });
+  chip.addEventListener('click', e => {
+    e.stopPropagation();
+    // Mobile (coarse pointer): open the day popup for context; desktop: open event directly
+    if (onPopup && window.matchMedia('(pointer: coarse)').matches) {
+      onPopup();
+    } else {
+      onClick(ev);
+    }
+  });
   return chip;
 }
 

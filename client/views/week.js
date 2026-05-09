@@ -56,7 +56,7 @@ export function renderWeek(container, callbacks) {
     ? state.tasks.filter(t => t.status !== 'COMPLETED' && t.due && days.some(d => localDateStr(d) === t.due))
     : [];
   if (allDayEvents.length > 0 || allDayTasks.length > 0) {
-    container.appendChild(buildAllDayRow(days, allDayEvents, allDayTasks, onEventClick, callbacks.onTaskClick));
+    container.appendChild(buildAllDayRow(days, allDayEvents, allDayTasks, onEventClick, callbacks.onTaskClick, callbacks.onDayClick));
   }
 
   // Day-column headers
@@ -214,7 +214,7 @@ function buildDayHeaders(days, today) {
   return row;
 }
 
-function buildAllDayRow(days, events, tasks, onEventClick, onTaskClick) {
+function buildAllDayRow(days, events, tasks, onEventClick, onTaskClick, onDayClick) {
   const row = document.createElement('div');
   row.className = 'week-allday-row';
   const spacer = document.createElement('div');
@@ -248,14 +248,23 @@ function buildAllDayRow(days, events, tasks, onEventClick, onTaskClick) {
       chip.addEventListener('click', () => onEventClick(ev));
       cell.appendChild(chip);
     }
-    for (const task of tasks) {
-      if (task.due !== dayStr) continue;
+    const dayTasks = tasks.filter(t => t.due === dayStr);
+    const MAX_TASKS = 2;
+    for (const task of dayTasks.slice(0, MAX_TASKS)) {
       const chip = document.createElement('div');
       chip.className = 'allday-chip task-allday-chip';
       chip.style.cursor = 'pointer';
       chip.textContent = task.title;
       if (onTaskClick) chip.addEventListener('click', () => onTaskClick(task));
       cell.appendChild(chip);
+    }
+    if (dayTasks.length > MAX_TASKS) {
+      const more = document.createElement('div');
+      more.className = 'allday-chip task-allday-chip';
+      more.style.cssText = 'cursor:pointer;opacity:0.7;font-style:italic';
+      more.textContent = `+${dayTasks.length - MAX_TASKS} tasks`;
+      more.addEventListener('click', () => onDayClick && onDayClick(new Date(day)));
+      cell.appendChild(more);
     }
     row.appendChild(cell);
   }

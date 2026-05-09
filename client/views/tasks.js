@@ -459,7 +459,13 @@ function buildQuickAdd(callbacks) {
     const btn = document.createElement('button');
     btn.className = 'tasks-date-shortcut';
     btn.textContent = label;
-    btn.addEventListener('click', () => { selectedDue = selectedDue === value ? null : value; updateActive(); });
+    // Prevent focus theft: keep mobile keyboard visible when tapping date shortcuts
+    btn.addEventListener('mousedown', e => e.preventDefault());
+    btn.addEventListener('click', () => {
+      selectedDue = selectedDue === value ? null : value;
+      updateActive();
+      input.focus();
+    });
     return btn;
   }
 
@@ -475,6 +481,7 @@ function buildQuickAdd(callbacks) {
   datePicker.addEventListener('change', () => {
     if (datePicker.value) { selectedDue = datePicker.value; updateActive(); }
   });
+  pickBtn.addEventListener('mousedown', e => e.preventDefault());
   pickBtn.addEventListener('click', () => datePicker.showPicker?.() || datePicker.click());
 
   function updateActive() {
