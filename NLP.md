@@ -23,6 +23,11 @@ Natural language input works in the event quick-add bar, the new-event title fie
 |---|---|
 | i dag / idag | today |
 | i morgen / imorgen | tomorrow |
+| overmorgen / i overmorgen / iovermorgen | day after tomorrow |
+| om N dager / dag | in N days |
+| om N uker / uke | in N weeks |
+| om N måneder / måned | in N months |
+| om N år | in N years |
 | mandag … søndag | next occurrence of that weekday |
 | neste mandag | next monday |
 | forrige fredag | last friday |
@@ -119,9 +124,6 @@ Vann planter etter fullføring hver 5 dag
 
 | Pattern | Status |
 |---|---|
-| "om 2 dager" (in 2 days) | Not supported — "om" not translated |
-| "overmorgen" (day after tomorrow) | Not supported |
 | "in an hour" / "in 30 minutes" | Not supported |
 | "the 3rd of next month" | Not reliable |
 | Season references ("next summer") | Not supported |
-| NLP highlight in blue | Shows for English matches; Norwegian text highlighted after translation so may not align with original input |
