@@ -695,6 +695,10 @@ export function openTaskModal(task, { onSave, onDelete }) {
       xRecurringInterval = sheet.querySelector('#tm-interval').value.trim() || 'weekly';
     }
 
+    // Auto-add any category text that was typed but not yet submitted with the + button
+    const pendingCat = catInput.value.trim().toLowerCase();
+    if (pendingCat && !modalCats.includes(pendingCat)) modalCats.push(pendingCat);
+
     const completedChecked = sheet.querySelector('#tm-completed').checked;
     const important = (task.categories || []).includes('important');
     const finalCats = important ? [...modalCats, 'important'] : [...modalCats];

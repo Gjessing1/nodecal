@@ -121,9 +121,22 @@ function renderForm() {
     </div>
 
     <div class="modal-field">
+      <label>Show tasks on calendar views</label>
       <label class="settings-toggle">
-        <input type="checkbox" id="s-tasks-on-cal" ${cfg.showTasksOnCalendar ? 'checked' : ''}>
-        <span>Show tasks on calendar views</span>
+        <input type="checkbox" id="s-tasks-day" ${(cfg.showTasksOnDay ?? cfg.showTasksOnCalendar) ? 'checked' : ''}>
+        <span>Day view</span>
+      </label>
+      <label class="settings-toggle">
+        <input type="checkbox" id="s-tasks-week" ${(cfg.showTasksOnWeek ?? cfg.showTasksOnCalendar) ? 'checked' : ''}>
+        <span>Week view</span>
+      </label>
+      <label class="settings-toggle">
+        <input type="checkbox" id="s-tasks-month" ${(cfg.showTasksOnMonth ?? cfg.showTasksOnCalendar) ? 'checked' : ''}>
+        <span>Month view</span>
+      </label>
+      <label class="settings-toggle">
+        <input type="checkbox" id="s-tasks-agenda" ${(cfg.showTasksOnAgenda ?? cfg.showTasksOnCalendar) ? 'checked' : ''}>
+        <span>Agenda view</span>
       </label>
     </div>
 
@@ -430,7 +443,11 @@ async function handleSave() {
   const timeFormat    = sheet.querySelector('#s-timefmt').value;
   const weekStart     = sheet.querySelector('#s-weekstart').value;
   const defaultCalRaw        = sheet.querySelector('#s-defcal').value;
-  const showTasksOnCalendar  = sheet.querySelector('#s-tasks-on-cal').checked;
+  const showTasksOnDay    = sheet.querySelector('#s-tasks-day').checked;
+  const showTasksOnWeek   = sheet.querySelector('#s-tasks-week').checked;
+  const showTasksOnMonth  = sheet.querySelector('#s-tasks-month').checked;
+  const showTasksOnAgenda = sheet.querySelector('#s-tasks-agenda').checked;
+  const showTasksOnCalendar = showTasksOnDay || showTasksOnWeek || showTasksOnMonth || showTasksOnAgenda;
   const taskSortOrder        = sheet.querySelector('#s-tasks-sort').value;
   const defaultEventTime     = sheet.querySelector('#s-default-event-time').value || '09:00';
   const defaultEventDuration = parseInt(sheet.querySelector('#s-default-event-dur').value) || 60;
@@ -445,6 +462,7 @@ async function handleSave() {
   const payload = {
     enabledViews, defaultView, timeFormat, weekStart,
     enableTasksView, showTasksOnCalendar, taskSortOrder,
+    showTasksOnDay, showTasksOnWeek, showTasksOnMonth, showTasksOnAgenda,
     hiddenCategories: state.config.hiddenCategories || [],
     taskSources: state.taskSources || [],
     defaultTaskSource: state.config.defaultTaskSource || '',

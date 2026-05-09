@@ -46,12 +46,18 @@ export function renderWeek(container, callbacks) {
   // Navigation bar
   container.appendChild(buildNavBar(wStart, callbacks));
 
-  // All-day row
+  // All-day row (events + optional tasks)
   const allDayEvents = state.events.filter(ev => {
     if (state.hiddenCalendars.has(ev.calendarId)) return false;
     return ev.allDay && new Date(ev.start) < wEnd && new Date(ev.end) > wStart;
   });
-  if (allDayEvents.length > 0) container.appendChild(buildAllDayRow(days, allDayEvents, onEventClick));
+  const showTasksWeek = state.config.showTasksOnWeek ?? state.config.showTasksOnCalendar ?? false;
+  const allDayTasks = showTasksWeek
+    ? state.tasks.filter(t => t.status !== 'COMPLETED' && t.due && days.some(d => localDateStr(d) === t.due))
+    : [];
+  if (allDayEvents.length > 0 || allDayTasks.length > 0) {
+    container.appendChild(buildAllDayRow(days, allDayEvents, allDayTasks, onEventClick, callbacks.onTaskClick));
+  }
 
   // Day-column headers
   container.appendChild(buildDayHeaders(days, today));
@@ -208,7 +214,7 @@ function buildDayHeaders(days, today) {
   return row;
 }
 
-function buildAllDayRow(days, events, onEventClick) {
+function buildAllDayRow(days, events, tasks, onEventClick, onTaskClick) {
   const row = document.createElement('div');
   row.className = 'week-allday-row';
   const spacer = document.createElement('div');
@@ -221,14 +227,11 @@ function buildAllDayRow(days, events, onEventClick) {
     const cell = document.createElement('div');
     cell.className = 'week-allday-cell';
     for (const ev of events) {
-      // All-day: compare by date string (avoids UTC-offset off-by-one)
-      // Timed: compare by Date object
       let onDay, isFirst;
       if (ev.allDay) {
         const s = ev.start.slice(0, 10);
         const e = ev.end.slice(0, 10);
         onDay = e > dayStr && s <= dayStr;
-        // Show chip on the start day, or on Monday if the series started before this week
         isFirst = i === 0 ? true : s >= dayStr;
       } else {
         const evStart = new Date(ev.start);
@@ -243,6 +246,15 @@ function buildAllDayRow(days, events, onEventClick) {
       chip.style.background = cal?.color || '#4a90d9';
       chip.textContent = ev.title;
       chip.addEventListener('click', () => onEventClick(ev));
+      cell.appendChild(chip);
+    }
+    for (const task of tasks) {
+      if (task.due !== dayStr) continue;
+      const chip = document.createElement('div');
+      chip.className = 'allday-chip task-allday-chip';
+      chip.style.cursor = 'pointer';
+      chip.textContent = task.title;
+      if (onTaskClick) chip.addEventListener('click', () => onTaskClick(task));
       cell.appendChild(chip);
     }
     row.appendChild(cell);

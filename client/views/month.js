@@ -170,7 +170,7 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, on
     })
     .sort((a, b) => (a.allDay ? -1 : 1) - (b.allDay ? -1 : 1) || new Date(a.start) - new Date(b.start));
 
-  const dayTasks = state.config.showTasksOnCalendar
+  const dayTasks = (state.config.showTasksOnMonth ?? state.config.showTasksOnCalendar)
     ? state.tasks.filter(t => t.due === dayStr && t.status !== 'COMPLETED')
     : [];
 
@@ -254,7 +254,7 @@ function showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onT
     })
     .sort((a, b) => (a.allDay ? -1 : 1) - (b.allDay ? -1 : 1) || new Date(a.start) - new Date(b.start));
 
-  const dayTasks = state.config.showTasksOnCalendar
+  const dayTasks = (state.config.showTasksOnMonth ?? state.config.showTasksOnCalendar)
     ? state.tasks.filter(t => t.due === dayStr && t.status !== 'COMPLETED')
     : [];
 

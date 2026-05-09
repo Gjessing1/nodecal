@@ -90,6 +90,8 @@ function render() {
   const showQuickAdd = state.activeView !== 'tasks';
   calQuickAdd.classList.toggle('hidden', !showQuickAdd);
   document.getElementById('app').classList.toggle('cal-quickadd-visible', showQuickAdd);
+  // FAB is hidden in tasks view — tasks view has its own + and ↵ buttons
+  fab.hidden = state.activeView === 'tasks';
   if      (state.activeView === 'tasks') renderTasks(viewContainer, taskCallbacks);
   else if (state.activeView === 'day')   renderDay(viewContainer, viewCallbacks);
   else if (state.activeView === 'week')  renderWeek(viewContainer, viewCallbacks);

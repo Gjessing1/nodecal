@@ -39,6 +39,7 @@ router.put('/settings', (req, res) => {
     'defaultEventTime', 'defaultEventDuration', 'showWeekNumbers', 'dateFormat',
     'weatherLat', 'weatherLon', 'weatherDays', 'weatherDaysWeek', 'weatherDaysMonth',
     'showWeekendBg',
+    'showTasksOnDay', 'showTasksOnWeek', 'showTasksOnMonth', 'showTasksOnAgenda',
   ];
   const toSave = {};
   for (const k of allowed) {

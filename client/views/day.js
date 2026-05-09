@@ -38,7 +38,7 @@ export function renderDay(container, callbacks) {
     return ev.start.slice(0, 10) <= dayStr && ev.end.slice(0, 10) > dayStr;
   });
 
-  const dayTasks = state.config.showTasksOnCalendar
+  const dayTasks = (state.config.showTasksOnDay ?? state.config.showTasksOnCalendar)
     ? state.tasks.filter(t => t.due === dayStr && t.status !== 'COMPLETED')
     : [];
 

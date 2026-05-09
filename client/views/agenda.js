@@ -25,7 +25,7 @@ export function renderAgenda(container, onEventClick, onTaskClick, onTaskComplet
       if (ev.allDay) return ev.start.slice(0, 10) <= str && ev.end.slice(0, 10) > str;
       return new Date(ev.start) < dayEnd && new Date(ev.end) > day;
     });
-    const dayTasks = state.config.showTasksOnCalendar
+    const dayTasks = (state.config.showTasksOnAgenda ?? state.config.showTasksOnCalendar)
       ? state.tasks.filter(t => t.due === str && t.status !== 'COMPLETED')
       : [];
 
