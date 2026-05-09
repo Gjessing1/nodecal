@@ -49,9 +49,15 @@ export function initDnd(gridEl, scrollEl, opts) {
 
     function handleMove(ev) {
       if (!active) {
-        if (Math.abs(ev.clientY - e.clientY) > 5 || Math.abs(ev.clientX - e.clientX) > 5) {
-          clearTimeout(timer);
-          activate();
+        if (ev.pointerType === 'mouse') {
+          // Mouse: activate immediately on > 5px movement
+          if (Math.abs(ev.clientY - e.clientY) > 5 || Math.abs(ev.clientX - e.clientX) > 5) {
+            clearTimeout(timer);
+            activate();
+          }
+        } else {
+          // Touch: vertical movement means the user is scrolling — cancel long-press
+          if (Math.abs(ev.clientY - e.clientY) > 8) clearTimeout(timer);
         }
       }
       if (!ghost) return;

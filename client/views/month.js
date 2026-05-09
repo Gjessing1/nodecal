@@ -82,7 +82,7 @@ function buildNavBar(year, month, onEventClick, onDayClick) {
 }
 
 function buildWeekDayHeader() {
-  const showWN = state.config.showWeekNumbers;
+  const showWN = (state.config.showWeekNumbersMonth ?? state.config.showWeekNumbers);
   const row = document.createElement('div');
   row.className = 'month-weekday-row' + (showWN ? ' with-weeknum' : '');
   if (showWN) {
@@ -101,7 +101,7 @@ function buildWeekDayHeader() {
 }
 
 function buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask) {
-  const showWN = state.config.showWeekNumbers;
+  const showWN = (state.config.showWeekNumbersMonth ?? state.config.showWeekNumbers);
   const grid = document.createElement('div');
   grid.className = 'month-grid' + (showWN ? ' with-weeknum' : '');
 

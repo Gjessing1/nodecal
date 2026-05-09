@@ -113,7 +113,7 @@ function buildTaskCard(task, onTaskClick, onTaskComplete) {
 function formatDayHeader(date, isToday) {
   // Week number: only on Mondays (ISO weekday 1)
   const isMonday = date.getDay() === 1;
-  const wn = (state.config.showWeekNumbers && isMonday) ? ` · W${getISOWeek(date)}` : '';
+  const wn = ((state.config.showWeekNumbersAgenda ?? state.config.showWeekNumbers) && isMonday) ? ` · W${getISOWeek(date)}` : '';
   // Weather: only for today
   const wx = isToday ? weatherBadge(localDateStr(date), state.weather, state.config.weatherDays ?? 6) : '';
   const wxTag = wx ? ` · ${wx}` : '';

@@ -40,6 +40,8 @@ router.put('/settings', (req, res) => {
     'weatherLat', 'weatherLon', 'weatherDays', 'weatherDaysWeek', 'weatherDaysMonth',
     'showWeekendBg',
     'showTasksOnDay', 'showTasksOnWeek', 'showTasksOnMonth', 'showTasksOnAgenda',
+    'showWeekNumbersDay', 'showWeekNumbersMonth', 'showWeekNumbersAgenda',
+    'syncHistoryDays', 'syncFutureDays',
   ];
   const toSave = {};
   for (const k of allowed) {

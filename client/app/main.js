@@ -108,8 +108,14 @@ function handleDayClick(date) {
 
 // ── Data loading ──────────────────────────────────────────
 
-function rangeFrom() { return new Date(Date.now() - 30 * 86400000).toISOString(); }
-function rangeTo()   { return new Date(Date.now() + 90 * 86400000).toISOString(); }
+function rangeFrom() {
+  const days = state.config.syncHistoryDays ?? 730;
+  return new Date(Date.now() - days * 86400000).toISOString();
+}
+function rangeTo() {
+  const days = state.config.syncFutureDays || 0;
+  return new Date(Date.now() + (days || 3650) * 86400000).toISOString(); // 0 = all = 10 years
+}
 
 async function loadAll() {
   const fetches = [

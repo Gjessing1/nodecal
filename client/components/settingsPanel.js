@@ -96,10 +96,30 @@ function renderForm() {
     </div>
 
     <div class="modal-field">
+      <label>Show week numbers (ISO 8601)</label>
       <label class="settings-toggle">
-        <input type="checkbox" id="s-weeknums" ${cfg.showWeekNumbers ? 'checked' : ''}>
-        <span>Show week numbers (ISO 8601)</span>
+        <input type="checkbox" id="s-weeknums-day" ${(cfg.showWeekNumbersDay ?? cfg.showWeekNumbers) ? 'checked' : ''}>
+        <span>Day view</span>
       </label>
+      <label class="settings-toggle">
+        <input type="checkbox" id="s-weeknums-month" ${(cfg.showWeekNumbersMonth ?? cfg.showWeekNumbers) ? 'checked' : ''}>
+        <span>Month view</span>
+      </label>
+      <label class="settings-toggle">
+        <input type="checkbox" id="s-weeknums-agenda" ${(cfg.showWeekNumbersAgenda ?? cfg.showWeekNumbers) ? 'checked' : ''}>
+        <span>Agenda view</span>
+      </label>
+    </div>
+
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Events history (days)</label>
+        <input type="number" id="s-sync-history" value="${cfg.syncHistoryDays ?? 730}" min="30" step="30">
+      </div>
+      <div class="modal-field">
+        <label>Events future (days, 0=all)</label>
+        <input type="number" id="s-sync-future" value="${cfg.syncFutureDays ?? 0}" min="0" step="30">
+      </div>
     </div>
 
     <div class="modal-field">
@@ -451,7 +471,12 @@ async function handleSave() {
   const taskSortOrder        = sheet.querySelector('#s-tasks-sort').value;
   const defaultEventTime     = sheet.querySelector('#s-default-event-time').value || '09:00';
   const defaultEventDuration = parseInt(sheet.querySelector('#s-default-event-dur').value) || 60;
-  const showWeekNumbers      = sheet.querySelector('#s-weeknums').checked;
+  const showWeekNumbersDay   = sheet.querySelector('#s-weeknums-day').checked;
+  const showWeekNumbersMonth = sheet.querySelector('#s-weeknums-month').checked;
+  const showWeekNumbersAgenda= sheet.querySelector('#s-weeknums-agenda').checked;
+  const showWeekNumbers      = showWeekNumbersDay || showWeekNumbersMonth || showWeekNumbersAgenda;
+  const syncHistoryDays      = parseInt(sheet.querySelector('#s-sync-history').value) || 730;
+  const syncFutureDays       = parseInt(sheet.querySelector('#s-sync-future').value) || 0;
   const dateFormat           = sheet.querySelector('#s-datefmt').value;
   const weatherLat           = sheet.querySelector('#s-weather-lat').value.trim();
   const weatherLon           = sheet.querySelector('#s-weather-lon').value.trim();
@@ -466,7 +491,9 @@ async function handleSave() {
     hiddenCategories: state.config.hiddenCategories || [],
     taskSources: state.taskSources || [],
     defaultTaskSource: state.config.defaultTaskSource || '',
-    defaultEventTime, defaultEventDuration, showWeekNumbers, dateFormat,
+    defaultEventTime, defaultEventDuration, showWeekNumbers,
+    showWeekNumbersDay, showWeekNumbersMonth, showWeekNumbersAgenda,
+    syncHistoryDays, syncFutureDays, dateFormat,
     weatherLat, weatherLon, weatherDaysWeek, weatherDaysMonth, showWeekendBg,
   };
   if (defaultCalRaw) payload.defaultCalendar = defaultCalRaw;

@@ -200,12 +200,20 @@ function renderList(container, filterState, sortOrder, groupBy, filterCat, filte
   container.innerHTML = '';
 
   const hidden = state.config.hiddenCategories || [];
-  let tasks = state.tasks.filter(t => filterState.showDone || t.status !== 'COMPLETED');
-  if (filterState.starredOnly) tasks = tasks.filter(t => t.important);
-  if (filterCat) tasks = tasks.filter(t => (t.categories || []).includes(filterCat));
-  // Starred view shows all sources — ignore source filter when starred is active
-  if (filterSource && !filterState.starredOnly) tasks = tasks.filter(t => t.source === filterSource);
-  tasks = sortTasks(tasks, sortOrder);
+  let tasks;
+  if (filterState.showDone) {
+    // "Done" mode: show ONLY completed tasks, newest completion first
+    tasks = state.tasks.filter(t => t.status === 'COMPLETED');
+    if (filterCat) tasks = tasks.filter(t => (t.categories || []).includes(filterCat));
+    if (filterSource && !filterState.starredOnly) tasks = tasks.filter(t => t.source === filterSource);
+    tasks = [...tasks].sort((a, b) => (b.completed || '').localeCompare(a.completed || ''));
+  } else {
+    tasks = state.tasks.filter(t => t.status !== 'COMPLETED');
+    if (filterState.starredOnly) tasks = tasks.filter(t => t.important);
+    if (filterCat) tasks = tasks.filter(t => (t.categories || []).includes(filterCat));
+    if (filterSource && !filterState.starredOnly) tasks = tasks.filter(t => t.source === filterSource);
+    tasks = sortTasks(tasks, sortOrder);
+  }
 
   if (groupBy === 'category') {
     renderByCategoryGroups(container, tasks, hidden, callbacks);
@@ -561,9 +569,9 @@ function buildQuickAdd(callbacks) {
   row.appendChild(submitBtn);
   row.appendChild(newBtn);
 
-  bar.appendChild(row);
   bar.appendChild(dates);
   bar.appendChild(sourceRow);
+  bar.appendChild(row);
   return bar;
 }
 
@@ -596,7 +604,7 @@ export function openTaskModal(task, { onSave, onDelete }) {
 
     <div class="modal-field">
       <label>Notes</label>
-      <textarea id="tm-desc" rows="3">${esc(task.description || '')}</textarea>
+      <textarea id="tm-desc" rows="4">${esc(task.description || '')}</textarea>
     </div>
 
     <div class="modal-field">
