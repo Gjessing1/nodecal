@@ -4,6 +4,11 @@ import { parseTagsFromTitle, getAllCategories, visibleCategories, groupTasksByCa
 import { formatShortDate } from '../app/utils.js';
 
 let _callbacks = null;
+let _quickAddEl = null;
+
+export function destroyTaskQuickAdd() {
+  if (_quickAddEl) { _quickAddEl.remove(); _quickAddEl = null; }
+}
 
 // Persist filter state across renders so toggling a task doesn't reset UI state
 const _persist = {
@@ -179,14 +184,19 @@ export function renderTasks(container, callbacks) {
 
   renderList(list, filterState, sortSel.value, currentGroupBy, currentFilterCat, currentSourceFilter, callbacks);
 
-  const quickAdd = buildQuickAdd(callbacks);
-
   wrap.appendChild(controls);
   wrap.appendChild(sourceFilterRow);
   wrap.appendChild(catFilterRow);
   wrap.appendChild(list);
-  wrap.appendChild(quickAdd);
   container.appendChild(wrap);
+
+  // Mount the quickadd bar in the app shell above bottom-nav (not inside the scroll area)
+  destroyTaskQuickAdd();
+  _quickAddEl = buildQuickAdd(callbacks);
+  const bottomNav = document.getElementById('bottom-nav');
+  if (bottomNav) {
+    document.getElementById('app').insertBefore(_quickAddEl, bottomNav);
+  }
 }
 
 /** Focus the quick-add input (called when FAB is tapped in tasks view). */

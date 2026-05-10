@@ -1,5 +1,5 @@
-const SHELL_CACHE = 'nodecal-shell-v1';
-const DATA_CACHE  = 'nodecal-data-v1';
+const SHELL_CACHE = 'nodecal-shell-v2';
+const DATA_CACHE  = 'nodecal-data-v2';
 
 // All static files that make up the app shell
 const SHELL_ASSETS = [
@@ -58,7 +58,10 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       fetch(request)
         .then(res => {
-          if (res.ok) caches.open(DATA_CACHE).then(c => c.put(normalised, res.clone()));
+          // Clone synchronously before returning — once respondWith consumes
+          // the body the clone() call would throw "body already used".
+          const clone = res.ok ? res.clone() : null;
+          if (clone) caches.open(DATA_CACHE).then(c => c.put(normalised, clone));
           return res;
         })
         .catch(() => caches.match(normalised))
@@ -73,7 +76,8 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(request)
       .then(cached => cached || fetch(request).then(res => {
-        if (res.ok) caches.open(SHELL_CACHE).then(c => c.put(request, res.clone()));
+        const clone = res.ok ? res.clone() : null;
+        if (clone) caches.open(SHELL_CACHE).then(c => c.put(request, clone));
         return res;
       }))
   );

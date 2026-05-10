@@ -3,7 +3,7 @@ import { renderAgenda } from '../views/agenda.js';
 import { renderDay, destroyDay } from '../views/day.js';
 import { renderWeek, destroyWeek } from '../views/week.js';
 import { renderMonth } from '../views/month.js';
-import { renderTasks, focusTaskQuickAdd, openTaskModal } from '../views/tasks.js';
+import { renderTasks, focusTaskQuickAdd, openTaskModal, destroyTaskQuickAdd } from '../views/tasks.js';
 import { initModal, openNewEventModal, openEditEventModal } from '../components/modalEditor.js';
 import { initCalendarDrawer, openDrawer } from '../components/calendarDrawer.js';
 import { initSettingsPanel, openSettings } from '../components/settingsPanel.js';
@@ -93,6 +93,7 @@ const taskCallbacks = {
 function render() {
   destroyDay();
   destroyWeek();
+  destroyTaskQuickAdd();
   // Show/hide calendar quick-add bar (not shown in tasks view which has its own)
   const showQuickAdd = state.activeView !== 'tasks';
   calQuickAdd.classList.toggle('hidden', !showQuickAdd);
