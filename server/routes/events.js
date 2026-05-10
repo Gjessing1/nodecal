@@ -171,7 +171,7 @@ async function handleFutureEdit(base, changes, occurrenceDate, res) {
 // ── Helpers ───────────────────────────────────────────────
 
 function filterChanges(changes) {
-  const allowed = ['title', 'start', 'end', 'allDay', 'description', 'location', 'url'];
+  const allowed = ['title', 'start', 'end', 'allDay', 'description', 'location', 'url', 'alarmMinutes'];
   const out = {};
   for (const k of allowed) {
     if (k in changes) out[k] = changes[k];

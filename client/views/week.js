@@ -57,7 +57,7 @@ export function renderWeek(container, callbacks) {
     ? state.tasks.filter(t => t.status !== 'COMPLETED' && t.due && days.some(d => localDateStr(d) === t.due))
     : [];
   if (allDayEvents.length > 0 || allDayTasks.length > 0) {
-    container.appendChild(buildAllDayRow(days, allDayEvents, allDayTasks, onEventClick, callbacks.onTaskClick, callbacks.onDayClick, callbacks.onTaskComplete, callbacks.onNewTask));
+    container.appendChild(buildAllDayRow(days, allDayEvents, allDayTasks, onEventClick, callbacks.onTaskClick, callbacks.onDayClick, callbacks.onTaskComplete, callbacks.onNewTask, callbacks.onLongPress));
   }
 
   // Day-column headers
@@ -218,7 +218,7 @@ function buildDayHeaders(days, today) {
   return row;
 }
 
-function buildAllDayRow(days, events, tasks, onEventClick, onTaskClick, onDayClick, onTaskComplete, onNewTask) {
+function buildAllDayRow(days, events, tasks, onEventClick, onTaskClick, onDayClick, onTaskComplete, onNewTask, onLongPress) {
   const row = document.createElement('div');
   row.className = 'week-allday-row';
   const spacer = document.createElement('div');
@@ -231,7 +231,7 @@ function buildAllDayRow(days, events, tasks, onEventClick, onTaskClick, onDayCli
     const cell = document.createElement('div');
     cell.className = 'week-allday-cell';
 
-    const openPopup = () => showDayPopup(new Date(day), dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask, callbacks.onLongPress);
+    const openPopup = () => showDayPopup(new Date(day), dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask, onLongPress);
 
     for (const ev of events) {
       let onDay, isFirst;

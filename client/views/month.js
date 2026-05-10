@@ -21,7 +21,7 @@ export function renderMonth(container, onEventClick, onDayClick, onEventMove, on
   const today = new Date();
 
   container.innerHTML = '';
-  container.appendChild(buildNavBar(year, month, onEventClick, onDayClick));
+  container.appendChild(buildNavBar(year, month, onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask));
   container.appendChild(buildWeekDayHeader());
   const grid = buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask);
   container.appendChild(grid);
@@ -41,7 +41,7 @@ export function renderMonth(container, onEventClick, onDayClick, onEventMove, on
   );
 }
 
-function buildNavBar(year, month, onEventClick, onDayClick) {
+function buildNavBar(year, month, onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask) {
   const nav = document.createElement('div');
   nav.className = 'view-nav';
 
@@ -50,7 +50,7 @@ function buildNavBar(year, month, onEventClick, onDayClick) {
   prev.textContent = '‹';
   prev.addEventListener('click', () => {
     state.selectedDate = new Date(year, month - 1, 1);
-    renderMonth(prev.closest('#view-container'), onEventClick, onDayClick);
+    renderMonth(prev.closest('#view-container'), onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask);
   });
 
   const title = document.createElement('span');
@@ -59,7 +59,7 @@ function buildNavBar(year, month, onEventClick, onDayClick) {
   title.addEventListener('click', () => {
     showMonthYearPicker(year, month, (y, m) => {
       state.selectedDate = new Date(y, m, 1);
-      renderMonth(title.closest('#view-container'), onEventClick, onDayClick, onEventMove);
+      renderMonth(title.closest('#view-container'), onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask);
     });
   });
 
@@ -70,7 +70,7 @@ function buildNavBar(year, month, onEventClick, onDayClick) {
   todayBtn.hidden = now.getFullYear() === year && now.getMonth() === month;
   todayBtn.addEventListener('click', () => {
     state.selectedDate = new Date();
-    renderMonth(prev.closest('#view-container'), onEventClick, onDayClick);
+    renderMonth(prev.closest('#view-container'), onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask);
   });
 
   const next = document.createElement('button');
@@ -78,7 +78,7 @@ function buildNavBar(year, month, onEventClick, onDayClick) {
   next.textContent = '›';
   next.addEventListener('click', () => {
     state.selectedDate = new Date(year, month + 1, 1);
-    renderMonth(next.closest('#view-container'), onEventClick, onDayClick);
+    renderMonth(next.closest('#view-container'), onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask);
   });
 
   nav.appendChild(prev);
