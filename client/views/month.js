@@ -164,7 +164,7 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, on
   }
   numWrap.addEventListener('click', e => {
     e.stopPropagation();
-    showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask);
+    showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask, onLongPress);
   });
   cell.appendChild(numWrap);
 
@@ -184,7 +184,7 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, on
 
   const MAX = 2;
   for (let i = 0; i < Math.min(dayEvs.length, MAX); i++) {
-    const popup = () => showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask);
+    const popup = () => showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask, onLongPress);
     cell.appendChild(buildChip(dayEvs[i], onEventClick, popup));
   }
   if (dayEvs.length > MAX) {
@@ -206,12 +206,12 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, on
     pill.textContent = taskLabel;
     // Clicking the task pill opens the day popup (same as clicking the date number)
     pill.style.cursor = 'pointer';
-    pill.addEventListener('click', e => { e.stopPropagation(); showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask); });
+    pill.addEventListener('click', e => { e.stopPropagation(); showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask, onLongPress); });
     cell.appendChild(pill);
   }
 
   // Clicking empty cell space opens popup (chips/pill/num all stopPropagation)
-  cell.addEventListener('click', () => showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask));
+  cell.addEventListener('click', () => showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask, onLongPress));
 
   if (onLongPress) {
     initLongPressCreate(cell, {
@@ -256,7 +256,7 @@ function buildChip(ev, onClick, onPopup) {
   return chip;
 }
 
-export function showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask) {
+export function showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask, onNewEvent) {
   document.getElementById('month-day-popup')?.remove();
 
   const tz = state.config.timezone;
@@ -365,17 +365,24 @@ export function showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComple
   const footer = document.createElement('div');
   footer.className = 'month-popup-footer';
 
+  if (onNewEvent) {
+    const newEventBtn = document.createElement('button');
+    newEventBtn.className = 'btn btn-ghost month-popup-new-event';
+    newEventBtn.textContent = '+ Event';
+    newEventBtn.addEventListener('click', () => { overlay.remove(); onNewEvent(new Date(day)); });
+    footer.appendChild(newEventBtn);
+  }
   if (onNewTask) {
     const newTaskBtn = document.createElement('button');
     newTaskBtn.className = 'btn btn-ghost month-popup-new-task';
-    newTaskBtn.textContent = '+ New task';
+    newTaskBtn.textContent = '+ Task';
     newTaskBtn.addEventListener('click', () => { overlay.remove(); onNewTask(new Date(day)); });
     footer.appendChild(newTaskBtn);
   }
   if (onDayClick) {
     const viewBtn = document.createElement('button');
     viewBtn.className = 'month-popup-view-day btn btn-ghost';
-    viewBtn.textContent = 'Open day view →';
+    viewBtn.textContent = 'Day view →';
     viewBtn.addEventListener('click', () => { overlay.remove(); onDayClick(new Date(day)); });
     footer.appendChild(viewBtn);
   }

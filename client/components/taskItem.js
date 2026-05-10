@@ -71,6 +71,18 @@ export function buildTaskItem(task, { onComplete, onStar, onClick, onSnooze, sho
     body.appendChild(chips);
   }
 
+  li.appendChild(check);
+  li.appendChild(body);
+
+  // Bell — shown before snooze when reminder is set
+  if (task.taskReminder && task.taskReminder !== 'none') {
+    const bell = document.createElement('span');
+    bell.className = 'task-reminder-icon';
+    bell.textContent = '🔔';
+    bell.title = 'Reminder set';
+    li.appendChild(bell);
+  }
+
   // Snooze (+1 day) — only for tasks with a due date
   if (task.due && onSnooze && task.status !== 'COMPLETED') {
     const snooze = document.createElement('button');
@@ -79,21 +91,7 @@ export function buildTaskItem(task, { onComplete, onStar, onClick, onSnooze, sho
     snooze.setAttribute('aria-label', 'Defer by 1 day');
     snooze.title = 'Defer to tomorrow';
     snooze.addEventListener('click', e => { e.stopPropagation(); onSnooze(task); });
-    li.appendChild(check);
-    li.appendChild(body);
     li.appendChild(snooze);
-  } else {
-    li.appendChild(check);
-    li.appendChild(body);
-  }
-
-  // Bell — shown beside snooze when reminder is set
-  if (task.taskReminder && task.taskReminder !== 'none') {
-    const bell = document.createElement('span');
-    bell.className = 'task-reminder-icon';
-    bell.textContent = '🔔';
-    bell.title = 'Reminder set';
-    li.appendChild(bell);
   }
 
   // Star

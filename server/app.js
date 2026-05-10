@@ -11,6 +11,10 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 app.use('/client', express.static(path.join(__dirname, '../client')));
 
+// Auth status — no auth required, used by client to gate API calls without 401 noise
+const { isAuthenticated } = require('./middleware/auth');
+app.get('/auth/status', (req, res) => res.json({ authenticated: isAuthenticated(req) }));
+
 // Auth middleware runs after static files so the login form always loads
 app.use(authMiddleware);
 app.use(require('./routes/auth'));

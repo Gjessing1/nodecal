@@ -128,20 +128,21 @@ function rangeTo() {
 }
 
 async function loadAll() {
-  // Fetch settings first to check auth before firing all other endpoints.
-  // This avoids a flood of 401 console errors when the session hasn't started yet.
-  const settingsRes = await fetch('/settings');
-  if (settingsRes.status === 401) { showLogin(); return false; }
+  // Check auth via a dedicated endpoint that never returns 401,
+  // so the browser console stays clean when the session hasn't started yet.
+  const authRes = await fetch('/auth/status');
+  const { authenticated } = await authRes.json();
+  if (!authenticated) { showLogin(); return false; }
 
-  const settings = await settingsRes.json();
-  setConfig(settings);
-
-  const [calRes, evRes, tasksRes, sourcesRes] = await Promise.all([
+  const [settingsRes, calRes, evRes, tasksRes, sourcesRes] = await Promise.all([
+    fetch('/settings'),
     fetch('/calendars'),
     fetch(`/events?from=${rangeFrom()}&to=${rangeTo()}`),
     fetch('/tasks'),
     fetch('/task-sources'),
   ]);
+  const settings = await settingsRes.json();
+  setConfig(settings);
   setCalendars(await calRes.json());
   setEvents(await evRes.json());
   if (tasksRes.ok) setTasks(await tasksRes.json());

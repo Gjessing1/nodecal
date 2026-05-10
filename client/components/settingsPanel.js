@@ -37,45 +37,68 @@ function renderForm() {
       ${cfg.authEnabled ? '<button class="btn btn-ghost" id="s-logout" style="font-size:var(--font-size-sm);color:var(--color-danger);flex-shrink:0">Log out</button>' : ''}
     </div>
 
-    <div class="modal-field">
-      <label>Visible views</label>
-      ${ALL_VIEWS.map(v => `
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Visible views</label>
+        ${ALL_VIEWS.map(v => `
+          <label class="settings-toggle">
+            <input type="checkbox" name="view" value="${v.id}" ${enabled.includes(v.id) ? 'checked' : ''}>
+            <span>${v.label}</span>
+          </label>`).join('')}
+      </div>
+      <div class="modal-field">
+        <label>Show tasks on views</label>
         <label class="settings-toggle">
-          <input type="checkbox" name="view" value="${v.id}" ${enabled.includes(v.id) ? 'checked' : ''}>
-          <span>${v.label}</span>
-        </label>`).join('')}
+          <input type="checkbox" id="s-tasks-day" ${(cfg.showTasksOnDay ?? cfg.showTasksOnCalendar) ? 'checked' : ''}>
+          <span>Day</span>
+        </label>
+        <label class="settings-toggle">
+          <input type="checkbox" id="s-tasks-week" ${(cfg.showTasksOnWeek ?? cfg.showTasksOnCalendar) ? 'checked' : ''}>
+          <span>Week</span>
+        </label>
+        <label class="settings-toggle">
+          <input type="checkbox" id="s-tasks-month" ${(cfg.showTasksOnMonth ?? cfg.showTasksOnCalendar) ? 'checked' : ''}>
+          <span>Month</span>
+        </label>
+        <label class="settings-toggle">
+          <input type="checkbox" id="s-tasks-agenda" ${(cfg.showTasksOnAgenda ?? cfg.showTasksOnCalendar) ? 'checked' : ''}>
+          <span>Agenda</span>
+        </label>
+      </div>
     </div>
 
-    <div class="modal-field">
-      <label>Default view</label>
-      <select id="s-default">
-        ${ALL_VIEWS.map(v => `<option value="${v.id}" ${cfg.defaultView === v.id ? 'selected' : ''}>${v.label}</option>`).join('')}
-      </select>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Default view</label>
+        <select id="s-default">
+          ${ALL_VIEWS.map(v => `<option value="${v.id}" ${cfg.defaultView === v.id ? 'selected' : ''}>${v.label}</option>`).join('')}
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Time format</label>
+        <select id="s-timefmt">
+          <option value="24h" ${cfg.timeFormat === '24h' ? 'selected' : ''}>24h (14:30)</option>
+          <option value="12h" ${cfg.timeFormat === '12h' ? 'selected' : ''}>12h (2:30 PM)</option>
+        </select>
+      </div>
     </div>
 
-    <div class="modal-field">
-      <label>Time format</label>
-      <select id="s-timefmt">
-        <option value="24h" ${cfg.timeFormat === '24h' ? 'selected' : ''}>24h (14:30)</option>
-        <option value="12h" ${cfg.timeFormat === '12h' ? 'selected' : ''}>12h (2:30 PM)</option>
-      </select>
-    </div>
-
-    <div class="modal-field">
-      <label>Week starts on</label>
-      <select id="s-weekstart">
-        <option value="monday" ${cfg.weekStart === 'monday' ? 'selected' : ''}>Monday</option>
-        <option value="sunday" ${cfg.weekStart === 'sunday' ? 'selected' : ''}>Sunday</option>
-      </select>
-    </div>
-
-    <div class="modal-field">
-      <label>Date format</label>
-      <select id="s-datefmt">
-        <option value="dmy" ${(cfg.dateFormat || 'dmy') === 'dmy' ? 'selected' : ''}>dd/mm/yyyy (10 May 2025)</option>
-        <option value="mdy" ${cfg.dateFormat === 'mdy' ? 'selected' : ''}>mm/dd/yyyy (May 10, 2025)</option>
-        <option value="iso" ${cfg.dateFormat === 'iso' ? 'selected' : ''}>ISO (2025-05-10)</option>
-      </select>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Week starts on</label>
+        <select id="s-weekstart">
+          <option value="monday" ${cfg.weekStart === 'monday' ? 'selected' : ''}>Monday</option>
+          <option value="sunday" ${cfg.weekStart === 'sunday' ? 'selected' : ''}>Sunday</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Date format</label>
+        <select id="s-datefmt">
+          <option value="dmy" ${(cfg.dateFormat || 'dmy') === 'dmy' ? 'selected' : ''}>dd/mm/yyyy</option>
+          <option value="mdy" ${cfg.dateFormat === 'mdy' ? 'selected' : ''}>mm/dd/yyyy</option>
+          <option value="iso" ${cfg.dateFormat === 'iso' ? 'selected' : ''}>ISO (2025-05-10)</option>
+        </select>
+      </div>
     </div>
 
     <div class="modal-field">
@@ -204,26 +227,6 @@ function renderForm() {
     </div>
 
     <div class="modal-field">
-      <label>Show tasks on calendar views</label>
-      <label class="settings-toggle">
-        <input type="checkbox" id="s-tasks-day" ${(cfg.showTasksOnDay ?? cfg.showTasksOnCalendar) ? 'checked' : ''}>
-        <span>Day view</span>
-      </label>
-      <label class="settings-toggle">
-        <input type="checkbox" id="s-tasks-week" ${(cfg.showTasksOnWeek ?? cfg.showTasksOnCalendar) ? 'checked' : ''}>
-        <span>Week view</span>
-      </label>
-      <label class="settings-toggle">
-        <input type="checkbox" id="s-tasks-month" ${(cfg.showTasksOnMonth ?? cfg.showTasksOnCalendar) ? 'checked' : ''}>
-        <span>Month view</span>
-      </label>
-      <label class="settings-toggle">
-        <input type="checkbox" id="s-tasks-agenda" ${(cfg.showTasksOnAgenda ?? cfg.showTasksOnCalendar) ? 'checked' : ''}>
-        <span>Agenda view</span>
-      </label>
-    </div>
-
-    <div class="modal-field">
       <label>Default task sort order</label>
       <select id="s-tasks-sort">
         <option value="due"     ${cfg.taskSortOrder === 'due'     ? 'selected' : ''}>Due date</option>
@@ -238,25 +241,31 @@ function renderForm() {
     <div class="modal-section-label">Weather</div>
     <div class="modal-field">
       <label>Location for weather (met.no)</label>
-      <div style="display:flex;gap:var(--space-sm)">
-        <input type="text" id="s-weather-lat" value="${esc(cfg.weatherLat || '')}" placeholder="Latitude e.g. 59.91" style="flex:1">
-        <input type="text" id="s-weather-lon" value="${esc(cfg.weatherLon || '')}" placeholder="Longitude e.g. 10.75" style="flex:1">
+      <div style="display:flex;gap:var(--space-sm);align-items:flex-end">
+        <div style="flex:1">
+          <div style="font-size:11px;color:var(--color-text-muted);margin-bottom:3px">Latitude</div>
+          <input type="text" id="s-weather-lat" value="${esc(cfg.weatherLat || '')}" placeholder="e.g. 59.91">
+        </div>
+        <div style="flex:1">
+          <div style="font-size:11px;color:var(--color-text-muted);margin-bottom:3px">Longitude</div>
+          <input type="text" id="s-weather-lon" value="${esc(cfg.weatherLon || '')}" placeholder="e.g. 10.75">
+        </div>
+        <button type="button" id="s-weather-detect" class="btn btn-ghost" style="font-size:var(--font-size-sm);flex-shrink:0;white-space:nowrap;padding:8px 10px">📍 Detect</button>
       </div>
-      <button type="button" id="s-weather-detect" class="btn btn-ghost" style="margin-top:var(--space-xs);font-size:var(--font-size-sm)">📍 Detect my location</button>
     </div>
     <div class="modal-row">
       <div class="modal-field">
-        <label>Forecast: week view (days)</label>
+        <label>Forecast: week (days)</label>
         <input type="number" id="s-weather-days-week" value="${cfg.weatherDaysWeek ?? 9}" min="1" max="14" step="1">
       </div>
       <div class="modal-field">
-        <label>Forecast: month view (days)</label>
+        <label>Forecast: month (days)</label>
         <input type="number" id="s-weather-days-month" value="${cfg.weatherDaysMonth ?? 4}" min="1" max="14" step="1">
       </div>
-    </div>
-    <div class="modal-field">
-      <label>Forecast: agenda view (days, 1 = today only)</label>
-      <input type="number" id="s-weather-days-agenda" value="${cfg.weatherDaysAgenda ?? 1}" min="1" max="9" step="1">
+      <div class="modal-field">
+        <label>Forecast: agenda (days)</label>
+        <input type="number" id="s-weather-days-agenda" value="${cfg.weatherDaysAgenda ?? 1}" min="1" max="9" step="1">
+      </div>
     </div>
 
     <div class="modal-actions">

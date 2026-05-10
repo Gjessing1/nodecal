@@ -228,7 +228,7 @@ function buildAllDayRow(days, events, tasks, onEventClick, onTaskClick, onDayCli
     const cell = document.createElement('div');
     cell.className = 'week-allday-cell';
 
-    const openPopup = () => showDayPopup(new Date(day), dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask);
+    const openPopup = () => showDayPopup(new Date(day), dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask, callbacks.onLongPress);
 
     for (const ev of events) {
       let onDay, isFirst;
