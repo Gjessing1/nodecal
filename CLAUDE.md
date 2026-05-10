@@ -454,12 +454,12 @@ No tests in Phases 0–3. Unit tests for recurrence logic in Phase 4 (RRULE edge
 - [x] Month view: prev/next/today/picker navigation dropped all callbacks except onEventClick+onDayClick — long-press create, task taps, event drag all broke silently after first month change
 - [x] Week view: buildAllDayRow used `callbacks` from outer scope (not in scope as top-level function) — ReferenceError crash when opening day popup from all-day row
 - [x] Event edit: alarmMinutes silently dropped in filterChanges — alarm changes on existing events had no effect
-- [ ] Refreshing PWA window causes bottom navbar with views to disappear — investigate whether buildNav() is called before state.config loads (enabledViews empty), or CSS/viewport issue in PWA mode
+- [x] Refreshing PWA window causes bottom navbar to disappear — fixed by calling buildNav() immediately on init with default config, before the async loadAll(); nav is never blank during load
+- [x] Event drag/resize: setHours() used browser local timezone instead of configured app timezone — fixed by using localToUTC(dateStr, timeStr, tz) in handleEventMove/handleEventResize
+- [x] Sync log label: "local overwrite applied" was misleading — renamed to "server overwrites local edit" since server always wins in background sync
 
 ### Roadmap items from code review
 - [ ] Settings: add timezone selector (IANA list) — currently no UI to change timezone, users must edit .env or settings.json directly
-- [ ] Event drag/resize: use localToUTC() instead of setHours() in handleEventMove/handleEventResize — setHours() uses browser local timezone, not configured app timezone; wrong times when they differ
-- [ ] Sync log label: "local overwrite applied" should be "server overwrite applied" — during background sync, server always wins over local changes (last-write-wins from server, not from local edits)
 ---
 
 ## Remember

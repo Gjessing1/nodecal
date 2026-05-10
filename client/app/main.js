@@ -9,6 +9,7 @@ import { initCalendarDrawer, openDrawer } from '../components/calendarDrawer.js'
 import { initSettingsPanel, openSettings } from '../components/settingsPanel.js';
 import { initInstallPrompt } from './installPrompt.js';
 import { initTheme } from './theme.js';
+import { localDateStr, toDateInputValue, localToUTC } from './utils.js';
 
 const viewContainer   = document.getElementById('view-container');
 const syncBtn         = document.getElementById('sync-btn');
@@ -354,18 +355,24 @@ function handleDuplicateEvent(event) {
 function handleEventMove(eventId, day, startMin) {
   const ev = state.events.find(e => e.id === eventId);
   if (!ev) return;
+  const tz = state.config.timezone;
   const duration = new Date(ev.end) - new Date(ev.start);
-  const newStart = new Date(day);
-  newStart.setHours(Math.floor(startMin / 60), startMin % 60, 0, 0);
+  const dateStr = localDateStr(day); // day is local-midnight; date label matches grid column
+  const h = String(Math.floor(startMin / 60)).padStart(2, '0');
+  const m = String(startMin % 60).padStart(2, '0');
+  const newStart = localToUTC(dateStr, `${h}:${m}`, tz);
   saveEvent(eventId, { start: newStart.toISOString(), end: new Date(newStart.getTime() + duration).toISOString() });
 }
 
 function handleEventResize(eventId, endMin) {
   const ev = state.events.find(e => e.id === eventId);
   if (!ev) return;
+  const tz = state.config.timezone;
   const start = new Date(ev.start);
-  const newEnd = new Date(start);
-  newEnd.setHours(Math.floor(endMin / 60), endMin % 60, 0, 0);
+  const dateStr = toDateInputValue(start, tz);
+  const h = String(Math.floor(endMin / 60)).padStart(2, '0');
+  const m = String(endMin % 60).padStart(2, '0');
+  const newEnd = localToUTC(dateStr, `${h}:${m}`, tz);
   if (newEnd - start < 15 * 60000) return;
   saveEvent(eventId, { end: newEnd.toISOString() });
 }
@@ -830,6 +837,10 @@ async function init() {
     }
     openNewEventModal(state.selectedDate || new Date(), data => saveEvent(null, data));
   });
+
+  // Render the nav immediately with default config so it's never blank during load.
+  // buildNav() is called again after loadAll() sets the real settings.
+  buildNav();
 
   try {
     const loaded = await loadAll();

@@ -95,7 +95,7 @@ async function syncIncremental() {
       for (const ev of fetched) {
         const existing = store.getEvent(ev.uid);
         if (existing?.localModifiedAt) {
-          syncLog(`local overwrite applied: uid=${ev.uid} localModifiedAt=${existing.localModifiedAt}`);
+          syncLog(`server overwrites local edit: uid=${ev.uid} localModifiedAt=${existing.localModifiedAt}`);
         }
         syncLog(`fetched remote change: uid=${ev.uid} href=${ev.href}`);
         store.setEventSilent({ ...ev, calendarId: cal.id, lastSyncedAt: now.toISOString() });
@@ -160,7 +160,7 @@ async function syncTasksIncremental(tasksUrl, sourceName, now) {
     for (const task of fetched) {
       const existing = store.getTask(task.uid);
       if (existing?.localModifiedAt) {
-        syncLog(`local overwrite applied (task): uid=${task.uid} localModifiedAt=${existing.localModifiedAt}`);
+        syncLog(`server overwrites local edit (task): uid=${task.uid} localModifiedAt=${existing.localModifiedAt}`);
       }
       syncLog(`fetched remote change (task): uid=${task.uid}`);
       store.setTaskSilent({ ...task, source: tasksUrl, sourceName, lastSyncedAt: now.toISOString() });
