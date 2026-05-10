@@ -1,5 +1,5 @@
-const SHELL_CACHE = 'nodecal-shell-v2';
-const DATA_CACHE  = 'nodecal-data-v2';
+const SHELL_CACHE = 'nodecal-shell-v3';
+const DATA_CACHE  = 'nodecal-data-v3';
 
 // All static files that make up the app shell
 const SHELL_ASSETS = [
@@ -69,8 +69,8 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Mutating API endpoints — network only, no caching
-  if (['/sync', '/nlp'].some(p => url.pathname.startsWith(p))) return;
+  // API/auth endpoints that must never be cached — always hit the network
+  if (['/sync', '/nlp', '/auth', '/login', '/logout', '/health', '/task-sources', '/weather'].some(p => url.pathname.startsWith(p))) return;
 
   // Shell assets: cache-first (updated on next install)
   event.respondWith(

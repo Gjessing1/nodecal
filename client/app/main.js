@@ -128,10 +128,23 @@ function rangeTo() {
 }
 
 async function loadAll() {
-  // Check auth via a dedicated endpoint that never returns 401,
-  // so the browser console stays clean when the session hasn't started yet.
-  const authRes = await fetch('/auth/status');
-  const { authenticated } = await authRes.json();
+  // Check auth without triggering 401 console noise.
+  // Falls back to the /settings status code if /auth/status is unavailable.
+  let authenticated = false;
+  try {
+    const authRes = await fetch('/auth/status');
+    if (authRes.ok) {
+      authenticated = (await authRes.json()).authenticated;
+    } else {
+      const s = await fetch('/settings');
+      if (s.status === 401) { showLogin(); return false; }
+      authenticated = true;
+    }
+  } catch {
+    const s = await fetch('/settings');
+    if (s.status === 401) { showLogin(); return false; }
+    authenticated = true;
+  }
   if (!authenticated) { showLogin(); return false; }
 
   const [settingsRes, calRes, evRes, tasksRes, sourcesRes] = await Promise.all([
