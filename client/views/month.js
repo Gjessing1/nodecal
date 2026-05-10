@@ -1,6 +1,6 @@
 import { state, calendarById } from '../app/state.js';
 import { initDayDnd, initLongPressCreate, initSwipe } from '../components/dnd.js';
-import { localDateStr, getISOWeek, weatherIcon, weatherBadge } from '../app/utils.js';
+import { localDateStr, getISOWeek, weatherIcon, weatherBadge, toTimeInputValue } from '../app/utils.js';
 import { showMonthYearPicker } from '../components/datePicker.js';
 
 /**
@@ -229,7 +229,9 @@ function buildChip(ev, onClick, onPopup) {
   const chip = document.createElement('div');
   chip.dataset.id = ev.id;
   const start = new Date(ev.start);
-  chip.dataset.startMin = String(start.getHours() * 60 + start.getMinutes());
+  const tz = state.config?.timezone || 'UTC';
+  const [th, tm] = toTimeInputValue(start, tz).split(':').map(Number);
+  chip.dataset.startMin = String(th * 60 + tm);
 
   if (ev.allDay) {
     // All-day events: solid color fill (high visibility)

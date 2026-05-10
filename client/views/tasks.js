@@ -1,7 +1,7 @@
 import { state } from '../app/state.js';
 import { buildTaskItem } from '../components/taskItem.js';
 import { parseTagsFromTitle, getAllCategories, visibleCategories, groupTasksByCategory } from '../app/taskUtils.js';
-import { formatShortDate } from '../app/utils.js';
+import { formatShortDate, localDateStr } from '../app/utils.js';
 
 let _callbacks = null;
 let _quickAddEl = null;
@@ -235,8 +235,8 @@ function renderList(container, filterState, sortOrder, groupBy, filterCat, filte
 }
 
 function renderByDateGroups(container, tasks, callbacks) {
-  const today    = localDateString(new Date());
-  const tomorrow = localDateString(new Date(Date.now() + 86400000));
+  const today    = localDateStr(new Date());
+  const tomorrow = localDateStr(new Date(Date.now() + 86400000));
 
   const overdue = [];
   const todayItems = [];
@@ -429,8 +429,8 @@ function buildQuickAdd(callbacks) {
         const parts = [];
         if (data.due) {
           const d = new Date(data.due + 'T00:00:00');
-          const today = localDateString(new Date());
-          const tomorrow = localDateString(new Date(Date.now() + 86400000));
+          const today = localDateStr(new Date());
+          const tomorrow = localDateStr(new Date(Date.now() + 86400000));
           if (data.due === today) parts.push('Today');
           else if (data.due === tomorrow) parts.push('Tomorrow');
           else parts.push(d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
@@ -462,8 +462,8 @@ function buildQuickAdd(callbacks) {
   dates.className = 'tasks-quickadd-dates';
 
   let selectedDue = null;
-  const today    = localDateString(new Date());
-  const tomorrow = localDateString(new Date(Date.now() + 86400000));
+  const today    = localDateStr(new Date());
+  const tomorrow = localDateStr(new Date(Date.now() + 86400000));
 
   function makeShortcut(label, value) {
     const btn = document.createElement('button');
@@ -840,10 +840,6 @@ export function closeTaskModal() {
 }
 
 // ── Utilities ──────────────────────────────────────────────
-
-function localDateString(d) {
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
 
 function formatDateHeader(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');

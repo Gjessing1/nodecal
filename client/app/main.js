@@ -575,7 +575,8 @@ function runSearch(query) {
     sub.className = 'search-result-sub';
     if (type === 'event') {
       const d = new Date(item.start);
-      sub.textContent = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+      const tz = state.config.timezone;
+      sub.textContent = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: tz });
       if (item.location) sub.textContent += ' · ' + item.location;
     } else {
       sub.textContent = item.due ? 'Due: ' + item.due : 'No due date';
