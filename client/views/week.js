@@ -7,6 +7,7 @@ import {
 } from '../components/timeGrid.js';
 import { initDnd, initSwipe, initLongPressCreate } from '../components/dnd.js';
 import { HOUR_HEIGHT } from '../components/timeGrid.js';
+import { showDayPopup } from './month.js';
 
 let timerId = null;
 let _container = null;
@@ -56,7 +57,7 @@ export function renderWeek(container, callbacks) {
     ? state.tasks.filter(t => t.status !== 'COMPLETED' && t.due && days.some(d => localDateStr(d) === t.due))
     : [];
   if (allDayEvents.length > 0 || allDayTasks.length > 0) {
-    container.appendChild(buildAllDayRow(days, allDayEvents, allDayTasks, onEventClick, callbacks.onTaskClick, callbacks.onDayClick));
+    container.appendChild(buildAllDayRow(days, allDayEvents, allDayTasks, onEventClick, callbacks.onTaskClick, callbacks.onDayClick, callbacks.onTaskComplete, callbacks.onNewTask));
   }
 
   // Day-column headers
@@ -214,7 +215,7 @@ function buildDayHeaders(days, today) {
   return row;
 }
 
-function buildAllDayRow(days, events, tasks, onEventClick, onTaskClick, onDayClick) {
+function buildAllDayRow(days, events, tasks, onEventClick, onTaskClick, onDayClick, onTaskComplete, onNewTask) {
   const row = document.createElement('div');
   row.className = 'week-allday-row';
   const spacer = document.createElement('div');
@@ -226,6 +227,9 @@ function buildAllDayRow(days, events, tasks, onEventClick, onTaskClick, onDayCli
     const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
     const cell = document.createElement('div');
     cell.className = 'week-allday-cell';
+
+    const openPopup = () => showDayPopup(new Date(day), dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask);
+
     for (const ev of events) {
       let onDay, isFirst;
       if (ev.allDay) {
@@ -245,27 +249,33 @@ function buildAllDayRow(days, events, tasks, onEventClick, onTaskClick, onDayCli
       chip.className = 'allday-chip';
       chip.style.background = cal?.color || '#4a90d9';
       chip.textContent = ev.title;
-      chip.addEventListener('click', () => onEventClick(ev));
+      chip.addEventListener('click', e => { e.stopPropagation(); onEventClick(ev); });
       cell.appendChild(chip);
     }
+
     const dayTasks = tasks.filter(t => t.due === dayStr);
     const MAX_TASKS = 2;
-    for (const task of dayTasks.slice(0, MAX_TASKS)) {
+    // If exactly 1 task overflows MAX_TASKS, show it directly (no space saved by "+1 task")
+    const limit = dayTasks.length === MAX_TASKS + 1 ? MAX_TASKS + 1 : MAX_TASKS;
+    for (const task of dayTasks.slice(0, limit)) {
       const chip = document.createElement('div');
       chip.className = 'allday-chip task-allday-chip';
       chip.style.cursor = 'pointer';
       chip.textContent = task.title;
-      if (onTaskClick) chip.addEventListener('click', () => onTaskClick(task));
+      chip.addEventListener('click', e => { e.stopPropagation(); if (onTaskClick) onTaskClick(task); });
       cell.appendChild(chip);
     }
-    if (dayTasks.length > MAX_TASKS) {
+    if (dayTasks.length > limit) {
       const more = document.createElement('div');
       more.className = 'allday-chip task-allday-chip';
       more.style.cssText = 'cursor:pointer;opacity:0.7;font-style:italic';
-      more.textContent = `+${dayTasks.length - MAX_TASKS} tasks`;
-      more.addEventListener('click', () => onDayClick && onDayClick(new Date(day)));
+      more.textContent = `+${dayTasks.length - limit} tasks`;
+      more.addEventListener('click', e => { e.stopPropagation(); openPopup(); });
       cell.appendChild(more);
     }
+
+    // Clicking blank cell area opens the day popup
+    cell.addEventListener('click', openPopup);
     row.appendChild(cell);
   }
   return row;

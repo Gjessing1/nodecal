@@ -256,7 +256,7 @@ function buildChip(ev, onClick, onPopup) {
   return chip;
 }
 
-function showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask) {
+export function showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask) {
   document.getElementById('month-day-popup')?.remove();
 
   const tz = state.config.timezone;

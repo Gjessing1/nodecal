@@ -37,7 +37,7 @@ router.put('/settings', (req, res) => {
     'enableTasksView', 'showTasksOnCalendar', 'taskSortOrder', 'tasksCalDAVUrl',
     'hiddenCategories', 'taskSources', 'defaultTaskSource',
     'defaultEventTime', 'defaultEventDuration', 'showWeekNumbers', 'dateFormat',
-    'weatherLat', 'weatherLon', 'weatherDays', 'weatherDaysWeek', 'weatherDaysMonth',
+    'weatherLat', 'weatherLon', 'weatherDays', 'weatherDaysWeek', 'weatherDaysMonth', 'weatherDaysAgenda',
     'showWeekendBg',
     'showTasksOnDay', 'showTasksOnWeek', 'showTasksOnMonth', 'showTasksOnAgenda',
     'showWeekNumbersDay', 'showWeekNumbersMonth', 'showWeekNumbersAgenda',

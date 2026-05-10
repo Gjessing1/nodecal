@@ -254,6 +254,10 @@ function renderForm() {
         <input type="number" id="s-weather-days-month" value="${cfg.weatherDaysMonth ?? 4}" min="1" max="14" step="1">
       </div>
     </div>
+    <div class="modal-field">
+      <label>Forecast: agenda view (days, 1 = today only)</label>
+      <input type="number" id="s-weather-days-agenda" value="${cfg.weatherDaysAgenda ?? 1}" min="1" max="9" step="1">
+    </div>
 
     <div class="modal-actions">
       <button class="btn btn-primary" id="s-save">Save</button>
@@ -604,6 +608,7 @@ async function handleSave() {
   const weatherLon           = sheet.querySelector('#s-weather-lon').value.trim();
   const weatherDaysWeek      = parseInt(sheet.querySelector('#s-weather-days-week').value) || 9;
   const weatherDaysMonth     = parseInt(sheet.querySelector('#s-weather-days-month').value) || 4;
+  const weatherDaysAgenda    = parseInt(sheet.querySelector('#s-weather-days-agenda').value) || 1;
   const showWeekendBg        = sheet.querySelector('#s-weekend-bg').checked;
 
   const payload = {
@@ -617,7 +622,7 @@ async function handleSave() {
     agendaDays, syncIntervalMinutes, defaultEventTime, defaultEventDuration, showWeekNumbers,
     showWeekNumbersDay, showWeekNumbersMonth, showWeekNumbersAgenda,
     syncHistoryDays, syncFutureDays, dateFormat,
-    weatherLat, weatherLon, weatherDaysWeek, weatherDaysMonth, showWeekendBg,
+    weatherLat, weatherLon, weatherDaysWeek, weatherDaysMonth, weatherDaysAgenda, showWeekendBg,
   };
   if (defaultCalRaw) payload.defaultCalendar = defaultCalRaw;
 

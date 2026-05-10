@@ -73,12 +73,14 @@ function switchView(viewName) {
 // ── View rendering ────────────────────────────────────────
 
 const viewCallbacks = {
-  onEventClick:  handleEventClick,
-  onEventMove:   handleEventMove,
-  onEventResize: handleEventResize,
-  onTaskClick:   handleTaskEdit,
-  onLongPress:   handleLongPressCreate,
-  onDayClick:    handleDayClick,
+  onEventClick:    handleEventClick,
+  onEventMove:     handleEventMove,
+  onEventResize:   handleEventResize,
+  onTaskClick:     handleTaskEdit,
+  onTaskComplete:  handleTaskComplete,
+  onNewTask:       handleNewTaskForDay,
+  onLongPress:     handleLongPressCreate,
+  onDayClick:      handleDayClick,
 };
 
 const taskCallbacks = {

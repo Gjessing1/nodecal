@@ -121,15 +121,14 @@ function buildTaskCard(task, onTaskClick, onTaskComplete) {
 }
 
 function formatDayHeader(date, isToday) {
-  // Week number: only on Mondays (ISO weekday 1)
   const isMonday = date.getDay() === 1;
   const wn = ((state.config.showWeekNumbersAgenda ?? state.config.showWeekNumbers) && isMonday) ? ` · W${getISOWeek(date)}` : '';
-  // Weather: only for today
-  const wx = isToday ? weatherBadge(localDateStr(date), state.weather, state.config.weatherDays ?? 6) : '';
+  const agendaWxDays = state.config.weatherDaysAgenda ?? 1;
+  const wx = weatherBadge(localDateStr(date), state.weather, agendaWxDays);
   const wxTag = wx ? ` · ${wx}` : '';
   const long = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   if (isToday) return 'Today — ' + long + wn + wxTag;
   const tomorrow = new Date(Date.now() + DAY_MS);
-  if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow — ' + long + wn;
-  return long + wn;
+  if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow — ' + long + wn + wxTag;
+  return long + wn + wxTag;
 }
