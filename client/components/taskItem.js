@@ -54,13 +54,6 @@ export function buildTaskItem(task, { onComplete, onStar, onClick, onSnooze, sho
     rec.textContent = '↻';
     meta.appendChild(rec);
   }
-  if (task.taskReminder && task.taskReminder !== 'none') {
-    const bell = document.createElement('span');
-    bell.className = 'task-reminder-icon';
-    bell.textContent = '🔔';
-    bell.title = 'Reminder set';
-    meta.appendChild(bell);
-  }
 
   if (meta.children.length) body.appendChild(meta);
 
@@ -92,6 +85,15 @@ export function buildTaskItem(task, { onComplete, onStar, onClick, onSnooze, sho
   } else {
     li.appendChild(check);
     li.appendChild(body);
+  }
+
+  // Bell — shown beside snooze when reminder is set
+  if (task.taskReminder && task.taskReminder !== 'none') {
+    const bell = document.createElement('span');
+    bell.className = 'task-reminder-icon';
+    bell.textContent = '🔔';
+    bell.title = 'Reminder set';
+    li.appendChild(bell);
   }
 
   // Star

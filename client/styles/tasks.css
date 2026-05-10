@@ -159,8 +159,12 @@
   color: var(--color-text-muted);
 }
 .task-reminder-icon {
-  font-size: 11px;
-  line-height: 1;
+  font-size: 12px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 2px;
+  opacity: 0.7;
 }
 
 /* Snooze */
@@ -196,14 +200,14 @@
 .tasks-quickadd {
   border-top: 1px solid var(--color-border);
   background: var(--color-bg);
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-xs) var(--space-md) var(--space-sm);
   flex-shrink: 0;
 }
 
 .tasks-quickadd-row {
   display: flex;
   gap: var(--space-sm);
-  margin-top: var(--space-md);
+  margin-top: var(--space-xs);
 }
 
 .tasks-quickadd-input-wrap {
@@ -234,7 +238,7 @@
 .tasks-quickadd-dates {
   display: flex;
   gap: var(--space-sm);
-  margin-top: var(--space-sm);
+  margin-top: var(--space-xs);
   flex-wrap: wrap;
 }
 
