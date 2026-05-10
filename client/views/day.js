@@ -3,7 +3,7 @@ import { localDateStr, getISOWeek, weatherBadge } from '../app/utils.js';
 import { showDatePicker } from '../components/datePicker.js';
 import {
   buildTimeColumn, buildHourLines, buildEventBlock,
-  buildCurrentTimeLine, updateCurrentTimeLine, getTotalHeight, timeToTop,
+  buildCurrentTimeLine, updateCurrentTimeLine, getTotalHeight, timeToTop, buildNightOverlay,
 } from '../components/timeGrid.js';
 import { initDnd, initSwipe, initLongPressCreate } from '../components/dnd.js';
 import { HOUR_HEIGHT } from '../components/timeGrid.js';
@@ -68,6 +68,7 @@ export function renderDay(container, callbacks) {
   eventsCol.className = 'events-col';
   eventsCol.style.height = `${getTotalHeight()}px`;
   eventsCol.appendChild(buildHourLines());
+  eventsCol.appendChild(buildNightOverlay());
 
   const tz = state.config.timezone;
   const timeLine = buildCurrentTimeLine(tz);

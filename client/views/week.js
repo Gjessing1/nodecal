@@ -2,7 +2,7 @@ import { state, calendarById } from '../app/state.js';
 import { localDateStr, getISOWeek, weatherBadge } from '../app/utils.js';
 import {
   buildTimeColumn, buildHourLines, buildEventBlock,
-  buildCurrentTimeLine, updateCurrentTimeLine, getTotalHeight, timeToTop,
+  buildCurrentTimeLine, updateCurrentTimeLine, getTotalHeight, timeToTop, buildNightOverlay,
   TIME_COL_WIDTH,
 } from '../components/timeGrid.js';
 import { initDnd, initSwipe, initLongPressCreate } from '../components/dnd.js';
@@ -74,10 +74,13 @@ export function renderWeek(container, callbacks) {
 
   let timeLine = null;
   for (const day of days) {
+    const dow = day.getDay();
+    const isWeekend = (dow === 0 || dow === 6) && state.config.showWeekendBg !== false;
     const col = document.createElement('div');
-    col.className = 'week-day-col';
+    col.className = 'week-day-col' + (isWeekend ? ' weekend' : '');
     col.style.height = `${getTotalHeight()}px`;
     col.appendChild(buildHourLines());
+    col.appendChild(buildNightOverlay());
 
     const tz = state.config.timezone;
     const isToday = day.toDateString() === today.toDateString();

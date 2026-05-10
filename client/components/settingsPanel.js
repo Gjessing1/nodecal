@@ -171,14 +171,15 @@ function renderForm() {
 
     <div class="modal-section-label">Events</div>
 
-    <div class="modal-field">
-      <label>Default event time (future dates)</label>
-      <input type="time" id="s-default-event-time" value="${cfg.defaultEventTime || '09:00'}">
-    </div>
-
-    <div class="modal-field">
-      <label>Default event duration (minutes)</label>
-      <input type="number" id="s-default-event-dur" value="${cfg.defaultEventDuration || 60}" min="15" max="480" step="15">
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Default time (future dates)</label>
+        <input type="time" id="s-default-event-time" value="${cfg.defaultEventTime || '09:00'}">
+      </div>
+      <div class="modal-field">
+        <label>Default duration (minutes)</label>
+        <input type="number" id="s-default-event-dur" value="${cfg.defaultEventDuration || 60}" min="15" max="480" step="15">
+      </div>
     </div>
 
     <div class="modal-field">
@@ -195,45 +196,43 @@ function renderForm() {
         <input type="checkbox" id="s-weeknums-agenda" ${(cfg.showWeekNumbersAgenda ?? cfg.showWeekNumbers) ? 'checked' : ''}>
         <span>Agenda view</span>
       </label>
+      <label class="settings-toggle">
+        <input type="checkbox" id="s-weekend-bg" ${cfg.showWeekendBg !== false ? 'checked' : ''}>
+        <span>Highlight weekends</span>
+      </label>
     </div>
 
     <div class="modal-row">
       <div class="modal-field">
         <label>Events history (days)</label>
-        <input type="number" id="s-sync-history" value="${cfg.syncHistoryDays ?? 730}" min="30" step="30">
+        <input type="number" id="s-sync-history" value="${cfg.syncHistoryDays ?? 730}" min="30">
       </div>
       <div class="modal-field">
         <label>Events future (days, 0=all)</label>
-        <input type="number" id="s-sync-future" value="${cfg.syncFutureDays ?? 0}" min="0" step="30">
+        <input type="number" id="s-sync-future" value="${cfg.syncFutureDays ?? 0}" min="0">
       </div>
-    </div>
-
-    <div class="modal-field">
-      <label class="settings-toggle">
-        <input type="checkbox" id="s-weekend-bg" ${cfg.showWeekendBg !== false ? 'checked' : ''}>
-        <span>Highlight weekends in month view</span>
-      </label>
     </div>
 
     <div class="modal-section-label">Tasks</div>
 
     <div id="s-task-sources-section"></div>
 
-    <div class="modal-field">
-      <label class="settings-toggle">
-        <input type="checkbox" id="s-tasks-enable" ${cfg.enableTasksView ? 'checked' : ''}>
-        <span>Enable tasks view (adds Tasks tab)</span>
-      </label>
-    </div>
-
-    <div class="modal-field">
-      <label>Default task sort order</label>
-      <select id="s-tasks-sort">
-        <option value="due"     ${cfg.taskSortOrder === 'due'     ? 'selected' : ''}>Due date</option>
-        <option value="starred" ${cfg.taskSortOrder === 'starred' ? 'selected' : ''}>Starred first</option>
-        <option value="alpha"   ${cfg.taskSortOrder === 'alpha'   ? 'selected' : ''}>Alphabetical</option>
-        <option value="created" ${cfg.taskSortOrder === 'created' ? 'selected' : ''}>Creation date</option>
-      </select>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label class="settings-toggle" style="margin-top:auto;padding-bottom:4px">
+          <input type="checkbox" id="s-tasks-enable" ${cfg.enableTasksView ? 'checked' : ''}>
+          <span>Enable tasks view</span>
+        </label>
+      </div>
+      <div class="modal-field">
+        <label>Default task sort</label>
+        <select id="s-tasks-sort">
+          <option value="due"     ${cfg.taskSortOrder === 'due'     ? 'selected' : ''}>Due date</option>
+          <option value="starred" ${cfg.taskSortOrder === 'starred' ? 'selected' : ''}>Starred first</option>
+          <option value="alpha"   ${cfg.taskSortOrder === 'alpha'   ? 'selected' : ''}>Alphabetical</option>
+          <option value="created" ${cfg.taskSortOrder === 'created' ? 'selected' : ''}>Creation date</option>
+        </select>
+      </div>
     </div>
 
     <div id="s-categories-section"></div>
@@ -242,29 +241,29 @@ function renderForm() {
     <div class="modal-field">
       <label>Location for weather (met.no)</label>
       <div style="display:flex;gap:var(--space-sm);align-items:flex-end">
-        <div style="flex:1">
+        <div style="flex:0 0 auto">
           <div style="font-size:11px;color:var(--color-text-muted);margin-bottom:3px">Latitude</div>
-          <input type="text" id="s-weather-lat" value="${esc(cfg.weatherLat || '')}" placeholder="e.g. 59.91">
+          <input type="text" id="s-weather-lat" value="${esc(cfg.weatherLat || '')}" placeholder="59.91" style="width:80px">
         </div>
-        <div style="flex:1">
+        <div style="flex:0 0 auto">
           <div style="font-size:11px;color:var(--color-text-muted);margin-bottom:3px">Longitude</div>
-          <input type="text" id="s-weather-lon" value="${esc(cfg.weatherLon || '')}" placeholder="e.g. 10.75">
+          <input type="text" id="s-weather-lon" value="${esc(cfg.weatherLon || '')}" placeholder="10.75" style="width:80px">
         </div>
         <button type="button" id="s-weather-detect" class="btn btn-ghost" style="font-size:var(--font-size-sm);flex-shrink:0;white-space:nowrap;padding:8px 10px">📍 Detect</button>
       </div>
     </div>
-    <div class="modal-row">
-      <div class="modal-field">
-        <label>Forecast: week (days)</label>
-        <input type="number" id="s-weather-days-week" value="${cfg.weatherDaysWeek ?? 9}" min="1" max="14" step="1">
+    <div style="display:flex;gap:var(--space-sm);margin-bottom:var(--space-md)">
+      <div style="display:flex;flex-direction:column;gap:var(--space-xs)">
+        <label style="font-size:var(--font-size-sm);color:var(--color-text-muted);font-weight:500">Week (days)</label>
+        <input type="number" id="s-weather-days-week" value="${cfg.weatherDaysWeek ?? 9}" min="1" max="14" step="1" style="width:70px">
       </div>
-      <div class="modal-field">
-        <label>Forecast: month (days)</label>
-        <input type="number" id="s-weather-days-month" value="${cfg.weatherDaysMonth ?? 4}" min="1" max="14" step="1">
+      <div style="display:flex;flex-direction:column;gap:var(--space-xs)">
+        <label style="font-size:var(--font-size-sm);color:var(--color-text-muted);font-weight:500">Month (days)</label>
+        <input type="number" id="s-weather-days-month" value="${cfg.weatherDaysMonth ?? 4}" min="1" max="14" step="1" style="width:70px">
       </div>
-      <div class="modal-field">
-        <label>Forecast: agenda (days)</label>
-        <input type="number" id="s-weather-days-agenda" value="${cfg.weatherDaysAgenda ?? 1}" min="1" max="9" step="1">
+      <div style="display:flex;flex-direction:column;gap:var(--space-xs)">
+        <label style="font-size:var(--font-size-sm);color:var(--color-text-muted);font-weight:500">Agenda (days)</label>
+        <input type="number" id="s-weather-days-agenda" value="${cfg.weatherDaysAgenda ?? 1}" min="1" max="9" step="1" style="width:70px">
       </div>
     </div>
 
@@ -610,8 +609,8 @@ async function handleSave() {
   const taskReminderEveningTime   = sheet.querySelector('#s-task-reminder-evening').value || '18:00';
   const agendaDays           = parseInt(sheet.querySelector('#s-agenda-days').value) || 90;
   const syncIntervalMinutes  = parseInt(sheet.querySelector('#s-sync-interval').value) || 2;
-  const syncHistoryDays      = parseInt(sheet.querySelector('#s-sync-history').value) || 730;
-  const syncFutureDays       = parseInt(sheet.querySelector('#s-sync-future').value) || 0;
+  const syncHistoryDays      = Math.max(30, parseInt(sheet.querySelector('#s-sync-history').value) || 730);
+  const syncFutureDays       = Math.max(0, parseInt(sheet.querySelector('#s-sync-future').value) || 0);
   const dateFormat           = sheet.querySelector('#s-datefmt').value;
   const weatherLat           = sheet.querySelector('#s-weather-lat').value.trim();
   const weatherLon           = sheet.querySelector('#s-weather-lon').value.trim();

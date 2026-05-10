@@ -115,3 +115,11 @@ export function updateCurrentTimeLine(el, timezone = 'UTC') {
 }
 
 export function getTotalHeight() { return TOTAL_HEIGHT; }
+
+/** Translucent overlay for the night hours (00:00–05:00) in a time-grid column. */
+export function buildNightOverlay() {
+  const el = document.createElement('div');
+  el.className = 'night-overlay';
+  el.style.height = `${5 * HOUR_HEIGHT}px`;
+  return el;
+}
