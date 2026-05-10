@@ -3,7 +3,6 @@ import { formatTime, localDateStr, getISOWeek, weatherBadge } from '../app/utils
 import { initLongPressCreate } from '../components/dnd.js';
 
 const DAY_MS = 86400000;
-const AGENDA_DAYS = 90;
 
 /**
  * Render the agenda view into the given container element.
@@ -16,9 +15,10 @@ const AGENDA_DAYS = 90;
 export function renderAgenda(container, onEventClick, onTaskClick, onTaskComplete, onLongPress) {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const agendaDays = state.config.agendaDays ?? 90;
   const fragments = [];
 
-  for (let i = 0; i < AGENDA_DAYS; i++) {
+  for (let i = 0; i < agendaDays; i++) {
     const raw = new Date(today.getTime() + i * DAY_MS);
     const day = new Date(raw.getFullYear(), raw.getMonth(), raw.getDate());
     const dayEnd = new Date(day.getTime() + DAY_MS);

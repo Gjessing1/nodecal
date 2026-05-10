@@ -42,7 +42,7 @@ router.put('/settings', (req, res) => {
     'showTasksOnDay', 'showTasksOnWeek', 'showTasksOnMonth', 'showTasksOnAgenda',
     'showWeekNumbersDay', 'showWeekNumbersMonth', 'showWeekNumbersAgenda',
     'enableNotifications', 'alarmDefaultMinutes', 'taskReminderDefault', 'taskReminderMorningTime', 'taskReminderEveningTime',
-    'syncIntervalMinutes', 'syncHistoryDays', 'syncFutureDays',
+    'syncIntervalMinutes', 'syncHistoryDays', 'syncFutureDays', 'agendaDays',
   ];
   const toSave = {};
   for (const k of allowed) {

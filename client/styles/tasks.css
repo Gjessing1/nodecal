@@ -158,6 +158,10 @@
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
 }
+.task-reminder-icon {
+  font-size: 11px;
+  line-height: 1;
+}
 
 /* Snooze */
 .task-snooze {

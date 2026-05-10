@@ -128,7 +128,7 @@ export function renderWeek(container, callbacks) {
         const x = clientX - gridRect.left - TIME_COL_WIDTH;
         const colW = (gridRect.width - TIME_COL_WIDTH) / 7;
         const dayIdx = Math.max(0, Math.min(6, Math.floor(x / colW)));
-        const y = clientY - gridRect.top + scroll.scrollTop;
+        const y = clientY - gridRect.top;
         const totalMinutes = Math.round(y / HOUR_HEIGHT * 60 / 15) * 15;
         const day = days[dayIdx];
         const eventDate = new Date(day.getTime() + Math.min(Math.max(totalMinutes, 0), 23 * 60) * 60000);

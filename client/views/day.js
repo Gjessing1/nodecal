@@ -102,7 +102,7 @@ export function renderDay(container, callbacks) {
       skipSelector: '.event-block',
       onLongPress(clientX, clientY) {
         const rect = eventsCol.getBoundingClientRect();
-        const y = clientY - rect.top + scroll.scrollTop;
+        const y = clientY - rect.top;
         const totalMinutes = Math.round(y / HOUR_HEIGHT * 60 / 15) * 15;
         const eventDate = new Date(dayStart.getTime() + Math.min(Math.max(totalMinutes, 0), 23 * 60) * 60000);
         onLongPress(eventDate);

@@ -686,6 +686,20 @@ async function init() {
     syncError.classList.add('hidden');
   });
 
+  // PWA viewport fix: Android Chrome sometimes launches with wrong dimensions.
+  // Re-render once when the window is actually sized to fix the "tiny corner" bug.
+  let _viewportFixed = false;
+  function fixPwaViewport() {
+    if (_viewportFixed) return;
+    _viewportFixed = true;
+    if (state._viewInitialized) { buildNav(); render(); }
+  }
+  window.addEventListener('resize', fixPwaViewport, { once: true });
+  // Also fix when app is restored from background
+  window.addEventListener('pageshow', e => {
+    if (e.persisted && state._viewInitialized) { buildNav(); render(); }
+  });
+
   syncBtn.addEventListener('click', handleSync);
   calBtn.addEventListener('click', openDrawer);
   settingsBtn.addEventListener('click', openSettings);
@@ -799,6 +813,7 @@ async function init() {
     if (!loaded) return;
     buildNav();
     render();
+    scheduleNotifications(state.events);
     // Weather: detect location and load asynchronously (doesn't block render)
     detectAndLoadWeather();
     // Refresh weather every hour

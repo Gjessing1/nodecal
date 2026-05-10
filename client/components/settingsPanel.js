@@ -32,7 +32,10 @@ function renderForm() {
 
   sheet.innerHTML = `
     <div class="modal-handle"></div>
-    <div class="modal-title">Settings</div>
+    <div class="settings-title-row">
+      <div class="modal-title">Settings</div>
+      ${cfg.authEnabled ? '<button class="btn btn-ghost" id="s-logout" style="font-size:var(--font-size-sm);color:var(--color-danger);flex-shrink:0">Log out</button>' : ''}
+    </div>
 
     <div class="modal-field">
       <label>Visible views</label>
@@ -134,6 +137,13 @@ function renderForm() {
       <label>Auto-sync interval (minutes)</label>
       <input type="number" id="s-sync-interval" value="${cfg.syncIntervalMinutes ?? 2}" min="1" max="60" step="1">
       <span style="font-size:var(--font-size-sm);color:var(--color-text-muted)">Server syncs CalDAV + client refreshes display. Default: 2 min.</span>
+    </div>
+
+    <div class="modal-section-label">Views</div>
+
+    <div class="modal-field">
+      <label>Agenda view — days to show</label>
+      <input type="number" id="s-agenda-days" value="${cfg.agendaDays ?? 90}" min="7" max="365" step="7">
     </div>
 
     <div class="modal-section-label">Events</div>
@@ -249,7 +259,6 @@ function renderForm() {
       <button class="btn btn-primary" id="s-save">Save</button>
       <button class="btn btn-ghost" id="s-clear-cache" title="Clear local cache and re-sync from server">Clear cache</button>
       <button class="btn btn-ghost" id="s-cancel">Cancel</button>
-      ${cfg.authEnabled ? '<button class="btn btn-ghost" id="s-logout" style="color:var(--color-danger)">Log out</button>' : ''}
     </div>
   `;
 
@@ -586,6 +595,7 @@ async function handleSave() {
   const taskReminderDefault       = sheet.querySelector('#s-task-reminder-default').value || 'none';
   const taskReminderMorningTime   = sheet.querySelector('#s-task-reminder-morning').value || '09:00';
   const taskReminderEveningTime   = sheet.querySelector('#s-task-reminder-evening').value || '18:00';
+  const agendaDays           = parseInt(sheet.querySelector('#s-agenda-days').value) || 90;
   const syncIntervalMinutes  = parseInt(sheet.querySelector('#s-sync-interval').value) || 2;
   const syncHistoryDays      = parseInt(sheet.querySelector('#s-sync-history').value) || 730;
   const syncFutureDays       = parseInt(sheet.querySelector('#s-sync-future').value) || 0;
@@ -604,7 +614,7 @@ async function handleSave() {
     taskSources: state.taskSources || [],
     defaultTaskSource: state.config.defaultTaskSource || '',
     enableNotifications, alarmDefaultMinutes, taskReminderDefault, taskReminderMorningTime, taskReminderEveningTime,
-    syncIntervalMinutes, defaultEventTime, defaultEventDuration, showWeekNumbers,
+    agendaDays, syncIntervalMinutes, defaultEventTime, defaultEventDuration, showWeekNumbers,
     showWeekNumbersDay, showWeekNumbersMonth, showWeekNumbersAgenda,
     syncHistoryDays, syncFutureDays, dateFormat,
     weatherLat, weatherLon, weatherDaysWeek, weatherDaysMonth, showWeekendBg,

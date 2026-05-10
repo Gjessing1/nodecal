@@ -41,6 +41,7 @@
   line-height: 1;
 }
 .view-nav-title { flex: 1; text-align: center; font-weight: 600; font-size: var(--font-size-md); }
+.clickable-title { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
 .nav-today-btn {
   font-size: var(--font-size-sm);
   color: var(--color-accent);

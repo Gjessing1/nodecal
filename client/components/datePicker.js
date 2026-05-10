@@ -99,3 +99,67 @@ export function showDatePicker(currentDate, onSelect) {
   overlay.appendChild(panel);
   document.getElementById('app')?.appendChild(overlay);
 }
+
+/**
+ * Show a month/year picker overlay.
+ * @param {number} currentYear
+ * @param {number} currentMonth - 0-based
+ * @param {function(year: number, month: number): void} onSelect
+ */
+export function showMonthYearPicker(currentYear, currentMonth, onSelect) {
+  document.getElementById('month-year-picker-overlay')?.remove();
+
+  let viewYear = currentYear;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'month-year-picker-overlay';
+  overlay.className = 'mini-cal-overlay';
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+
+  const panel = document.createElement('div');
+  panel.className = 'mini-cal-panel';
+  panel.addEventListener('click', e => e.stopPropagation());
+
+  const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function build() {
+    panel.innerHTML = '';
+
+    const nav = document.createElement('div');
+    nav.className = 'mini-cal-nav';
+
+    const prev = document.createElement('button');
+    prev.textContent = '‹';
+    prev.addEventListener('click', () => { viewYear--; build(); });
+
+    const yearLabel = document.createElement('span');
+    yearLabel.textContent = viewYear;
+    yearLabel.style.fontWeight = '600';
+
+    const next = document.createElement('button');
+    next.textContent = '›';
+    next.addEventListener('click', () => { viewYear++; build(); });
+
+    nav.appendChild(prev); nav.appendChild(yearLabel); nav.appendChild(next);
+    panel.appendChild(nav);
+
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:8px 4px';
+
+    for (let m = 0; m < 12; m++) {
+      const btn = document.createElement('button');
+      btn.textContent = MONTH_NAMES[m];
+      btn.className = 'mini-cal-cell';
+      btn.style.cssText = 'padding:8px 4px;border-radius:6px;font-size:13px;text-align:center';
+      if (m === currentMonth && viewYear === currentYear) btn.classList.add('selected');
+      btn.addEventListener('click', () => { overlay.remove(); onSelect(viewYear, m); });
+      grid.appendChild(btn);
+    }
+
+    panel.appendChild(grid);
+  }
+
+  build();
+  overlay.appendChild(panel);
+  document.getElementById('app')?.appendChild(overlay);
+}

@@ -1,6 +1,7 @@
 import { state, calendarById } from '../app/state.js';
 import { initDayDnd, initLongPressCreate, initSwipe } from '../components/dnd.js';
 import { localDateStr, getISOWeek, weatherIcon, weatherBadge } from '../app/utils.js';
+import { showMonthYearPicker } from '../components/datePicker.js';
 
 /**
  * @param {HTMLElement} container
@@ -53,8 +54,14 @@ function buildNavBar(year, month, onEventClick, onDayClick) {
   });
 
   const title = document.createElement('span');
-  title.className = 'view-nav-title';
+  title.className = 'view-nav-title clickable-title';
   title.textContent = new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  title.addEventListener('click', () => {
+    showMonthYearPicker(year, month, (y, m) => {
+      state.selectedDate = new Date(y, m, 1);
+      renderMonth(title.closest('#view-container'), onEventClick, onDayClick, onEventMove);
+    });
+  });
 
   const now = new Date();
   const todayBtn = document.createElement('button');

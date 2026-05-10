@@ -83,7 +83,7 @@ input, textarea, select {
 }
 
 /* ── App shell ──────────────────────────────────────────── */
-#app { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+#app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
 
 .app-header {
   display: flex;
@@ -385,6 +385,15 @@ input, textarea, select {
 .header-right { display: flex; align-items: center; gap: 2px; }
 
 /* ── Settings panel toggles ─────────────────────────────── */
+.settings-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
+}
+.settings-title-row .modal-title {
+  margin-bottom: 0;
+}
 .settings-toggle {
   display: flex;
   align-items: center;
