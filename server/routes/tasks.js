@@ -78,7 +78,7 @@ router.put('/tasks/:id', async (req, res) => {
 
     const updated = { ...existing, ...changes };
     const ics = serializeTask(updated);
-    const { href, etag } = await putTask(tasksUrl, existing.uid, ics, existing.etag);
+    const { href, etag } = await putTask(existing.source || tasksUrl, existing.uid, ics, existing.etag);
     const now = new Date().toISOString();
     const stored = { ...updated, href, etag, localModifiedAt: now, lastSyncedAt: now };
     store.setTask(stored);
@@ -139,7 +139,7 @@ router.post('/tasks/:id/complete', async (req, res) => {
     }
 
     const ics = serializeTask(updated);
-    const { href, etag } = await putTask(tasksUrl, task.uid, ics, task.etag);
+    const { href, etag } = await putTask(task.source || tasksUrl, task.uid, ics, task.etag);
     const now = new Date().toISOString();
     const stored = { ...updated, href, etag, localModifiedAt: now, lastSyncedAt: now };
     store.setTask(stored);

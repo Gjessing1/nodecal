@@ -23,7 +23,7 @@ const SHELL_ASSETS = [
 ];
 
 // API routes we cache for offline reading (normalised to pathname, no query params)
-const DATA_PATHS = ['/events', '/calendars', '/settings'];
+const DATA_PATHS = ['/events', '/calendars', '/settings', '/tasks'];
 
 // ── Install: pre-cache the shell ─────────────────────────
 self.addEventListener('install', event => {

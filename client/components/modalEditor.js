@@ -148,12 +148,13 @@ export function initModal() {
  * Open the modal for creating a new event.
  * @param {Date} defaultDate
  * @param {function(data): void} onSave
+ * @param {{ explicitTime?: boolean }} [opts] - explicitTime: use defaultDate time as-is, skip default-time logic
  */
-export function openNewEventModal(defaultDate, onSave) {
+export function openNewEventModal(defaultDate, onSave, { explicitTime = false } = {}) {
   onSaveCb = onSave;
   onDeleteCb = null;
   onDuplicateCb = null;
-  renderForm(null, defaultDate);
+  renderForm(null, defaultDate, explicitTime);
   overlay.classList.remove('hidden');
 }
 
@@ -238,11 +239,11 @@ function repeatOptionsHtml(date, currentRrule) {
   return opts.map(([v, l]) => `<option value="${esc(v)}"${sel===v?' selected':''}>${esc(l)}</option>`).join('');
 }
 
-function renderForm(event, defaultDate) {
+function renderForm(event, defaultDate, explicitTime = false) {
   const isNew = !event;
   const tz = state.config.timezone;
   const durMs = (state.config.defaultEventDuration || 60) * 60000;
-  const start = event ? new Date(event.start) : computeDefaultStart(defaultDate || new Date(), tz);
+  const start = event ? new Date(event.start) : (explicitTime && defaultDate ? defaultDate : computeDefaultStart(defaultDate || new Date(), tz));
   const end = event ? new Date(event.end) : new Date(start.getTime() + durMs);
   // For all-day events, slice the UTC date string directly — never convert through local timezone.
   const allDayDateVal = event?.allDay ? event.start.slice(0, 10) : toDateInputValue(start, tz);

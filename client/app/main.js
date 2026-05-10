@@ -66,6 +66,7 @@ function switchView(viewName) {
     if (_viewHistory.length > 10) _viewHistory.shift();
   }
   state.activeView = viewName;
+  try { localStorage.setItem('nodecal-active-view', viewName); } catch { /* storage unavailable */ }
   buildNav();
   render();
 }
@@ -163,8 +164,11 @@ async function loadAll() {
 
   if (!state._viewInitialized) {
     const calViews = settings.enabledViews || ['agenda'];
+    const tabs = [...calViews, ...(settings.enableTasksView ? ['tasks'] : [])];
     const def = settings.defaultView || calViews[0];
-    state.activeView = calViews.includes(def) ? def : calViews[0];
+    let savedView = null;
+    try { savedView = localStorage.getItem('nodecal-active-view'); } catch { /* storage unavailable */ }
+    state.activeView = (savedView && tabs.includes(savedView)) ? savedView : (calViews.includes(def) ? def : calViews[0]);
     state._viewInitialized = true;
   }
   return true;
@@ -332,7 +336,7 @@ function handleEventClick(event) {
 }
 
 function handleLongPressCreate(date) {
-  openNewEventModal(date, data => saveEvent(null, data));
+  openNewEventModal(date, data => saveEvent(null, data), { explicitTime: true });
 }
 
 function handleDuplicateEvent(event) {
@@ -344,7 +348,7 @@ function handleDuplicateEvent(event) {
     calendarId: event.calendarId,
     description: event.description || '',
   };
-  openNewEventModal(new Date(event.start), data => saveEvent(null, { ...copy, ...data }));
+  openNewEventModal(new Date(event.start), data => saveEvent(null, { ...copy, ...data }), { explicitTime: true });
 }
 
 function handleEventMove(eventId, day, startMin) {
