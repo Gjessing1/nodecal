@@ -438,25 +438,16 @@ No tests in Phases 0–3. Unit tests for recurrence logic in Phase 4 (RRULE edge
 ## Roadmap
 
 ### Bugs and fixes
-### UX
-- [x] Week view weekend background on Sat/Sun columns; day view night overlay (00:00–05:00) subtle shade
-- [x] Weather forecast inputs: narrow (70px), labelled "Week/Month/Agenda (days)"; lat/lon inputs narrow (80px)
-- [x] Settings: enable tasks view + task sort order same row
-- [x] Settings: default event time + duration same row
-- [x] Settings: event history/future accept any number ≥30/0, client clamps without restricting step
-- [x] Settings: "Highlight weekends" moved next to week numbers checkboxes
-- [x] Month view title: removed dotted underline, just cursor:pointer
+- [x] refresh of pwa app causes bottom navbar to dissappear after refresh - fixed with position:fixed on .bottom-nav + padding-bottom on #app
+- [x] day and week view timeline, example if i click between 16:00 and 17:00 on mobile which is less precise i want it to open with start time 16:00. - fixed: floor to nearest hour instead of round to 15 min
+- [x] pressing agenda view while agenda view is active should scroll to top 
+- [x] star not aligned with bell and postpone button - fixed with align-self:center on all three
+- [x] Reminder evning on due, Custom unclear insttructions (days before due, morning or evening) - added "Evening on due date" option, renamed all options to be unambiguous, clarified custom label
+- [ ] Notification shows "Tap to copy to the url" not sure what it is, dont want it. (browser-generated, not app code — cannot suppress) - are we sure all pwa apps need this notification?
+- [x] day popup from month view (and others that use it), make +Event same blue color as + Task
+- [x] Settings put sync interval and agenda view days to show on same row, move enable tasks view to visible views instead of seperate section (it can just be a checkbox below default views), move default task sort to same row as task source selection. Move clear Cache to the left side of logout (middle)
 
-- [ ] Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist. (Chrome extension error, not app code)
-- [x] Adding, completing or deleting tasks not working — service worker cached GET /tasks as shell asset; fixed by adding /tasks to DATA_PATHS (network-first)
-- [x] Week/day long-press: start time used current time instead of pressed time — fixed with explicitTime flag to skip computeDefaultStart override
-- [x] Page refresh always reset to default view — fixed by persisting active view to localStorage
-- [x] Month view: prev/next/today/picker navigation dropped all callbacks except onEventClick+onDayClick — long-press create, task taps, event drag all broke silently after first month change
-- [x] Week view: buildAllDayRow used `callbacks` from outer scope (not in scope as top-level function) — ReferenceError crash when opening day popup from all-day row
-- [x] Event edit: alarmMinutes silently dropped in filterChanges — alarm changes on existing events had no effect
-- [x] Refreshing PWA window causes bottom navbar to disappear — fixed by calling buildNav() immediately on init with default config, before the async loadAll(); nav is never blank during load
-- [x] Event drag/resize: setHours() used browser local timezone instead of configured app timezone — fixed by using localToUTC(dateStr, timeStr, tz) in handleEventMove/handleEventResize
-- [x] Sync log label: "local overwrite applied" was misleading — renamed to "server overwrites local edit" since server always wins in background sync
+
 
 ### Roadmap items from code review
 - [ ] Settings: add timezone selector (IANA list) — currently no UI to change timezone, users must edit .env or settings.json directly

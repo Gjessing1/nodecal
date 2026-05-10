@@ -173,6 +173,7 @@
 .month-popup-footer { display: flex; gap: var(--space-sm); margin-top: var(--space-sm); }
 .month-popup-footer .btn { flex: 1; font-size: var(--font-size-sm); }
 .month-popup-view-day { font-size: var(--font-size-sm); }
+.month-popup-new-event { color: var(--color-accent); }
 .month-popup-new-task { color: var(--color-accent); }
 
 /* Event chips inside month cells */

@@ -83,7 +83,7 @@ input, textarea, select {
 }
 
 /* ── App shell ──────────────────────────────────────────── */
-#app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
+#app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom)); }
 
 .app-header {
   display: flex;

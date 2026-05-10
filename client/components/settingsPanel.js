@@ -34,7 +34,6 @@ function renderForm() {
     <div class="modal-handle"></div>
     <div class="settings-title-row">
       <div class="modal-title">Settings</div>
-      ${cfg.authEnabled ? '<button class="btn btn-ghost" id="s-logout" style="font-size:var(--font-size-sm);color:var(--color-danger);flex-shrink:0">Log out</button>' : ''}
     </div>
 
     <div class="modal-row">
@@ -45,6 +44,10 @@ function renderForm() {
             <input type="checkbox" name="view" value="${v.id}" ${enabled.includes(v.id) ? 'checked' : ''}>
             <span>${v.label}</span>
           </label>`).join('')}
+        <label class="settings-toggle">
+          <input type="checkbox" id="s-tasks-enable" ${cfg.enableTasksView ? 'checked' : ''}>
+          <span>Tasks</span>
+        </label>
       </div>
       <div class="modal-field">
         <label>Show tasks on views</label>
@@ -137,9 +140,10 @@ function renderForm() {
         <label>Default task reminder</label>
         <select id="s-task-reminder-default">
           <option value="none"           ${!cfg.taskReminderDefault || cfg.taskReminderDefault === 'none' ? 'selected' : ''}>None</option>
-          <option value="on-due"         ${cfg.taskReminderDefault === 'on-due'          ? 'selected' : ''}>On due date</option>
-          <option value="evening-before" ${cfg.taskReminderDefault === 'evening-before'  ? 'selected' : ''}>Evening before</option>
-          <option value="morning-before" ${cfg.taskReminderDefault === 'morning-before'  ? 'selected' : ''}>Morning before</option>
+          <option value="on-due"         ${cfg.taskReminderDefault === 'on-due'          ? 'selected' : ''}>Morning on due date</option>
+          <option value="evening-due"    ${cfg.taskReminderDefault === 'evening-due'     ? 'selected' : ''}>Evening on due date</option>
+          <option value="morning-before" ${cfg.taskReminderDefault === 'morning-before'  ? 'selected' : ''}>Morning day before</option>
+          <option value="evening-before" ${cfg.taskReminderDefault === 'evening-before'  ? 'selected' : ''}>Evening day before</option>
         </select>
       </div>
     </div>
@@ -156,17 +160,15 @@ function renderForm() {
 
     <div class="modal-section-label">Sync</div>
 
-    <div class="modal-field">
-      <label>Auto-sync interval (minutes)</label>
-      <input type="number" id="s-sync-interval" value="${cfg.syncIntervalMinutes ?? 2}" min="1" max="60" step="1">
-      <span style="font-size:var(--font-size-sm);color:var(--color-text-muted)">Server syncs CalDAV + client refreshes display. Default: 2 min.</span>
-    </div>
-
-    <div class="modal-section-label">Views</div>
-
-    <div class="modal-field">
-      <label>Agenda view — days to show</label>
-      <input type="number" id="s-agenda-days" value="${cfg.agendaDays ?? 90}" min="7" max="365" step="7">
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Auto-sync interval (minutes)</label>
+        <input type="number" id="s-sync-interval" value="${cfg.syncIntervalMinutes ?? 2}" min="1" max="60" step="1">
+      </div>
+      <div class="modal-field">
+        <label>Agenda days to show</label>
+        <input type="number" id="s-agenda-days" value="${cfg.agendaDays ?? 90}" min="7" max="365" step="7">
+      </div>
     </div>
 
     <div class="modal-section-label">Events</div>
@@ -219,12 +221,6 @@ function renderForm() {
 
     <div class="modal-row">
       <div class="modal-field">
-        <label class="settings-toggle" style="margin-top:auto;padding-bottom:4px">
-          <input type="checkbox" id="s-tasks-enable" ${cfg.enableTasksView ? 'checked' : ''}>
-          <span>Enable tasks view</span>
-        </label>
-      </div>
-      <div class="modal-field">
         <label>Default task sort</label>
         <select id="s-tasks-sort">
           <option value="due"     ${cfg.taskSortOrder === 'due'     ? 'selected' : ''}>Due date</option>
@@ -270,6 +266,7 @@ function renderForm() {
     <div class="modal-actions">
       <button class="btn btn-primary" id="s-save">Save</button>
       <button class="btn btn-ghost" id="s-clear-cache" title="Clear local cache and re-sync from server">Clear cache</button>
+      ${cfg.authEnabled ? '<button class="btn btn-ghost" id="s-logout" style="color:var(--color-danger)">Log out</button>' : ''}
       <button class="btn btn-ghost" id="s-cancel">Cancel</button>
     </div>
   `;

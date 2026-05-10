@@ -62,6 +62,9 @@ function switchView(viewName) {
   if (viewName === 'day' && state.activeView === 'day') {
     state.selectedDate = new Date();
   }
+  if (viewName === 'agenda' && state.activeView === 'agenda') {
+    viewContainer.scrollTop = 0;
+  }
   if (state.activeView && state.activeView !== viewName) {
     _viewHistory.push(state.activeView);
     if (_viewHistory.length > 10) _viewHistory.shift();
@@ -198,6 +201,8 @@ function taskAlarmDatetime(dueStr, reminderType, cfg) {
   } else if (reminderType === 'morning-before') {
     const d = new Date(dueStr + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 1);
     dateStr = d.toISOString().slice(0, 10);
+  } else if (reminderType === 'evening-due') {
+    timeStr = eveningTime;
   } else if (reminderType.startsWith('custom-')) {
     // custom-Xh: X hours before the morning time on the due date
     const hours = parseInt(reminderType.replace('custom-','').replace('h','')) || 0;
