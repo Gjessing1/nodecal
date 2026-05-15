@@ -146,6 +146,15 @@ export function getISOWeek(date) {
   return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
 }
 
+/**
+ * Return the configured IANA timezone, falling back to the browser's local zone.
+ * @param {{ timezone?: string }} [cfg] - state.config or similar
+ * @returns {string}
+ */
+export function getTimezone(cfg) {
+  return cfg?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
 export function esc(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }

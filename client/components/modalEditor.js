@@ -65,7 +65,14 @@ function alarmOptionsHtml(currentMinutes) {
   ).join('') + `<option value="-1"${isCustom ? ' selected' : ''}>Custom…</option>`;
 }
 
+let _nlpReqId = 0;
+
 function renderForm(event, defaultDate, explicitTime = false) {
+  // Clear stale NLP state from any previous modal session
+  sheet.dataset.nlpRaw = '';
+  sheet.dataset.nlpTitle = '';
+  sheet.dataset.nlpRrule = '';
+
   const isNew = !event;
   const tz = state.config.timezone;
   const durMs = (state.config.defaultEventDuration || 60) * 60000;
@@ -278,7 +285,19 @@ function renderForm(event, defaultDate, explicitTime = false) {
     urlInput.addEventListener('input', updateUrlLink);
   }
 
-  // When start date changes: shift end date by the same delta; refresh repeat options
+  // ── Recurrence editor (declared before startDate listener so the listener can reference it)
+  let recEditor = null;
+  const recContainer = sheet.querySelector('#f-repeat-container');
+  if (recContainer) {
+    recEditor = buildRecurrenceEditor(
+      start,
+      event?.rrule || null,
+      (newRrule) => { recContainer.dataset.rrule = newRrule || ''; }
+    );
+    recContainer.appendChild(recEditor);
+  }
+
+  // When start date changes: shift end date + notify recurrence editor
   const startDateEl = sheet.querySelector('#f-start-date');
   if (startDateEl) {
     let prevStartVal = startDateEl.value;
@@ -290,33 +309,8 @@ function renderForm(event, defaultDate, explicitTime = false) {
       const shifted = new Date(new Date(endDateEl.value + 'T00:00').getTime() + delta);
       endDateEl.value = toDateInputValue(shifted);
       prevStartVal = startDateEl.value;
-
-      // Refresh repeat options so Weekly/Monthly labels reflect the new day/date
-      const repeatSel = sheet.querySelector('#f-repeat');
-      if (repeatSel) {
-        const prevRepeat = repeatSel.value;
-        repeatSel.innerHTML = repeatOptionsHtml(next, prevRepeat === '__custom__' ? (event?.rrule || null) : prevRepeat || null);
-      }
+      recEditor?.onStartDateChange?.(next);
     });
-  }
-
-  // ── Recurrence editor ─────────────────────────────────────────────────────
-  const recContainer = sheet.querySelector('#f-repeat-container');
-  if (recContainer) {
-    const recEditor = buildRecurrenceEditor(
-      start,
-      event?.rrule || null,
-      (newRrule) => { recContainer.dataset.rrule = newRrule || ''; }
-    );
-    recContainer.appendChild(recEditor);
-    // Refresh monthly presets when start date changes
-    const startDateEl2 = sheet.querySelector('#f-start-date');
-    if (startDateEl2) {
-      startDateEl2.addEventListener('change', () => {
-        const d = new Date(startDateEl2.value + 'T00:00:00');
-        recEditor.onStartDateChange?.(d);
-      });
-    }
   }
 
   sheet.querySelector('#f-save').addEventListener('click', () => handleSave(event));
@@ -405,12 +399,14 @@ function handleSave(event) {
 async function applyNlp(text) {
   const fb = sheet.querySelector('#nlp-fb');
   if (!fb || !text.trim()) { if (fb) fb.classList.add('hidden'); return; }
+  const reqId = ++_nlpReqId;
   try {
     const res = await fetch('/nlp/parse', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text }),
     });
+    if (reqId !== _nlpReqId) return; // stale — a newer request is in flight
     const data = await res.json();
     if (!data.parsed) { fb.classList.add('hidden'); sheet.dataset.nlpRaw = ''; return; }
 

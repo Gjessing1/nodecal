@@ -7,7 +7,7 @@ import {
 } from '../components/timeGrid.js';
 import { initDnd, initSwipe, initLongPressCreate } from '../components/dnd.js';
 import { HOUR_HEIGHT } from '../components/timeGrid.js';
-import { showDayPopup } from './month.js';
+import { showDayPopup } from './dayPopup.js';
 
 let timerId = null;
 let _container = null;
