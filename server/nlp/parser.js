@@ -74,6 +74,42 @@ const RECURRENCE = [
   [/hvert\s+[åa]r\b|[åa]rlig\b/i, 'FREQ=YEARLY'],
 ];
 
+// Norwegian ordinal dates like "18. juni" → "18 juni" (period removed, then month translated)
+function normalizeOrdinalDate(text) {
+  return text.replace(
+    /\b(\d{1,2})\.\s+(january|february|march|april|may|june|july|august|september|october|november|december)\b/gi,
+    '$1 $2'
+  );
+}
+
+// Move a time token that appears before a date word to after it so chrono can connect them.
+// Only applies when no date/day word appears before the time — if a date is already
+// anchored before the time ("tomorrow 14:00"), chrono handles it without reordering.
+// "14:00 june" → "june at 14:00"
+// "12:30 next wednesday" → "next wednesday at 12:30"
+// "14:00 10 june" → "10 june at 14:00"
+const _MONTH_WORDS = 'january|february|march|april|may|june|july|august|september|october|november|december';
+const _DAY_WORDS   = 'monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today';
+const _DATE_WORD_RE = new RegExp(`\\b(${_MONTH_WORDS}|${_DAY_WORDS}|next|last)\\b`, 'i');
+function normalizeTimeBeforeDate(text) {
+  // If a date/day word already appears before the first time token, chrono will
+  // connect them naturally — skip reordering to avoid breaking the existing parse.
+  const firstTimeIdx = text.search(/\b\d{1,2}:\d{2}\b/);
+  if (firstTimeIdx > 0 && _DATE_WORD_RE.test(text.slice(0, firstTimeIdx))) return text;
+
+  // Case 1: "HH:MM day-number month" → "day-number month at HH:MM"
+  let t = text.replace(
+    new RegExp(`\\b(\\d{1,2}:\\d{2})\\s+(\\d{1,2})\\s+(${_MONTH_WORDS})\\b`, 'gi'),
+    (_, time, day, month) => `${day} ${month} at ${time}`
+  );
+  // Case 2: "HH:MM [next|last] date-word" → "[next|last] date-word at HH:MM"
+  t = t.replace(
+    new RegExp(`\\b(\\d{1,2}:\\d{2})\\s+((?:next|last)\\s+)?(${_MONTH_WORDS}|${_DAY_WORDS})\\b`, 'gi'),
+    (_, time, mod, dateWord) => `${mod || ''}${dateWord} at ${time}`
+  );
+  return t;
+}
+
 // Short hour-range patterns not handled by chrono-node: "18-21" → "18:00-21:00"
 // Also "kl. 14" / "klokken 14" → "14:00"
 function normalizeTimeRanges(text) {
@@ -216,7 +252,9 @@ function parse(text, refDate = new Date(), timezone = 'UTC') {
 
   // Build position map while normalizing, so we can map chrono's result back to original text
   const normMap = buildNormMap(textForParsing);
-  const normalized = normalizeTimeRanges(normMap.normalized);
+  let normalized = normalizeTimeRanges(normMap.normalized);
+  normalized = normalizeOrdinalDate(normalized);
+  normalized = normalizeTimeBeforeDate(normalized);
 
   const results = chrono.parse(normalized, refDate, { forwardDate: true, timezone });
 

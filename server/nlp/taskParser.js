@@ -22,9 +22,12 @@ const NO_TO_EN = [
   [/\bs[øo]ndag\b/gi,         'sunday'],
   [/\bneste\b/gi,             'next'],
   [/\bforrige\b/gi,           'last'],
+  // plural before singular to avoid partial replacement
+  [/\buker\b/gi,              'weeks'],
   [/\buke\b/gi,               'week'],
+  [/\bm[åa]neder\b/gi,        'months'],
   [/\bm[åa]ned\b/gi,          'month'],
-  [/\b[åa]r\b/gi,             'year'],
+  [/år\b/gi,                  'year'],
   [/\bjan(?:uar)?\b/gi,       'january'],
   [/\bfeb(?:ruar)?\b/gi,      'february'],
   [/\bmars\b/gi,              'march'],
@@ -39,8 +42,6 @@ const NO_TO_EN = [
   [/\bdes(?:ember)?\b/gi,     'december'],
   [/\bhver\b/gi,              'every'],
   [/\bdager\b/gi,             'days'],
-  [/\bug(?:er)?\b/gi,         'weeks'],
-  [/\bm[åa]neder\b/gi,        'months'],
   // "etter fullføring" → "after completion"
   [/etter\s+fullf[øo]ring/gi, 'after completion'],
   [/etter\s+gjennomf[øo]ring/gi, 'after completion'],
@@ -76,6 +77,32 @@ const RRULE_TASK = [
 function translateNorwegian(text) {
   let t = text;
   for (const [re, en] of NO_TO_EN) t = t.replace(re, typeof en === 'function' ? (m, ...args) => en(m, ...args) : en);
+  return t;
+}
+
+// "18. june" → "18 june" (Norwegian ordinal notation with period)
+function normalizeOrdinalDate(text) {
+  return text.replace(
+    /\b(\d{1,2})\.\s+(january|february|march|april|may|june|july|august|september|october|november|december)\b/gi,
+    '$1 $2'
+  );
+}
+
+// Move a time token before a date word to after it: "14:00 june" → "june at 14:00"
+const _MONTH_WORDS = 'january|february|march|april|may|june|july|august|september|october|november|december';
+const _DAY_WORDS   = 'monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today';
+const _DATE_WORD_RE = new RegExp(`\\b(${_MONTH_WORDS}|${_DAY_WORDS}|next|last)\\b`, 'i');
+function normalizeTimeBeforeDate(text) {
+  const firstTimeIdx = text.search(/\b\d{1,2}:\d{2}\b/);
+  if (firstTimeIdx > 0 && _DATE_WORD_RE.test(text.slice(0, firstTimeIdx))) return text;
+  let t = text.replace(
+    new RegExp(`\\b(\\d{1,2}:\\d{2})\\s+(\\d{1,2})\\s+(${_MONTH_WORDS})\\b`, 'gi'),
+    (_, time, day, month) => `${day} ${month} at ${time}`
+  );
+  t = t.replace(
+    new RegExp(`\\b(\\d{1,2}:\\d{2})\\s+((?:next|last)\\s+)?(${_MONTH_WORDS}|${_DAY_WORDS})\\b`, 'gi'),
+    (_, time, mod, dateWord) => `${mod || ''}${dateWord} at ${time}`
+  );
   return t;
 }
 
@@ -122,7 +149,9 @@ function parseTask(text, refDate = new Date(), timezone = 'UTC') {
   const trimmed = text.trim();
   if (!trimmed) return { parsed: false };
 
-  const translated = translateNorwegian(trimmed);
+  let translated = translateNorwegian(trimmed);
+  translated = normalizeOrdinalDate(translated);
+  translated = normalizeTimeBeforeDate(translated);
 
   // 1. Detect after-completion recurrence first (it has "every ... after completion")
   let recurrenceMatch = null;
