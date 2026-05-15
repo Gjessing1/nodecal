@@ -1,7 +1,7 @@
 import { state } from '../app/state.js';
 import { toDateInputValue, toTimeInputValue, localToUTC, esc } from '../app/utils.js';
 import { buildTimePicker } from './timePicker.js';
-import { repeatOptionsHtml } from './recurrenceUI.js';
+import { buildRecurrenceEditor } from './recurrenceUI.js';
 import { showDatePicker } from './datePicker.js';
 
 let overlay, sheet, onSaveCb, onDeleteCb, onDuplicateCb;
@@ -120,21 +120,19 @@ function renderForm(event, defaultDate, explicitTime = false) {
     </div>
     <div class="modal-row">
       <div class="modal-field">
-        <label>Repeat</label>
-        <select id="f-repeat">
-          ${repeatOptionsHtml(start, event?.rrule || null)}
-        </select>
-      </div>
-      <div class="modal-field">
         <label>Remind me</label>
         <select id="f-alarm">
           ${alarmOptionsHtml(event?.alarmMinutes ?? (state.config.alarmDefaultMinutes ?? 0))}
         </select>
       </div>
+      <div class="modal-field" id="f-alarm-custom-row" style="${(()=>{const v=event?.alarmMinutes??state.config.alarmDefaultMinutes??0;return [0,5,15,60].includes(v)?'display:none':''})()}">
+        <label>Minutes before</label>
+        <input type="number" id="f-alarm-custom" value="${(()=>{const v=event?.alarmMinutes??state.config.alarmDefaultMinutes??0;return [0,5,15,60].includes(v)?'':(v||'')})()}" min="1" max="10080" placeholder="e.g. 45">
+      </div>
     </div>
-    <div class="modal-field" id="f-alarm-custom-row" style="${(()=>{const v=event?.alarmMinutes??state.config.alarmDefaultMinutes??0;return [0,5,15,60].includes(v)?'display:none':''})()}">
-      <label>Minutes before</label>
-      <input type="number" id="f-alarm-custom" value="${(()=>{const v=event?.alarmMinutes??state.config.alarmDefaultMinutes??0;return [0,5,15,60].includes(v)?'':(v||'')})()}" min="1" max="10080" placeholder="e.g. 45">
+    <div class="modal-field">
+      <label>Repeat</label>
+      <div id="f-repeat-container" data-rrule="${esc(event?.rrule || '')}"></div>
     </div>
     ${event?.recurring ? `
     <div class="modal-field recurring-scope-field">
@@ -302,6 +300,25 @@ function renderForm(event, defaultDate, explicitTime = false) {
     });
   }
 
+  // ── Recurrence editor ─────────────────────────────────────────────────────
+  const recContainer = sheet.querySelector('#f-repeat-container');
+  if (recContainer) {
+    const recEditor = buildRecurrenceEditor(
+      start,
+      event?.rrule || null,
+      (newRrule) => { recContainer.dataset.rrule = newRrule || ''; }
+    );
+    recContainer.appendChild(recEditor);
+    // Refresh monthly presets when start date changes
+    const startDateEl2 = sheet.querySelector('#f-start-date');
+    if (startDateEl2) {
+      startDateEl2.addEventListener('change', () => {
+        const d = new Date(startDateEl2.value + 'T00:00:00');
+        recEditor.onStartDateChange?.(d);
+      });
+    }
+  }
+
   sheet.querySelector('#f-save').addEventListener('click', () => handleSave(event));
   sheet.querySelector('#f-cancel').addEventListener('click', closeModal);
 
@@ -362,10 +379,11 @@ function handleSave(event) {
     }
   }
 
-  // Determine rrule: UI repeat select takes precedence over NLP detection
-  const repeatVal = sheet.querySelector('#f-repeat')?.value;
+  // Determine rrule: editor takes precedence over NLP detection
+  const recCont   = sheet.querySelector('#f-repeat-container');
+  const editorRrule = recCont ? (recCont.dataset.rrule || null) : undefined;
   const nlpRrule  = !event ? (sheet.dataset.nlpRrule || null) : null;
-  const rrule = (repeatVal && repeatVal !== '__custom__') ? repeatVal : nlpRrule;
+  const rrule = editorRrule !== undefined ? editorRrule : nlpRrule;
 
   const alarmSelVal  = sheet.querySelector('#f-alarm')?.value || '0';
   const alarmMinutes = alarmSelVal === '-1'

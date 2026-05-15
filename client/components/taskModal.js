@@ -2,17 +2,7 @@ import { state } from '../app/state.js';
 import { getAllCategories, visibleCategories } from '../app/taskUtils.js';
 import { esc } from '../app/utils.js';
 import { showDatePicker } from './datePicker.js';
-
-function buildWeeklyRrule(due) {
-  const days = ['SU','MO','TU','WE','TH','FR','SA'];
-  if (due) return `FREQ=WEEKLY;BYDAY=${days[new Date(due + 'T00:00:00').getDay()]}`;
-  return 'FREQ=WEEKLY';
-}
-
-function buildMonthlyRrule(due) {
-  if (due) return `FREQ=MONTHLY;BYMONTHDAY=${new Date(due + 'T00:00:00').getDate()}`;
-  return 'FREQ=MONTHLY';
-}
+import { buildRecurrenceEditor } from './recurrenceUI.js';
 
 export function openTaskModal(task, { onSave, onDelete }) {
   const overlay = document.getElementById('modal-overlay');
@@ -70,16 +60,6 @@ export function openTaskModal(task, { onSave, onDelete }) {
 
     <div class="modal-row">
       <div class="modal-field">
-        <label>Repeat</label>
-        <select id="tm-recurring">
-          <option value="">None</option>
-          <option value="rrule-daily"   ${isRecRrule && task.rrule?.includes('DAILY')   ? 'selected' : ''}>Daily</option>
-          <option value="rrule-weekly"  ${isRecRrule && task.rrule?.includes('WEEKLY')  ? 'selected' : ''}>Weekly</option>
-          <option value="rrule-monthly" ${isRecRrule && task.rrule?.includes('MONTHLY') ? 'selected' : ''}>Monthly</option>
-          <option value="after-custom"  ${isRecAfterCompletion ? 'selected' : ''}>After done</option>
-        </select>
-      </div>
-      <div class="modal-field">
         <label>Reminder</label>
         <select id="tm-reminder">
           <option value="none"           ${!task.taskReminder || task.taskReminder === 'none' ? 'selected' : ''}>None</option>
@@ -90,11 +70,12 @@ export function openTaskModal(task, { onSave, onDelete }) {
           <option value="custom"         ${task.taskReminder?.startsWith('custom') ? 'selected' : ''}>Custom…</option>
         </select>
       </div>
-    </div>
-
-    <div class="modal-field" id="tm-interval-field" style="${isRecAfterCompletion ? '' : 'display:none'}">
-      <label>Interval (e.g. 3d, 2w)</label>
-      <input type="text" id="tm-interval" value="${esc(task.recurringInterval || '')}" placeholder="e.g. 3d, 2w">
+      <div class="modal-field modal-field-checkbox">
+        <label>
+          <input type="checkbox" id="tm-completed" ${isCompleted ? 'checked' : ''}>
+          Completed
+        </label>
+      </div>
     </div>
 
     <div class="modal-field" id="tm-reminder-custom-row" style="${task.taskReminder?.startsWith('custom') ? '' : 'display:none'}">
@@ -102,11 +83,26 @@ export function openTaskModal(task, { onSave, onDelete }) {
       <input type="number" id="tm-reminder-custom-hours" value="${task.taskReminder?.startsWith('custom') ? task.taskReminder.replace('custom-','').replace('h','') : ''}" min="1" max="720" placeholder="e.g. 4">
     </div>
 
-    <div class="modal-field modal-field-checkbox">
-      <label>
-        <input type="checkbox" id="tm-completed" ${isCompleted ? 'checked' : ''}>
-        Completed
-      </label>
+    <div class="modal-field">
+      <label>Repeat</label>
+      <div class="rec-mode-toggle">
+        <button type="button" class="rec-mode-btn${!isRecAfterCompletion ? ' active' : ''}" data-mode="fixed">Fixed schedule</button>
+        <button type="button" class="rec-mode-btn${isRecAfterCompletion ? ' active' : ''}" data-mode="after">After completion</button>
+      </div>
+      <div id="tm-rec-fixed" style="${isRecAfterCompletion ? 'display:none' : ''}"
+           data-rrule="${esc(isRecRrule ? (task.rrule || '') : '')}"></div>
+      <div id="tm-rec-after" style="${isRecAfterCompletion ? '' : 'display:none'}">
+        <div class="rec-row rec-interval-row">
+          Repeat
+          <input type="number" id="tm-after-n" class="rec-interval-input" min="1" max="999"
+                 value="${esc(task.recurringInterval?.replace(/[dw]$/,'') || '1')}">
+          <select id="tm-after-unit" class="rec-freq-sel">
+            <option value="d"${/d$/.test(task.recurringInterval||'') ? ' selected':''}>day(s)</option>
+            <option value="w"${/w$/.test(task.recurringInterval||'') ? ' selected':''}>week(s)</option>
+          </select>
+          after completion
+        </div>
+      </div>
     </div>
 
     <div class="modal-actions">
@@ -220,9 +216,32 @@ export function openTaskModal(task, { onSave, onDelete }) {
     if (e.key === 'Escape') catAutoList.style.display = 'none';
   });
 
-  sheet.querySelector('#tm-recurring').addEventListener('change', e => {
-    sheet.querySelector('#tm-interval-field').style.display = e.target.value === 'after-custom' ? '' : 'none';
+  // ── Recurrence mode toggle ────────────────────────────────────────────────
+  const fixedContainer = sheet.querySelector('#tm-rec-fixed');
+  const afterContainer = sheet.querySelector('#tm-rec-after');
+  let recMode = isRecAfterCompletion ? 'after' : 'fixed';
+
+  if (fixedContainer) {
+    const dueEl = sheet.querySelector('#tm-due');
+    const dueDate = dueEl?.value ? new Date(dueEl.value + 'T00:00:00') : new Date();
+    const recEditor = buildRecurrenceEditor(
+      dueDate,
+      isRecRrule ? (task.rrule || null) : null,
+      (newRrule) => { fixedContainer.dataset.rrule = newRrule || ''; },
+      { hideWeekdays: true }
+    );
+    fixedContainer.appendChild(recEditor);
+  }
+
+  sheet.querySelectorAll('.rec-mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      recMode = btn.dataset.mode;
+      sheet.querySelectorAll('.rec-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === recMode));
+      if (fixedContainer) fixedContainer.style.display = recMode === 'fixed' ? '' : 'none';
+      if (afterContainer) afterContainer.style.display = recMode === 'after' ? '' : 'none';
+    });
   });
+
   sheet.querySelector('#tm-reminder').addEventListener('change', e => {
     sheet.querySelector('#tm-reminder-custom-row').style.display = e.target.value === 'custom' ? '' : 'none';
   });
@@ -231,14 +250,15 @@ export function openTaskModal(task, { onSave, onDelete }) {
     const title = sheet.querySelector('#tm-title').value.trim();
     if (!title) { alert('Title is required'); return; }
 
-    const recurringVal = sheet.querySelector('#tm-recurring').value;
     let rrule = null, xRecurringType = null, xRecurringInterval = null;
-    if (recurringVal === 'rrule-daily')     rrule = 'FREQ=DAILY';
-    else if (recurringVal === 'rrule-weekly')   rrule = buildWeeklyRrule(sheet.querySelector('#tm-due').value);
-    else if (recurringVal === 'rrule-monthly')  rrule = buildMonthlyRrule(sheet.querySelector('#tm-due').value);
-    else if (recurringVal === 'after-custom') {
+    if (recMode === 'after') {
+      const n    = parseInt(sheet.querySelector('#tm-after-n')?.value) || 1;
+      const unit = sheet.querySelector('#tm-after-unit')?.value || 'd';
       xRecurringType = 'after-completion';
-      xRecurringInterval = sheet.querySelector('#tm-interval').value.trim() || 'weekly';
+      xRecurringInterval = `${n}${unit}`;
+    } else {
+      const fixedCont = sheet.querySelector('#tm-rec-fixed');
+      rrule = fixedCont ? (fixedCont.dataset.rrule || null) : null;
     }
 
     // Auto-add any category text that was typed but not yet submitted with the + button

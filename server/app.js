@@ -10,6 +10,8 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 app.use('/client', express.static(path.join(__dirname, '../client')));
+// Serve rrule ESM build for the client-side recurrence preview
+app.use('/rrule', express.static(path.join(__dirname, '../node_modules/rrule/dist/esm')));
 
 // Auth status — no auth required, used by client to gate API calls without 401 noise
 const { isAuthenticated } = require('./middleware/auth');
