@@ -596,7 +596,7 @@ Move the repeat selector and the reminder selector to share one row in the task 
 
 ---
 
-## Phase 5 — Picker Overhaul
+## Phase 5 — Picker Overhaul ✓ COMPLETE (commit `9434864`)
 
 **This phase must be completed before Phase 6.** Both phases touch `modalEditor.js` heavily, and settling on the final picker implementations first avoids conflicts during the recurrence overhaul.
 
