@@ -313,6 +313,8 @@ input, textarea, select {
 .modal-field-checkbox { flex-direction: row; align-items: center; gap: var(--space-sm); }
 .modal-field-checkbox label { display: flex; align-items: center; gap: var(--space-sm); color: var(--color-text); font-size: var(--font-size-md); }
 .modal-field-checkbox input[type="checkbox"] { width: auto; }
+/* In a two-column row, push the checkbox to the bottom to align with the adjacent select */
+.modal-row .modal-field-checkbox { justify-content: flex-end; }
 .modal-row { display: flex; gap: var(--space-sm); }
 .modal-row .modal-field { flex: 1; }
 .modal-actions { display: flex; gap: var(--space-sm); padding-top: var(--space-sm); }
@@ -396,9 +398,14 @@ input, textarea, select {
 
 /* ── Recurrence editor ──────────────────────────────────── */
 .rec-editor { display: flex; flex-direction: column; gap: var(--space-sm); }
-.rec-preset-sel { width: 100%; }
+/* Preset row: select + optional inline interval */
+.rec-preset-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.rec-preset-sel { flex: 1; min-width: 80px; }
+.rec-inline-extra { display: flex; align-items: center; gap: 4px; font-size: var(--font-size-sm); white-space: nowrap; }
+.rec-interval-inline { width: 44px; text-align: center; padding: 4px 4px; }
+/* After-completion row — never wrap */
+.rec-after-row { display: flex; align-items: center; gap: 6px; font-size: var(--font-size-md); flex-wrap: nowrap; white-space: nowrap; margin-top: var(--space-xs); }
 .rec-row { display: flex; align-items: center; gap: var(--space-sm); font-size: var(--font-size-md); }
-.rec-interval-row { flex-wrap: wrap; }
 .rec-interval-input { width: 56px; text-align: center; padding: 4px 6px; }
 .rec-freq-sel { width: auto; padding: 4px 6px; }
 .rec-chips-row { display: flex; flex-wrap: wrap; gap: 6px; }

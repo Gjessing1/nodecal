@@ -253,7 +253,9 @@ export function buildTimePicker(id, date, timezone, onChange) {
       syncValue();
       if (onChange) onChange(hidden.value);
       updateBtn();
-      overlay.remove();
+      // Delay removal by one frame so the overlay absorbs the pointer-synthesised
+      // click instead of passing it through to the field below.
+      requestAnimationFrame(() => overlay.remove());
     }
 
     // ── Assemble overlay ──────────────────────────────────────────────────────

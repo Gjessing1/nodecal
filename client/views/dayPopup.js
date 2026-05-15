@@ -32,27 +32,27 @@ export function showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComple
 
   const overlay = document.createElement('div');
   overlay.id = 'month-day-popup';
-  overlay.className = 'month-popup-overlay';
+  overlay.className = 'day-popup-overlay';
   overlay.addEventListener('click', () => overlay.remove());
 
   const panel = document.createElement('div');
-  panel.className = 'month-popup-panel';
+  panel.className = 'day-popup-panel';
   panel.addEventListener('click', e => e.stopPropagation());
 
   const heading = document.createElement('div');
-  heading.className = 'month-popup-heading';
+  heading.className = 'day-popup-heading';
   const headingLeft = document.createElement('div');
-  headingLeft.className = 'month-popup-heading-left';
+  headingLeft.className = 'day-popup-heading-left';
   headingLeft.textContent = day.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const wx = weatherBadge(dayStr, state.weather, state.config.weatherDaysMonth ?? state.config.weatherDays ?? 4);
   if (wx) {
     const wxSpan = document.createElement('span');
-    wxSpan.className = 'month-popup-weather';
+    wxSpan.className = 'day-popup-weather';
     wxSpan.textContent = wx;
     headingLeft.appendChild(wxSpan);
   }
   const closeBtn = document.createElement('button');
-  closeBtn.className = 'month-popup-close';
+  closeBtn.className = 'day-popup-close';
   closeBtn.textContent = '✕';
   closeBtn.addEventListener('click', () => overlay.remove());
   heading.appendChild(headingLeft);
@@ -61,27 +61,27 @@ export function showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComple
 
   if (!dayEvs.length && !dayTasks.length) {
     const empty = document.createElement('p');
-    empty.className = 'month-popup-empty';
+    empty.className = 'day-popup-empty';
     empty.textContent = 'Nothing scheduled';
     panel.appendChild(empty);
   }
 
   for (const ev of dayEvs) {
     const row = document.createElement('div');
-    row.className = 'month-popup-event';
+    row.className = 'day-popup-event';
     const cal = calendarById(ev.calendarId);
     const dot = document.createElement('span');
-    dot.className = 'month-popup-dot';
+    dot.className = 'day-popup-dot';
     dot.style.background = cal?.color || '#4a90d9';
     const info = document.createElement('div');
-    info.className = 'month-popup-info';
+    info.className = 'day-popup-info';
     const title = document.createElement('div');
-    title.className = 'month-popup-title';
+    title.className = 'day-popup-title';
     title.textContent = ev.title;
     info.appendChild(title);
     if (!ev.allDay) {
       const time = document.createElement('div');
-      time.className = 'month-popup-time';
+      time.className = 'day-popup-time';
       time.textContent = new Date(ev.start).toLocaleTimeString('en-US', {
         hour: '2-digit', minute: '2-digit', hour12: state.config.timeFormat === '12h', timeZone: tz,
       });
@@ -94,10 +94,10 @@ export function showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComple
 
   for (const task of dayTasks) {
     const row = document.createElement('div');
-    row.className = 'month-popup-task';
+    row.className = 'day-popup-task';
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
-    checkbox.className = 'month-popup-task-check';
+    checkbox.className = 'day-popup-task-check';
     checkbox.checked = task.status === 'COMPLETED';
     checkbox.addEventListener('click', e => {
       e.stopPropagation();
@@ -105,7 +105,7 @@ export function showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComple
       overlay.remove();
     });
     const title = document.createElement('div');
-    title.className = 'month-popup-title';
+    title.className = 'day-popup-title';
     title.textContent = task.title;
     row.append(checkbox, title);
     row.addEventListener('click', () => { overlay.remove(); if (onTaskClick) onTaskClick(task); });
@@ -113,24 +113,24 @@ export function showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComple
   }
 
   const footer = document.createElement('div');
-  footer.className = 'month-popup-footer';
+  footer.className = 'day-popup-footer';
   if (onNewEvent) {
     const btn = document.createElement('button');
-    btn.className = 'btn btn-ghost month-popup-new-event';
+    btn.className = 'btn btn-ghost day-popup-new-event';
     btn.textContent = '+ Event';
     btn.addEventListener('click', () => { overlay.remove(); onNewEvent(new Date(day)); });
     footer.appendChild(btn);
   }
   if (onNewTask) {
     const btn = document.createElement('button');
-    btn.className = 'btn btn-ghost month-popup-new-task';
+    btn.className = 'btn btn-ghost day-popup-new-task';
     btn.textContent = '+ Task';
     btn.addEventListener('click', () => { overlay.remove(); onNewTask(new Date(day)); });
     footer.appendChild(btn);
   }
   if (onDayClick) {
     const btn = document.createElement('button');
-    btn.className = 'month-popup-view-day btn btn-ghost';
+    btn.className = 'day-popup-view-day btn btn-ghost';
     btn.textContent = 'Day view →';
     btn.addEventListener('click', () => { overlay.remove(); onDayClick(new Date(day)); });
     footer.appendChild(btn);

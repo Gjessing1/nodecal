@@ -89,9 +89,13 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
 
   // ── Sections ────────────────────────────────────────────────────────────────
   const presetWrap = document.createElement('div');
-  presetWrap.className = 'rec-row';
+  presetWrap.className = 'rec-preset-row';
   const presetSel = document.createElement('select');
   presetSel.className = 'rec-preset-sel';
+
+  // Inline extras: interval shown next to the preset select for weekly/custom
+  const inlineExtra = document.createElement('span');
+  inlineExtra.className = 'rec-inline-extra';
 
   const presetOptions = [
     ['none','None'], ['daily','Daily'],
@@ -104,13 +108,52 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
     if (v === preset) o.selected = true;
     presetSel.appendChild(o);
   }
+
+  function refreshInlineExtra() {
+    inlineExtra.innerHTML = '';
+    if (preset === 'weekly') {
+      inlineExtra.appendChild(document.createTextNode(' every '));
+      const iInput = document.createElement('input');
+      iInput.type = 'number'; iInput.min = '1'; iInput.max = '99';
+      iInput.className = 'rec-interval-input rec-interval-inline';
+      iInput.value = weeklyInterval;
+      iInput.addEventListener('input', () => { weeklyInterval = Math.max(1, parseInt(iInput.value) || 1); notify(); });
+      inlineExtra.appendChild(iInput);
+      inlineExtra.appendChild(document.createTextNode(' wk'));
+    } else if (preset === 'custom') {
+      inlineExtra.appendChild(document.createTextNode(' '));
+      const iInput = document.createElement('input');
+      iInput.type = 'number'; iInput.min = '1'; iInput.max = '99';
+      iInput.className = 'rec-interval-input rec-interval-inline';
+      iInput.value = customInterval;
+      iInput.addEventListener('input', () => { customInterval = Math.max(1, parseInt(iInput.value) || 1); notify(); });
+      const fSel = document.createElement('select');
+      fSel.className = 'rec-freq-sel';
+      for (const [v, l] of [['day','d'],['week','wk'],['month','mo'],['year','yr']]) {
+        const o = document.createElement('option');
+        o.value = v; o.textContent = l;
+        if (v === customFreq) o.selected = true;
+        fSel.appendChild(o);
+      }
+      fSel.addEventListener('change', () => { customFreq = fSel.value; notify(); });
+      inlineExtra.append(iInput, document.createTextNode(' '), fSel);
+    }
+  }
+
   presetSel.addEventListener('change', () => {
     preset = presetSel.value; rawMode = false;
     if (preset === 'weekly' && !weeklyDays.length) weeklyDays = defaultWeeklyDays();
-    notify(); renderSub();
+    refreshInlineExtra(); notify(); renderSub();
   });
-  presetWrap.appendChild(presetSel);
-  root.appendChild(presetWrap);
+  presetWrap.append(presetSel, inlineExtra);
+
+  // opts.presetContainer: if provided, the preset row goes there (split layout).
+  // root then contains only the sub-UI (chips, end conditions, preview, advanced).
+  if (opts.presetContainer) {
+    opts.presetContainer.appendChild(presetWrap);
+  } else {
+    root.appendChild(presetWrap);
+  }
 
   const subWrap  = document.createElement('div');
   const endWrap  = document.createElement('div');
@@ -120,6 +163,8 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
   const advWrap  = document.createElement('div');
   advWrap.className = 'rec-section';
   root.append(subWrap, endWrap, previewWrap, advWrap);
+
+  refreshInlineExtra();
 
   // ── Sub-UI ──────────────────────────────────────────────────────────────────
   function renderSub() {
@@ -132,16 +177,6 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
   }
 
   function renderWeekly() {
-    const iRow = document.createElement('div');
-    iRow.className = 'rec-row rec-interval-row';
-    iRow.appendChild(document.createTextNode('Repeat every '));
-    const iInput = document.createElement('input');
-    iInput.type = 'number'; iInput.min = '1'; iInput.max = '99';
-    iInput.className = 'rec-interval-input'; iInput.value = weeklyInterval;
-    iInput.addEventListener('input', () => { weeklyInterval = Math.max(1, parseInt(iInput.value) || 1); notify(); });
-    iRow.append(iInput, document.createTextNode(' week(s)'));
-    subWrap.appendChild(iRow);
-
     const chipsRow = document.createElement('div');
     chipsRow.className = 'rec-chips-row';
     const dayOrder = state.config.weekStart !== 'sunday'
@@ -184,24 +219,7 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
   }
 
   function renderCustom() {
-    const row = document.createElement('div');
-    row.className = 'rec-row rec-interval-row';
-    row.appendChild(document.createTextNode('Repeat every '));
-    const iInput = document.createElement('input');
-    iInput.type = 'number'; iInput.min = '1'; iInput.max = '99';
-    iInput.className = 'rec-interval-input'; iInput.value = customInterval;
-    iInput.addEventListener('input', () => { customInterval = Math.max(1, parseInt(iInput.value) || 1); notify(); });
-    const fSel = document.createElement('select');
-    fSel.className = 'rec-freq-sel';
-    for (const [v, l] of [['day','day(s)'],['week','week(s)'],['month','month(s)'],['year','year(s)']]) {
-      const o = document.createElement('option');
-      o.value = v; o.textContent = l;
-      if (v === customFreq) o.selected = true;
-      fSel.appendChild(o);
-    }
-    fSel.addEventListener('change', () => { customFreq = fSel.value; notify(); });
-    row.append(iInput, document.createTextNode(' '), fSel);
-    subWrap.appendChild(row);
+    // Interval is shown inline with the preset select via refreshInlineExtra()
   }
 
   function renderEndConditions() {

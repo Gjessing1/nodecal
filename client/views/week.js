@@ -60,8 +60,8 @@ export function renderWeek(container, callbacks) {
     container.appendChild(buildAllDayRow(days, allDayEvents, allDayTasks, onEventClick, callbacks.onTaskClick, callbacks.onDayClick, callbacks.onTaskComplete, callbacks.onNewTask, callbacks.onLongPress));
   }
 
-  // Day-column headers
-  container.appendChild(buildDayHeaders(days, today));
+  // Day-column headers (date numbers open the day popup on tap)
+  container.appendChild(buildDayHeaders(days, today, callbacks));
 
   // Scrollable time grid
   const scroll = document.createElement('div');
@@ -197,22 +197,33 @@ function buildNavBar(wStart, callbacks) {
   return nav;
 }
 
-function buildDayHeaders(days, today) {
+function buildDayHeaders(days, today, callbacks) {
   const row = document.createElement('div');
   row.className = 'week-day-headers';
   const spacer = document.createElement('div');
   spacer.className = 'time-col-spacer';
   row.appendChild(spacer);
   for (const day of days) {
+    const dayStr = localDateStr(day);
     const dayEnd = new Date(day.getTime() + 86400000);
-    const hasEvents = state.events.some(ev =>
-      !state.hiddenCalendars.has(ev.calendarId) &&
-      new Date(ev.start) < dayEnd && new Date(ev.end) > day
-    );
     const cell = document.createElement('div');
     cell.className = 'week-day-header' + (day.toDateString() === today.toDateString() ? ' today' : '');
     const wx = weatherBadge(localDateStr(day), state.weather, state.config.weatherDaysWeek ?? state.config.weatherDays ?? 9);
     cell.innerHTML = `<span class="wdh-name">${day.toLocaleDateString('en-US',{weekday:'short'})}</span><span class="wdh-date">${day.getDate()}</span>${wx ? `<span class="wdh-weather">${wx}</span>` : ''}`;
+    // Tapping the date number opens the day popup
+    if (callbacks) {
+      const dateSpan = cell.querySelector('.wdh-date');
+      if (dateSpan) {
+        dateSpan.style.cursor = 'pointer';
+        dateSpan.addEventListener('click', e => {
+          e.stopPropagation();
+          showDayPopup(day, dayStr,
+            callbacks.onEventClick, callbacks.onDayClick,
+            callbacks.onTaskComplete, callbacks.onTaskClick,
+            callbacks.onNewTask, callbacks.onLongPress);
+        });
+      }
+    }
     row.appendChild(cell);
   }
   return row;

@@ -60,6 +60,26 @@ export function openTaskModal(task, { onSave, onDelete }) {
 
     <div class="modal-row">
       <div class="modal-field">
+        <label>Repeat</label>
+        <div class="rec-mode-toggle">
+          <button type="button" class="rec-mode-btn${!isRecAfterCompletion ? ' active' : ''}" data-mode="fixed">Fixed</button>
+          <button type="button" class="rec-mode-btn${isRecAfterCompletion ? ' active' : ''}" data-mode="after">After done</button>
+        </div>
+        <div id="tm-rec-preset-target" style="${isRecAfterCompletion ? 'display:none' : ''}"></div>
+        <div id="tm-rec-after" style="${isRecAfterCompletion ? '' : 'display:none'}">
+          <div class="rec-after-row">
+            Every
+            <input type="number" id="tm-after-n" class="rec-interval-input" min="1" max="999"
+                   value="${esc(task.recurringInterval?.replace(/[dw]$/,'') || '1')}">
+            <select id="tm-after-unit" class="rec-freq-sel">
+              <option value="d"${/d$/.test(task.recurringInterval||'') ? ' selected':''}>day(s)</option>
+              <option value="w"${/w$/.test(task.recurringInterval||'') ? ' selected':''}>week(s)</option>
+            </select>
+            after completion
+          </div>
+        </div>
+      </div>
+      <div class="modal-field">
         <label>Reminder</label>
         <select id="tm-reminder">
           <option value="none"           ${!task.taskReminder || task.taskReminder === 'none' ? 'selected' : ''}>None</option>
@@ -70,12 +90,6 @@ export function openTaskModal(task, { onSave, onDelete }) {
           <option value="custom"         ${task.taskReminder?.startsWith('custom') ? 'selected' : ''}>Custom…</option>
         </select>
       </div>
-      <div class="modal-field modal-field-checkbox">
-        <label>
-          <input type="checkbox" id="tm-completed" ${isCompleted ? 'checked' : ''}>
-          Completed
-        </label>
-      </div>
     </div>
 
     <div class="modal-field" id="tm-reminder-custom-row" style="${task.taskReminder?.startsWith('custom') ? '' : 'display:none'}">
@@ -83,26 +97,14 @@ export function openTaskModal(task, { onSave, onDelete }) {
       <input type="number" id="tm-reminder-custom-hours" value="${task.taskReminder?.startsWith('custom') ? task.taskReminder.replace('custom-','').replace('h','') : ''}" min="1" max="720" placeholder="e.g. 4">
     </div>
 
-    <div class="modal-field">
-      <label>Repeat</label>
-      <div class="rec-mode-toggle">
-        <button type="button" class="rec-mode-btn${!isRecAfterCompletion ? ' active' : ''}" data-mode="fixed">Fixed schedule</button>
-        <button type="button" class="rec-mode-btn${isRecAfterCompletion ? ' active' : ''}" data-mode="after">After completion</button>
-      </div>
-      <div id="tm-rec-fixed" style="${isRecAfterCompletion ? 'display:none' : ''}"
-           data-rrule="${esc(isRecRrule ? (task.rrule || '') : '')}"></div>
-      <div id="tm-rec-after" style="${isRecAfterCompletion ? '' : 'display:none'}">
-        <div class="rec-row rec-interval-row">
-          Repeat
-          <input type="number" id="tm-after-n" class="rec-interval-input" min="1" max="999"
-                 value="${esc(task.recurringInterval?.replace(/[dw]$/,'') || '1')}">
-          <select id="tm-after-unit" class="rec-freq-sel">
-            <option value="d"${/d$/.test(task.recurringInterval||'') ? ' selected':''}>day(s)</option>
-            <option value="w"${/w$/.test(task.recurringInterval||'') ? ' selected':''}>week(s)</option>
-          </select>
-          after completion
-        </div>
-      </div>
+    <div id="tm-rec-fixed" style="${isRecAfterCompletion ? 'display:none' : ''}"
+         data-rrule="${esc(isRecRrule ? (task.rrule || '') : '')}"></div>
+
+    <div class="modal-field modal-field-checkbox tm-completed-row">
+      <label>
+        <input type="checkbox" id="tm-completed" ${isCompleted ? 'checked' : ''}>
+        Completed
+      </label>
     </div>
 
     <div class="modal-actions">
@@ -216,27 +218,30 @@ export function openTaskModal(task, { onSave, onDelete }) {
     if (e.key === 'Escape') catAutoList.style.display = 'none';
   });
 
-  // ── Recurrence mode toggle ────────────────────────────────────────────────
+  // ── Recurrence mode toggle + editor ──────────────────────────────────────
   const fixedContainer = sheet.querySelector('#tm-rec-fixed');
   const afterContainer = sheet.querySelector('#tm-rec-after');
+  const presetTarget   = sheet.querySelector('#tm-rec-preset-target');
   let recMode = isRecAfterCompletion ? 'after' : 'fixed';
 
-  if (fixedContainer) {
+  if (fixedContainer && presetTarget) {
     const dueEl = sheet.querySelector('#tm-due');
     const dueDate = dueEl?.value ? new Date(dueEl.value + 'T00:00:00') : new Date();
-    const recEditor = buildRecurrenceEditor(
+    // presetContainer receives the preset select; returned root is the sub-UI
+    const recSubRoot = buildRecurrenceEditor(
       dueDate,
       isRecRrule ? (task.rrule || null) : null,
       (newRrule) => { fixedContainer.dataset.rrule = newRrule || ''; },
-      { hideWeekdays: true }
+      { hideWeekdays: true, presetContainer: presetTarget }
     );
-    fixedContainer.appendChild(recEditor);
+    fixedContainer.appendChild(recSubRoot);
   }
 
   sheet.querySelectorAll('.rec-mode-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       recMode = btn.dataset.mode;
       sheet.querySelectorAll('.rec-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === recMode));
+      if (presetTarget) presetTarget.style.display = recMode === 'fixed' ? '' : 'none';
       if (fixedContainer) fixedContainer.style.display = recMode === 'fixed' ? '' : 'none';
       if (afterContainer) afterContainer.style.display = recMode === 'after' ? '' : 'none';
     });

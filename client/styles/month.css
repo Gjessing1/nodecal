@@ -95,7 +95,7 @@
 }
 
 /* ── Day event popup ─────────────────────────────────────── */
-.month-popup-overlay {
+.day-popup-overlay {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.35);
   z-index: 150;
@@ -104,7 +104,7 @@
   justify-content: center;
   padding: var(--space-md);
 }
-.month-popup-panel {
+.day-popup-panel {
   background: var(--color-bg);
   border-radius: var(--radius-lg);
   width: 100%;
@@ -114,7 +114,7 @@
   box-shadow: 0 12px 40px rgba(0,0,0,0.25);
   padding: var(--space-md);
 }
-.month-popup-heading {
+.day-popup-heading {
   font-weight: 600;
   font-size: var(--font-size-md);
   margin-bottom: var(--space-md);
@@ -123,22 +123,22 @@
   justify-content: space-between;
   gap: var(--space-sm);
 }
-.month-popup-heading-left {
+.day-popup-heading-left {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
-.month-popup-weather {
+.day-popup-weather {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
   font-weight: 400;
 }
-.month-popup-close {
+.day-popup-close {
   color: var(--color-text-muted);
   font-size: var(--font-size-md);
   padding: 0 4px;
 }
-.month-popup-event {
+.day-popup-event {
   display: flex;
   align-items: flex-start;
   gap: var(--space-sm);
@@ -146,14 +146,14 @@
   border-bottom: 1px solid var(--color-border);
   cursor: pointer;
 }
-.month-popup-event:last-of-type { border-bottom: none; }
-.month-popup-event:hover { background: var(--color-surface); border-radius: var(--radius-sm); }
-.month-popup-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
-.month-popup-info { flex: 1; min-width: 0; }
-.month-popup-title { font-size: var(--font-size-md); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.month-popup-time { font-size: var(--font-size-sm); color: var(--color-text-muted); }
-.month-popup-empty { color: var(--color-text-muted); font-size: var(--font-size-sm); padding: var(--space-sm) 0; }
-.month-popup-task {
+.day-popup-event:last-of-type { border-bottom: none; }
+.day-popup-event:hover { background: var(--color-surface); border-radius: var(--radius-sm); }
+.day-popup-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+.day-popup-info { flex: 1; min-width: 0; }
+.day-popup-title { font-size: var(--font-size-md); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.day-popup-time { font-size: var(--font-size-sm); color: var(--color-text-muted); }
+.day-popup-empty { color: var(--color-text-muted); font-size: var(--font-size-sm); padding: var(--space-sm) 0; }
+.day-popup-task {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
@@ -161,20 +161,20 @@
   border-bottom: 1px solid var(--color-border);
   cursor: pointer;
 }
-.month-popup-task:last-of-type { border-bottom: none; }
-.month-popup-task:hover { background: var(--color-surface); border-radius: var(--radius-sm); }
-.month-popup-task-check {
+.day-popup-task:last-of-type { border-bottom: none; }
+.day-popup-task:hover { background: var(--color-surface); border-radius: var(--radius-sm); }
+.day-popup-task-check {
   width: 18px; height: 18px;
   flex-shrink: 0;
   accent-color: var(--color-accent);
   border: none; padding: 0;
   cursor: pointer;
 }
-.month-popup-footer { display: flex; gap: var(--space-sm); margin-top: var(--space-sm); }
-.month-popup-footer .btn { flex: 1; font-size: var(--font-size-sm); }
-.month-popup-view-day { font-size: var(--font-size-sm); }
-.month-popup-new-event { color: var(--color-accent); }
-.month-popup-new-task { color: var(--color-accent); }
+.day-popup-footer { display: flex; gap: var(--space-sm); margin-top: var(--space-sm); }
+.day-popup-footer .btn { flex: 1; font-size: var(--font-size-sm); }
+.day-popup-view-day { font-size: var(--font-size-sm); }
+.day-popup-new-event { color: var(--color-accent); }
+.day-popup-new-task { color: var(--color-accent); }
 
 /* Event chips inside month cells */
 .month-event-chip {

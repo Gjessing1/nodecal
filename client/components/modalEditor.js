@@ -132,15 +132,16 @@ function renderForm(event, defaultDate, explicitTime = false) {
           ${alarmOptionsHtml(event?.alarmMinutes ?? (state.config.alarmDefaultMinutes ?? 0))}
         </select>
       </div>
-      <div class="modal-field" id="f-alarm-custom-row" style="${(()=>{const v=event?.alarmMinutes??state.config.alarmDefaultMinutes??0;return [0,5,15,60].includes(v)?'display:none':''})()}">
-        <label>Minutes before</label>
-        <input type="number" id="f-alarm-custom" value="${(()=>{const v=event?.alarmMinutes??state.config.alarmDefaultMinutes??0;return [0,5,15,60].includes(v)?'':(v||'')})()}" min="1" max="10080" placeholder="e.g. 45">
+      <div class="modal-field">
+        <label>Repeat</label>
+        <div id="f-repeat-preset-target"></div>
       </div>
     </div>
-    <div class="modal-field">
-      <label>Repeat</label>
-      <div id="f-repeat-container" data-rrule="${esc(event?.rrule || '')}"></div>
+    <div class="modal-field" id="f-alarm-custom-row" style="${(()=>{const v=event?.alarmMinutes??state.config.alarmDefaultMinutes??0;return [0,5,15,60].includes(v)?'display:none':''})()}">
+      <label>Minutes before</label>
+      <input type="number" id="f-alarm-custom" value="${(()=>{const v=event?.alarmMinutes??state.config.alarmDefaultMinutes??0;return [0,5,15,60].includes(v)?'':(v||'')})()}" min="1" max="10080" placeholder="e.g. 45">
     </div>
+    <div id="f-repeat-container" data-rrule="${esc(event?.rrule || '')}"></div>
     ${event?.recurring ? `
     <div class="modal-field recurring-scope-field">
       <label>Edit scope</label>
@@ -292,7 +293,8 @@ function renderForm(event, defaultDate, explicitTime = false) {
     recEditor = buildRecurrenceEditor(
       start,
       event?.rrule || null,
-      (newRrule) => { recContainer.dataset.rrule = newRrule || ''; }
+      (newRrule) => { recContainer.dataset.rrule = newRrule || ''; },
+      { presetContainer: sheet.querySelector('#f-repeat-preset-target') }
     );
     recContainer.appendChild(recEditor);
   }
