@@ -785,6 +785,69 @@ Events and tasks imported from other CalDAV clients (Thunderbird, Apple Calendar
 This preserves CalDAV data integrity for events created by other clients.
 ---
 
+## Phase 7 — UI Polish & Event Categories
+
+### 7.1 After-completion mode toggle layout shift
+- [ ] Switching between "Fixed" and "After done" in the task modal changes the button sizes,
+  pushing the Reminder field out of its column. The two buttons should stay fixed-size
+  regardless of which mode is active. Fix: set equal `flex: 1` or explicit `min-width` on both
+  toggle buttons, and ensure the adjacent Reminder column doesn't reflow.
+
+### 7.2 Location / URL: collapsed state cannot be re-collapsed
+- [ ] Once expanded via the `+ Location / URL` button, there is no way to collapse the fields
+  again. Add a collapse button (e.g. `−` or `▲`) when the fields are expanded and empty, so
+  the user can hide them again.
+
+### 7.3 Location / URL positioning
+- [ ] **Events:** the collapsed `+ Location / URL` button sits too close to the Description
+  field below it, and the gap above it (between the Remind me / Repeat row and the button) is
+  too large. It should have even vertical spacing relative to both neighbours.
+- [ ] **Tasks:** the collapsed button is too close to the Notes field. It should sit squarely
+  between the Due date row and the Notes field with equal padding on both sides.
+
+### 7.4 Remind me / Repeat collapse when unused
+- [ ] For both events and tasks: if no reminder and no repeat are currently set, collapse the
+  Remind me and Repeat fields by default (similar to the Location / URL collapse pattern).
+  Show a single `+ Reminder / Repeat` expand button in their place. If either field has a
+  value, expand both automatically on open. Tapping the button expands both fields so the user
+  can configure them.
+
+### 7.5 Event categories
+A new first-class feature: events can be tagged with one or more free-text categories
+(separate from task categories and calendar names).
+
+**Use case:** Tag a set of events with "Workout". When sick or on vacation, select the
+"Workout" category and shift all matching events forward by N days/weeks — without manually
+moving each one. Particularly useful for structured recurring plans (e.g. a 4-week training
+program with 2–4 sessions per week).
+
+**Data model:**
+- Stored as `CATEGORIES` in VEVENT ICS (already a valid iCalendar property)
+- Free-text tags, multi-value, comma-separated in the ICS
+- Separate namespace from task categories — never mixed in the same UI
+
+**UI — event modal:**
+- Category chips (same visual pattern as task categories)
+- `#tag` input or chip selector inline in the event edit form
+- Autocomplete from categories already present on existing events
+
+**UI — calendar views:**
+- Optional: show a small category chip/dot on event cards
+- Category filter in Agenda view toolbar (similar to task source filter)
+
+**Batch operations (the main value):**
+- A "Category actions" panel (accessible from settings or a long-press on a category chip)
+- Actions: **Shift all events in category by N days/weeks** — moves every non-recurring
+  matching event forward or backward by the specified offset; for recurring series, asks
+  whether to shift the next occurrence only or the entire series
+- Future: hide/show all events in a category (toggle visibility without deleting)
+
+**Implementation notes:**
+- `CATEGORIES` is already parsed and serialized for VEVENT in `server/caldav/parser.js`
+  (lines 152, 200) — backend support exists
+- Client needs: category state in `state.js`, autocomplete utility in `taskUtils.js` or a new
+  `eventUtils.js`, and the batch-shift endpoint in `server/routes/events.js`
+
 ## Remember
 Update CLAUDE.md roadmap each time you finish a phase to track current progress.
 Also push and build new docker image when finishing.
