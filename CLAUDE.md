@@ -457,9 +457,7 @@ Audit done. Four extractions performed (commit `43fbe6f`):
 
 ---
 
-## Phase 1 — Bug Fixes
-
-Small, self-contained fixes. No architectural changes. Can be done in any order within this phase.
+## Phase 1 — Bug Fixes ✓ COMPLETE (commit `009feb5`)
 
 ### 1.1 Weather initial-load trigger
 
@@ -509,9 +507,7 @@ This matches the standard behavior of task apps like Todoist and Things.
 
 ---
 
-## Phase 2 — Settings & Modal Layout
-
-UI reshuffling — no business logic changes.
+## Phase 2 — Settings & Modal Layout ✓ COMPLETE (commit `009feb5`)
 
 ### 2.1 Clear cache and logout: move to top of settings modal
 
