@@ -403,6 +403,12 @@ input, textarea, select {
 .rec-preset-sel { flex: 1; min-width: 80px; }
 .rec-inline-extra { display: flex; align-items: center; gap: 4px; font-size: var(--font-size-sm); white-space: nowrap; }
 .rec-interval-inline { width: 44px; text-align: center; padding: 4px 4px; }
+/* Custom preset: interval + unit below the select at full width */
+.rec-custom-sub { display: flex; flex-basis: 100%; gap: var(--space-sm); margin-top: 4px; }
+.rec-custom-sub input  { flex: 1; }
+.rec-custom-sub select { flex: 3; }
+/* Collapsed field expand button */
+.add-field-btn { font-size: var(--font-size-sm); color: var(--color-text-muted); padding: 2px 0; text-align: left; }
 /* After-completion row — never wrap */
 .rec-after-row {
   display: flex;

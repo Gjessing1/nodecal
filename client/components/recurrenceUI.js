@@ -121,22 +121,22 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
       inlineExtra.appendChild(iInput);
       inlineExtra.appendChild(document.createTextNode(' wk'));
     } else if (preset === 'custom') {
-      inlineExtra.appendChild(document.createTextNode(' '));
+      // Custom extras go on a new line at full width, matching the preset select width
+      inlineExtra.className = 'rec-custom-sub';
       const iInput = document.createElement('input');
       iInput.type = 'number'; iInput.min = '1'; iInput.max = '99';
-      iInput.className = 'rec-interval-input rec-interval-inline';
+      iInput.className = 'rec-interval-input';
       iInput.value = customInterval;
       iInput.addEventListener('input', () => { customInterval = Math.max(1, parseInt(iInput.value) || 1); notify(); });
       const fSel = document.createElement('select');
-      fSel.className = 'rec-freq-sel';
-      for (const [v, l] of [['day','d'],['week','wk'],['month','mo'],['year','yr']]) {
+      for (const [v, l] of [['day','day'],['week','week'],['month','month'],['year','year']]) {
         const o = document.createElement('option');
         o.value = v; o.textContent = l;
         if (v === customFreq) o.selected = true;
         fSel.appendChild(o);
       }
       fSel.addEventListener('change', () => { customFreq = fSel.value; notify(); });
-      inlineExtra.append(iInput, document.createTextNode(' '), fSel);
+      inlineExtra.append(iInput, fSel);
     }
   }
 
@@ -169,11 +169,17 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
   // ── Sub-UI ──────────────────────────────────────────────────────────────────
   function renderSub() {
     subWrap.innerHTML = ''; endWrap.innerHTML = ''; advWrap.innerHTML = '';
-    if (preset === 'none' && !rawMode) { previewWrap.innerHTML = ''; return; }
-    if (preset === 'weekly')  renderWeekly();
+    if (preset === 'none' && !rawMode) {
+      previewWrap.innerHTML = '';
+      // Remove borders so empty sections don't steal space
+      endWrap.className = ''; advWrap.className = '';
+      return;
+    }
+    endWrap.className = 'rec-section'; advWrap.className = 'rec-section';
+    if (preset === 'weekly')       renderWeekly();
     else if (preset === 'monthly') renderMonthly();
     else if (preset === 'custom')  renderCustom();
-    if (preset !== 'none') { renderEndConditions(); renderAdvanced(); }
+    renderEndConditions(); renderAdvanced();
   }
 
   function renderWeekly() {

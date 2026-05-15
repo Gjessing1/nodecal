@@ -350,15 +350,16 @@ function handleLongPressCreate(date) {
 }
 
 function handleDuplicateEvent(event) {
+  // Open a full edit form pre-populated with all fields; save as a new event (no uid)
   const copy = {
+    ...event,
     title: event.title + ' (copy)',
-    start: event.start,
-    end: event.end,
-    allDay: event.allDay,
-    calendarId: event.calendarId,
-    description: event.description || '',
+    uid: null,
+    id: null,
+    recurring: false,
+    occurrenceDate: undefined,
   };
-  openNewEventModal(new Date(event.start), data => saveEvent(null, { ...copy, ...data }), { explicitTime: true });
+  openEditEventModal(copy, data => saveEvent(null, data), null, null);
 }
 
 function handleEventMove(eventId, day, startMin) {

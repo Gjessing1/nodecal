@@ -30,16 +30,7 @@ export function openTaskModal(task, { onSave, onDelete }) {
       <div id="tm-due-wrap"></div>
     </div>
 
-    <div class="modal-row">
-      <div class="modal-field">
-        <label>Location</label>
-        <input type="text" id="tm-location" value="${esc(task.location || '')}" placeholder="Location (optional)" autocomplete="off">
-      </div>
-      <div class="modal-field">
-        <label>URL</label>
-        <input type="url" id="tm-url" value="${esc(task.url || '')}" placeholder="https://…">
-      </div>
-    </div>
+    <div id="tm-location-url-wrap"></div>
 
     <div class="modal-field">
       <label>Notes</label>
@@ -142,6 +133,33 @@ export function openTaskModal(task, { onSave, onDelete }) {
     });
     dueWrap.appendChild(dueBtn);
   }
+
+  // ── Location / URL (collapsed when empty) ────────────────────────────────
+  function mountTaskLocationUrl(expanded) {
+    const wrap = sheet.querySelector('#tm-location-url-wrap');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    if (!expanded) {
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'add-field-btn';
+      btn.textContent = '+ Location / URL';
+      btn.addEventListener('click', () => mountTaskLocationUrl(true));
+      wrap.appendChild(btn);
+    } else {
+      wrap.innerHTML = `
+        <div class="modal-row">
+          <div class="modal-field">
+            <label>Location</label>
+            <input type="text" id="tm-location" value="${esc(task.location || '')}" placeholder="Location (optional)" autocomplete="off">
+          </div>
+          <div class="modal-field">
+            <label>URL</label>
+            <input type="url" id="tm-url" value="${esc(task.url || '')}" placeholder="https://…">
+          </div>
+        </div>`;
+    }
+  }
+  mountTaskLocationUrl(!!(task.location || task.url));
 
   // Track categories in modal as mutable array
   const modalCats = [...taskCats];
@@ -277,8 +295,8 @@ export function openTaskModal(task, { onSave, onDelete }) {
     onSave({
       title,
       due:         sheet.querySelector('#tm-due').value || null,
-      location:    sheet.querySelector('#tm-location')?.value.trim() || '',
-      url:         sheet.querySelector('#tm-url')?.value.trim() || '',
+      location:    sheet.querySelector('#tm-location-url-wrap #tm-location')?.value.trim() || '',
+      url:         sheet.querySelector('#tm-location-url-wrap #tm-url')?.value.trim() || '',
       description: sheet.querySelector('#tm-desc').value.trim(),
       categories:  finalCats,
       status:      completedChecked ? 'COMPLETED' : 'NEEDS-ACTION',

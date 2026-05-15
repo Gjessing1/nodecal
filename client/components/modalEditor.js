@@ -23,6 +23,7 @@ export function openNewEventModal(defaultDate, onSave, { explicitTime = false } 
   onDeleteCb = null;
   onDuplicateCb = null;
   renderForm(null, defaultDate, explicitTime);
+  sheet.scrollTop = 0;
   overlay.classList.remove('hidden');
 }
 
@@ -38,6 +39,7 @@ export function openEditEventModal(event, onSave, onDelete, onDuplicate) {
   onDeleteCb = onDelete;
   onDuplicateCb = onDuplicate || null;
   renderForm(event, null);
+  sheet.scrollTop = 0;
   overlay.classList.remove('hidden');
 }
 
@@ -151,23 +153,14 @@ function renderForm(event, defaultDate, explicitTime = false) {
         <option value="all">All events in series</option>
       </select>
     </div>` : ''}
-    <div class="modal-row">
-      <div class="modal-field">
-        <label>Location</label>
-        <input type="text" id="f-location" value="${esc(event?.location || '')}" placeholder="Location (optional)" autocomplete="off">
-      </div>
-      <div class="modal-field">
-        <label>URL</label>
-        <input type="url" id="f-url" value="${esc(event?.url || '')}" placeholder="https://…">
-      </div>
-    </div>
+    <div id="f-location-url-wrap"></div>
     <div class="modal-field">
       <label>Description</label>
       <textarea id="f-desc" rows="5">${esc(event?.description || '')}</textarea>
     </div>
     <div class="modal-actions">
       <button class="btn btn-primary" id="f-save">Save</button>
-      ${!isNew ? '<button class="btn btn-danger" id="f-delete">Delete</button>' : ''}
+      ${!isNew && onDeleteCb ? '<button class="btn btn-danger" id="f-delete">Delete</button>' : ''}
       <button class="btn btn-ghost" id="f-cancel">Cancel</button>
     </div>
   `;
@@ -257,6 +250,51 @@ function renderForm(event, defaultDate, explicitTime = false) {
     }
   });
 
+  // ── Location / URL (collapsed when empty) ────────────────────────────────
+  function mountLocationUrl(expanded) {
+    const wrap = sheet.querySelector('#f-location-url-wrap');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    if (!expanded) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'add-field-btn';
+      btn.textContent = '+ Location / URL';
+      btn.addEventListener('click', () => mountLocationUrl(true));
+      wrap.appendChild(btn);
+    } else {
+      wrap.innerHTML = `
+        <div class="modal-row">
+          <div class="modal-field">
+            <label>Location</label>
+            <input type="text" id="f-location" value="${esc(event?.location || '')}" placeholder="Location (optional)" autocomplete="off">
+          </div>
+          <div class="modal-field">
+            <label>URL</label>
+            <input type="url" id="f-url" value="${esc(event?.url || '')}" placeholder="https://…">
+          </div>
+        </div>`;
+      // Wire URL open link
+      const urlInput = wrap.querySelector('#f-url');
+      if (urlInput) {
+        function updateUrlLink() {
+          const existing = wrap.querySelector('.url-open-link');
+          if (existing) existing.remove();
+          if (urlInput.value.trim()) {
+            const link = document.createElement('a');
+            link.href = urlInput.value.trim();
+            link.target = '_blank'; link.rel = 'noopener noreferrer';
+            link.textContent = '↗ Open'; link.className = 'url-open-link btn btn-ghost';
+            urlInput.parentElement.appendChild(link);
+          }
+        }
+        updateUrlLink();
+        urlInput.addEventListener('input', updateUrlLink);
+      }
+    }
+  }
+  mountLocationUrl(!!(event?.location || event?.url));
+
   // Alarm select → show/hide custom minutes row
   const alarmSel = sheet.querySelector('#f-alarm');
   const alarmCustomRow = sheet.querySelector('#f-alarm-custom-row');
@@ -264,26 +302,6 @@ function renderForm(event, defaultDate, explicitTime = false) {
     alarmSel.addEventListener('change', () => {
       alarmCustomRow.style.display = alarmSel.value === '-1' ? '' : 'none';
     });
-  }
-
-  // URL open link — appears beside the input when a URL is set
-  const urlInput = sheet.querySelector('#f-url');
-  if (urlInput) {
-    function updateUrlLink() {
-      const existing = sheet.querySelector('.url-open-link');
-      if (existing) existing.remove();
-      if (urlInput.value.trim()) {
-        const link = document.createElement('a');
-        link.href = urlInput.value.trim();
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        link.textContent = '↗ Open';
-        link.className = 'url-open-link btn btn-ghost';
-        urlInput.parentElement.appendChild(link);
-      }
-    }
-    updateUrlLink();
-    urlInput.addEventListener('input', updateUrlLink);
   }
 
   // ── Recurrence editor (declared before startDate listener so the listener can reference it)
@@ -326,7 +344,7 @@ function renderForm(event, defaultDate, explicitTime = false) {
       nlpTimer = setTimeout(() => applyNlp(titleInput.value), 320);
     });
   }
-  if (!isNew) {
+  if (!isNew && onDeleteCb) {
     sheet.querySelector('#f-delete').addEventListener('click', () => {
       const scope = sheet.querySelector('#f-scope')?.value || null;
       closeModal();
@@ -354,8 +372,8 @@ function handleSave(event) {
   const allDay = sheet.querySelector('#f-allday').checked;
   const calendarId = sheet.querySelector('#f-calendar').value;
   const description = sheet.querySelector('#f-desc').value.trim();
-  const location = sheet.querySelector('#f-location')?.value.trim() || '';
-  const url      = sheet.querySelector('#f-url')?.value.trim() || '';
+  const location = sheet.querySelector('#f-location-url-wrap #f-location')?.value.trim() || '';
+  const url      = sheet.querySelector('#f-location-url-wrap #f-url')?.value.trim() || '';
 
   let startDt, endDt;
   if (allDay) {
