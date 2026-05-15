@@ -61,12 +61,16 @@ function switchView(viewName) {
   const tabs = [...calViews];
   if (state.config.enableTasksView) tabs.push('tasks');
   if (!tabs.includes(viewName)) return;
-  if (viewName === 'day' && state.activeView === 'day') {
-    state.selectedDate = new Date();
+
+  // Tapping the already-active tab: return to today/current-time
+  if (viewName === state.activeView) {
+    if (viewName === 'day' || viewName === 'week' || viewName === 'month') {
+      state.selectedDate = new Date();
+    } else if (viewName === 'agenda') {
+      viewContainer.scrollTop = 0;
+    }
   }
-  if (viewName === 'agenda' && state.activeView === 'agenda') {
-    viewContainer.scrollTop = 0;
-  }
+
   if (state.activeView && state.activeView !== viewName) {
     _viewHistory.push(state.activeView);
     if (_viewHistory.length > 10) _viewHistory.shift();
@@ -298,12 +302,10 @@ async function loadWeather() {
   } catch { /* weather is optional */ }
 }
 
+// Geolocation discovery only — called when no coordinates are saved yet.
+// If coordinates are already in config, loadWeather() is called directly in init().
 function detectAndLoadWeather() {
-  if (state.config.weatherLat && state.config.weatherLon) {
-    // Coordinates already saved — load and re-render so weather shows immediately
-    loadWeather().then(() => render()).catch(() => {});
-    return;
-  }
+  if (state.config.weatherLat && state.config.weatherLon) return;
   if (!navigator.geolocation) return;
   navigator.geolocation.getCurrentPosition(pos => {
     const lat = pos.coords.latitude.toFixed(4);
@@ -854,9 +856,11 @@ async function init() {
     const loaded = await loadAll();
     if (!loaded) return;
     buildNav();
+    // Load weather before first render if coordinates are already saved
+    if (state.config.weatherLat && state.config.weatherLon) await loadWeather();
     render();
     scheduleNotifications(state.events);
-    // Weather: detect location and load asynchronously (doesn't block render)
+    // Discover location via geolocation if no coordinates are saved yet
     detectAndLoadWeather();
     // Refresh weather every hour
     setInterval(() => { loadWeather().then(() => render()); }, 60 * 60 * 1000);

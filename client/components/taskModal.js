@@ -55,24 +55,8 @@ export function openTaskModal(task, { onSave, onDelete }) {
       </div>
     </div>
 
-    <div class="modal-field">
-      <label>Reminder</label>
-      <select id="tm-reminder">
-        <option value="none"           ${!task.taskReminder || task.taskReminder === 'none' ? 'selected' : ''}>None</option>
-        <option value="on-due"         ${task.taskReminder === 'on-due'          ? 'selected' : ''}>Morning on due date</option>
-        <option value="evening-due"    ${task.taskReminder === 'evening-due'     ? 'selected' : ''}>Evening on due date</option>
-        <option value="morning-before" ${task.taskReminder === 'morning-before'  ? 'selected' : ''}>Morning day before</option>
-        <option value="evening-before" ${task.taskReminder === 'evening-before'  ? 'selected' : ''}>Evening day before</option>
-        <option value="custom"         ${task.taskReminder?.startsWith('custom') ? 'selected' : ''}>Custom…</option>
-      </select>
-    </div>
-    <div class="modal-field" id="tm-reminder-custom-row" style="${task.taskReminder?.startsWith('custom') ? '' : 'display:none'}">
-      <label>Hours before morning time on due date</label>
-      <input type="number" id="tm-reminder-custom-hours" value="${task.taskReminder?.startsWith('custom') ? task.taskReminder.replace('custom-','').replace('h','') : ''}" min="1" max="720" placeholder="e.g. 4">
-    </div>
-
-    <div class="tm-repeat-complete-row">
-      <div class="modal-field tm-repeat-field">
+    <div class="modal-row">
+      <div class="modal-field">
         <label>Repeat</label>
         <select id="tm-recurring">
           <option value="">None</option>
@@ -82,17 +66,34 @@ export function openTaskModal(task, { onSave, onDelete }) {
           <option value="after-custom"  ${isRecAfterCompletion ? 'selected' : ''}>After done</option>
         </select>
       </div>
-      <div class="modal-field modal-field-checkbox tm-complete-col">
-        <label>
-          <input type="checkbox" id="tm-completed" ${isCompleted ? 'checked' : ''}>
-          Completed
-        </label>
+      <div class="modal-field">
+        <label>Reminder</label>
+        <select id="tm-reminder">
+          <option value="none"           ${!task.taskReminder || task.taskReminder === 'none' ? 'selected' : ''}>None</option>
+          <option value="on-due"         ${task.taskReminder === 'on-due'          ? 'selected' : ''}>Morning on due</option>
+          <option value="evening-due"    ${task.taskReminder === 'evening-due'     ? 'selected' : ''}>Evening on due</option>
+          <option value="morning-before" ${task.taskReminder === 'morning-before'  ? 'selected' : ''}>Morning before</option>
+          <option value="evening-before" ${task.taskReminder === 'evening-before'  ? 'selected' : ''}>Evening before</option>
+          <option value="custom"         ${task.taskReminder?.startsWith('custom') ? 'selected' : ''}>Custom…</option>
+        </select>
       </div>
     </div>
 
     <div class="modal-field" id="tm-interval-field" style="${isRecAfterCompletion ? '' : 'display:none'}">
       <label>Interval (e.g. 3d, 2w)</label>
       <input type="text" id="tm-interval" value="${esc(task.recurringInterval || '')}" placeholder="e.g. 3d, 2w">
+    </div>
+
+    <div class="modal-field" id="tm-reminder-custom-row" style="${task.taskReminder?.startsWith('custom') ? '' : 'display:none'}">
+      <label>Hours before morning time on due date</label>
+      <input type="number" id="tm-reminder-custom-hours" value="${task.taskReminder?.startsWith('custom') ? task.taskReminder.replace('custom-','').replace('h','') : ''}" min="1" max="720" placeholder="e.g. 4">
+    </div>
+
+    <div class="modal-field modal-field-checkbox">
+      <label>
+        <input type="checkbox" id="tm-completed" ${isCompleted ? 'checked' : ''}>
+        Completed
+      </label>
     </div>
 
     <div class="modal-actions">

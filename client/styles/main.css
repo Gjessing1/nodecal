@@ -168,15 +168,22 @@ input, textarea, select {
 
 /* ── Calendar quick-add bar ─────────────────────────────── */
 .cal-quickadd {
+  position: fixed;
+  bottom: calc(var(--nav-height) + env(safe-area-inset-bottom));
+  left: 0;
+  right: 0;
+  z-index: 50;
   display: flex;
   flex-direction: column;
   gap: 0;
   padding: var(--space-sm) var(--space-md);
   border-top: 1px solid var(--color-border);
   background: var(--color-bg);
-  flex-shrink: 0;
 }
 .cal-quickadd.hidden { display: none; }
+.cal-quickadd-visible #view-container {
+  padding-bottom: calc(var(--cal-quickadd-h) + var(--space-xl));
+}
 .cal-quickadd-row {
   display: flex;
   align-items: center;
@@ -243,7 +250,10 @@ input, textarea, select {
 .event-time { font-size: var(--font-size-sm); color: var(--color-text-muted); }
 
 /* ── FAB ────────────────────────────────────────────────── */
-:root { --cal-quickadd-h: 60px; }
+:root { --cal-quickadd-h: 60px; --tasks-quickadd-h: 96px; }
+.tasks-quickadd-visible #view-container {
+  padding-bottom: calc(var(--tasks-quickadd-h) + var(--space-xl));
+}
 
 .fab {
   position: fixed;
@@ -336,6 +346,9 @@ input, textarea, select {
 }
 .recurring-scope-field { background: var(--color-accent-light); border-radius: var(--radius-sm); padding: var(--space-sm); }
 .url-open-link { font-size: var(--font-size-sm); color: var(--color-accent); margin-top: 4px; display: inline-block; text-decoration: none; }
+.modal-title-input-row { display: flex; align-items: center; gap: var(--space-xs); }
+.modal-title-input-row input { flex: 1; }
+.icon-btn { padding: 6px 10px; font-size: 18px; flex-shrink: 0; line-height: 1; }
 .btn { padding: var(--space-sm) var(--space-md); border-radius: var(--radius-sm); font-weight: 500; }
 .btn-primary { background: var(--color-accent); color: #fff; flex: 1; }
 .btn-danger { background: var(--color-danger); color: #fff; }
@@ -393,6 +406,10 @@ input, textarea, select {
 }
 .settings-title-row .modal-title {
   margin-bottom: 0;
+}
+.settings-danger-row {
+  display: flex;
+  gap: var(--space-xs);
 }
 .settings-toggle {
   display: flex;

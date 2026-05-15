@@ -7,6 +7,7 @@ let _quickAddEl = null;
 
 export function destroyTaskQuickAdd() {
   if (_quickAddEl) { _quickAddEl.remove(); _quickAddEl = null; }
+  document.getElementById('app')?.classList.remove('tasks-quickadd-visible');
 }
 
 export function focusTaskQuickAdd() {
@@ -16,10 +17,10 @@ export function focusTaskQuickAdd() {
 export function mountTaskQuickAdd(callbacks) {
   destroyTaskQuickAdd();
   _quickAddEl = buildQuickAdd(callbacks);
+  const app = document.getElementById('app');
   const bottomNav = document.getElementById('bottom-nav');
-  if (bottomNav) {
-    document.getElementById('app').insertBefore(_quickAddEl, bottomNav);
-  }
+  if (bottomNav) app.insertBefore(_quickAddEl, bottomNav);
+  app.classList.add('tasks-quickadd-visible');
 }
 
 function buildQuickAdd(callbacks) {

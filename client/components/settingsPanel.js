@@ -1,4 +1,5 @@
 import { state, setConfig, setTaskSources } from '../app/state.js';
+import { esc } from '../app/utils.js';
 import { getAllCategories } from '../app/taskUtils.js';
 
 const ALL_VIEWS = [
@@ -34,6 +35,10 @@ function renderForm() {
     <div class="modal-handle"></div>
     <div class="settings-title-row">
       <div class="modal-title">Settings</div>
+      <div class="settings-danger-row">
+        <button class="btn btn-ghost" id="s-clear-cache" title="Clear local cache and re-sync from server">Clear cache</button>
+        ${cfg.authEnabled ? '<button class="btn btn-ghost" id="s-logout" style="color:var(--color-danger)">Log out</button>' : ''}
+      </div>
     </div>
 
     <div class="modal-row">
@@ -52,6 +57,10 @@ function renderForm() {
       <div class="modal-field">
         <label>Show tasks on views</label>
         <label class="settings-toggle">
+          <input type="checkbox" id="s-tasks-agenda" ${(cfg.showTasksOnAgenda ?? cfg.showTasksOnCalendar) ? 'checked' : ''}>
+          <span>Agenda</span>
+        </label>
+        <label class="settings-toggle">
           <input type="checkbox" id="s-tasks-day" ${(cfg.showTasksOnDay ?? cfg.showTasksOnCalendar) ? 'checked' : ''}>
           <span>Day</span>
         </label>
@@ -62,10 +71,6 @@ function renderForm() {
         <label class="settings-toggle">
           <input type="checkbox" id="s-tasks-month" ${(cfg.showTasksOnMonth ?? cfg.showTasksOnCalendar) ? 'checked' : ''}>
           <span>Month</span>
-        </label>
-        <label class="settings-toggle">
-          <input type="checkbox" id="s-tasks-agenda" ${(cfg.showTasksOnAgenda ?? cfg.showTasksOnCalendar) ? 'checked' : ''}>
-          <span>Agenda</span>
         </label>
       </div>
     </div>
@@ -265,8 +270,6 @@ function renderForm() {
 
     <div class="modal-actions">
       <button class="btn btn-primary" id="s-save">Save</button>
-      <button class="btn btn-ghost" id="s-clear-cache" title="Clear local cache and re-sync from server">Clear cache</button>
-      ${cfg.authEnabled ? '<button class="btn btn-ghost" id="s-logout" style="color:var(--color-danger)">Log out</button>' : ''}
       <button class="btn btn-ghost" id="s-cancel">Cancel</button>
     </div>
   `;
@@ -566,10 +569,6 @@ function renderCategoriesSection(sheet, cfg) {
 async function handleLogout() {
   await fetch('/logout', { method: 'POST' });
   window.location.reload();
-}
-
-function esc(str) {
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 async function handleSave() {

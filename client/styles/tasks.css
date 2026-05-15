@@ -201,10 +201,14 @@
 
 /* ── Quick-add bar ────────────────────────────────────────── */
 .tasks-quickadd {
+  position: fixed;
+  bottom: calc(var(--nav-height) + env(safe-area-inset-bottom));
+  left: 0;
+  right: 0;
+  z-index: 50;
   border-top: 1px solid var(--color-border);
   background: var(--color-bg);
   padding: var(--space-xs) var(--space-md) var(--space-sm);
-  flex-shrink: 0;
 }
 
 .tasks-quickadd-row {

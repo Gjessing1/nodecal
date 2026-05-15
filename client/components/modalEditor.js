@@ -81,7 +81,10 @@ function renderForm(event, defaultDate, explicitTime = false) {
     <div class="modal-handle"></div>
     <div class="modal-field">
       <label>Title</label>
-      <input type="text" id="f-title" value="${esc(event?.title || '')}" placeholder="${isNew ? 'e.g. Meeting tomorrow 14:00' : 'Event title'}" autocomplete="off">
+      <div class="modal-title-input-row">
+        <input type="text" id="f-title" value="${esc(event?.title || '')}" placeholder="${isNew ? 'e.g. Meeting tomorrow 14:00' : 'Event title'}" autocomplete="off">
+        ${!isNew ? '<button type="button" class="btn btn-ghost icon-btn" id="f-duplicate" title="Duplicate event">⧉</button>' : ''}
+      </div>
       ${isNew ? '<div class="nlp-feedback hidden" id="nlp-fb"></div>' : ''}
     </div>
     <div class="modal-field" id="allday-date-row"${!event?.allDay ? ' style="display:none"' : ''}>
@@ -156,7 +159,6 @@ function renderForm(event, defaultDate, explicitTime = false) {
     </div>
     <div class="modal-actions">
       <button class="btn btn-primary" id="f-save">Save</button>
-      ${!isNew ? '<button class="btn btn-ghost" id="f-duplicate">Duplicate</button>' : ''}
       ${!isNew ? '<button class="btn btn-danger" id="f-delete">Delete</button>' : ''}
       <button class="btn btn-ghost" id="f-cancel">Cancel</button>
     </div>

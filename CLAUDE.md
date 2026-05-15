@@ -437,9 +437,16 @@ No tests in Phases 0–3. Unit tests for recurrence logic in Phase 4 (RRULE edge
 
 ## Roadmap
 
-## Phase 0 — Code Health Audit
+## Phase 0 — Code Health Audit ✓ COMPLETE
 
-Before any implementation work, review the codebase for overly complex patterns and suggest refactors. **Do not change any code in this phase — produce findings and recommendations only.**
+Audit done. Four extractions performed (commit `43fbe6f`):
+- `timePicker.js` — scroll wheel picker (from `modalEditor.js`)
+- `recurrenceUI.js` — repeat presets (from `modalEditor.js`)
+- `taskModal.js` — task edit modal (from `tasks.js`)
+- `taskQuickAdd.js` — quick add bar (from `tasks.js`)
+- `esc()` moved to `utils.js` (was duplicated in `modalEditor.js` and `tasks.js`)
+
+`modalEditor.js`: 610 → 431 lines. `tasks.js`: 864 → 350 lines.
 
 **Primary focus areas:**
 

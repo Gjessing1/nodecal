@@ -200,14 +200,15 @@ function renderList(container, filterState, sortOrder, groupBy, filterCat, filte
   if (filterState.showDone) {
     // "Done" mode: show ONLY completed tasks, newest completion first
     tasks = state.tasks.filter(t => t.status === 'COMPLETED');
+    if (filterState.starredOnly) tasks = tasks.filter(t => t.important); // AND: done AND starred
     if (filterCat) tasks = tasks.filter(t => (t.categories || []).includes(filterCat));
-    if (filterSource && !filterState.starredOnly) tasks = tasks.filter(t => t.source === filterSource);
+    if (filterSource) tasks = tasks.filter(t => t.source === filterSource);
     tasks = [...tasks].sort((a, b) => (b.completed || '').localeCompare(a.completed || ''));
   } else {
     tasks = state.tasks.filter(t => t.status !== 'COMPLETED');
     if (filterState.starredOnly) tasks = tasks.filter(t => t.important);
     if (filterCat) tasks = tasks.filter(t => (t.categories || []).includes(filterCat));
-    if (filterSource && !filterState.starredOnly) tasks = tasks.filter(t => t.source === filterSource);
+    if (filterSource) tasks = tasks.filter(t => t.source === filterSource);
     tasks = sortTasks(tasks, sortOrder);
   }
 
