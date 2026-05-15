@@ -1,7 +1,8 @@
 import { state } from '../app/state.js';
 import { toDateInputValue, toTimeInputValue, localToUTC, esc } from '../app/utils.js';
-import { buildTimeButton } from './timePicker.js';
+import { buildTimePicker } from './timePicker.js';
 import { repeatOptionsHtml } from './recurrenceUI.js';
+import { showDatePicker } from './datePicker.js';
 
 let overlay, sheet, onSaveCb, onDeleteCb, onDuplicateCb;
 
@@ -72,8 +73,6 @@ function renderForm(event, defaultDate, explicitTime = false) {
   const end = event ? new Date(event.end) : new Date(start.getTime() + durMs);
   // For all-day events, slice the UTC date string directly — never convert through local timezone.
   const allDayDateVal = event?.allDay ? event.start.slice(0, 10) : toDateInputValue(start, tz);
-  const is24h = state.config.timeFormat === '24h';
-
   // Default calendar: prefer event's calendar, then settings default, then first available
   const defaultCalId = event?.calendarId || state.config.defaultCalendar || state.calendars[0]?.id;
 
@@ -89,18 +88,21 @@ function renderForm(event, defaultDate, explicitTime = false) {
     </div>
     <div class="modal-field" id="allday-date-row"${!event?.allDay ? ' style="display:none"' : ''}>
       <label>Date</label>
-      <input type="date" id="f-date" value="${allDayDateVal}">
+      <input type="hidden" id="f-date" value="${allDayDateVal}">
+      <div id="f-date-wrap"></div>
     </div>
     <div class="modal-datetime-row" id="time-row"${event?.allDay ? ' style="display:none"' : ''}>
       <div class="datetime-col">
         <label class="datetime-label">From</label>
-        <input type="date" id="f-start-date" value="${toDateInputValue(start, tz)}">
+        <input type="hidden" id="f-start-date" value="${toDateInputValue(start, tz)}">
+        <div id="f-start-date-wrap"></div>
         <div id="f-start-time-wrap"></div>
       </div>
       <span class="datetime-arrow">→</span>
       <div class="datetime-col">
         <label class="datetime-label">To</label>
-        <input type="date" id="f-end-date" value="${toDateInputValue(end, tz)}">
+        <input type="hidden" id="f-end-date" value="${toDateInputValue(end, tz)}">
+        <div id="f-end-date-wrap"></div>
         <div id="f-end-time-wrap"></div>
       </div>
     </div>
@@ -168,7 +170,45 @@ function renderForm(event, defaultDate, explicitTime = false) {
   const startWrap = sheet.querySelector('#f-start-time-wrap');
   const endWrap = sheet.querySelector('#f-end-time-wrap');
 
-  // Helper: shift end time by same delta when start changes
+  // ── Date picker buttons ──────────────────────────────────────────────────────
+  function makeDateBtn(inputId, wrapId, onDateChange) {
+    const input = sheet.querySelector(`#${inputId}`);
+    const wrap  = sheet.querySelector(`#${wrapId}`);
+    if (!input || !wrap) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'date-picker-btn';
+    function refresh() {
+      if (input.value) {
+        const d = new Date(input.value + 'T00:00:00');
+        btn.textContent = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      } else {
+        btn.textContent = 'Pick date';
+      }
+    }
+    refresh();
+    btn.addEventListener('click', () => {
+      const cur = input.value ? new Date(input.value + 'T00:00:00') : new Date();
+      showDatePicker(cur, selected => {
+        const y = selected.getFullYear();
+        const mo = String(selected.getMonth() + 1).padStart(2, '0');
+        const d  = String(selected.getDate()).padStart(2, '0');
+        input.value = `${y}-${mo}-${d}`;
+        refresh();
+        input.dispatchEvent(new Event('change'));
+        if (onDateChange) onDateChange(selected);
+      });
+    });
+    // Keep button text in sync if input is changed programmatically (e.g. NLP)
+    input.addEventListener('change', refresh);
+    wrap.appendChild(btn);
+  }
+
+  makeDateBtn('f-date', 'f-date-wrap');
+  makeDateBtn('f-start-date', 'f-start-date-wrap');
+  makeDateBtn('f-end-date', 'f-end-date-wrap');
+
+  // ── Helper: shift end time by same delta when start changes ──────────────────
   function shiftEnd(prevStartVal, newStartVal) {
     const [ph, pm] = prevStartVal.split(':').map(Number);
     const [nh, nm] = newStartVal.split(':').map(Number);
@@ -177,33 +217,18 @@ function renderForm(event, defaultDate, explicitTime = false) {
     if (!endEl) return;
     const [eh, em] = endEl.value.split(':').map(Number);
     const newEndMin = Math.max(0, Math.min(1439, (eh * 60 + em) + deltaMin));
-    const newEndVal = `${String(Math.floor(newEndMin / 60)).padStart(2,'0')}:${String(newEndMin % 60).padStart(2,'0')}`;
+    const newEndVal = `${String(Math.floor(newEndMin / 60)).padStart(2, '0')}:${String(newEndMin % 60).padStart(2, '0')}`;
     endEl.value = newEndVal;
-    // Update button text if 24h wheel
-    const endBtn = sheet.querySelector('#f-end-time-wrap .time-display-btn');
-    if (endBtn) endBtn.textContent = newEndVal;
+    sheet.querySelector('#f-end-time-wrap .tp-wrap')?.updateTime?.(newEndVal);
   }
 
-  const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
-  if (is24h && isTouchDevice) {
-    // Mobile 24h: scroll-wheel picker
-    let prevStartVal = toTimeInputValue(start, tz);
-    startWrap.appendChild(buildTimeButton('f-start-time', start, tz, newVal => {
-      shiftEnd(prevStartVal, newVal);
-      prevStartVal = newVal;
-    }));
-    endWrap.appendChild(buildTimeButton('f-end-time', end, tz));
-  } else {
-    // Desktop or 12h: native time input
-    startWrap.innerHTML = `<input type="time" id="f-start-time" value="${toTimeInputValue(start, tz)}" style="width:100%">`;
-    endWrap.innerHTML = `<input type="time" id="f-end-time" value="${toTimeInputValue(end, tz)}" style="width:100%">`;
-    const startEl = sheet.querySelector('#f-start-time');
-    let prevStartVal = startEl.value;
-    startEl.addEventListener('change', () => {
-      shiftEnd(prevStartVal, startEl.value);
-      prevStartVal = startEl.value;
-    });
-  }
+  // ── Time pickers (dial, all platforms) ───────────────────────────────────────
+  let prevStartVal = toTimeInputValue(start, tz);
+  startWrap.appendChild(buildTimePicker('f-start-time', start, tz, newVal => {
+    shiftEnd(prevStartVal, newVal);
+    prevStartVal = newVal;
+  }));
+  endWrap.appendChild(buildTimePicker('f-end-time', end, tz));
 
   sheet.querySelector('#f-allday').addEventListener('change', e => {
     const checked = e.target.checked;
@@ -211,12 +236,17 @@ function renderForm(event, defaultDate, explicitTime = false) {
     sheet.querySelector('#time-row').style.display = checked ? 'none' : '';
     if (checked) {
       const sd = sheet.querySelector('#f-start-date');
-      if (sd) sheet.querySelector('#f-date').value = sd.value;
+      if (sd) {
+        sheet.querySelector('#f-date').value = sd.value;
+        sheet.querySelector('#f-date').dispatchEvent(new Event('change'));
+      }
     } else {
       const fd = sheet.querySelector('#f-date');
       if (fd) {
         sheet.querySelector('#f-start-date').value = fd.value;
         sheet.querySelector('#f-end-date').value = fd.value;
+        sheet.querySelector('#f-start-date').dispatchEvent(new Event('change'));
+        sheet.querySelector('#f-end-date').dispatchEvent(new Event('change'));
       }
     }
   });
@@ -373,25 +403,26 @@ async function applyNlp(text) {
     const end = new Date(data.end);
     const tz = state.config.timezone;
     if (!data.allDay) {
-      sheet.querySelector('#f-start-date').value = toDateInputValue(start, tz);
-      sheet.querySelector('#f-end-date').value = toDateInputValue(end, tz);
+      const sdEl = sheet.querySelector('#f-start-date');
+      const edEl = sheet.querySelector('#f-end-date');
+      if (sdEl) { sdEl.value = toDateInputValue(start, tz); sdEl.dispatchEvent(new Event('change')); }
+      if (edEl) { edEl.value = toDateInputValue(end, tz);   edEl.dispatchEvent(new Event('change')); }
       const startTimeVal = toTimeInputValue(start, tz);
       const endTimeVal   = toTimeInputValue(end, tz);
-      // Update both <input type="time"> and the wheel hidden input (24h mode)
+      // Update hidden inputs
       const stEl = sheet.querySelector('#f-start-time');
       const etEl = sheet.querySelector('#f-end-time');
       if (stEl) stEl.value = startTimeVal;
       if (etEl) etEl.value = endTimeVal;
-      // Refresh tap-to-reveal time buttons if present
-      const startBtn = sheet.querySelector('#f-start-time-wrap .time-display-btn');
-      const endBtn   = sheet.querySelector('#f-end-time-wrap .time-display-btn');
-      if (startBtn) startBtn.textContent = startTimeVal;
-      if (endBtn)   endBtn.textContent   = endTimeVal;
+      // Update visual dial display if present
+      sheet.querySelector('#f-start-time-wrap .tp-wrap')?.updateTime?.(startTimeVal);
+      sheet.querySelector('#f-end-time-wrap .tp-wrap')?.updateTime?.(endTimeVal);
       sheet.querySelector('#f-allday').checked = false;
       sheet.querySelector('#allday-date-row').style.display = 'none';
       sheet.querySelector('#time-row').style.display = '';
     } else {
-      sheet.querySelector('#f-date').value = toDateInputValue(start);
+      const fdEl = sheet.querySelector('#f-date');
+      if (fdEl) { fdEl.value = toDateInputValue(start); fdEl.dispatchEvent(new Event('change')); }
       sheet.querySelector('#f-allday').checked = true;
       sheet.querySelector('#allday-date-row').style.display = '';
       sheet.querySelector('#time-row').style.display = 'none';

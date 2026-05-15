@@ -1,6 +1,7 @@
 import { state } from '../app/state.js';
 import { getAllCategories, visibleCategories } from '../app/taskUtils.js';
 import { esc } from '../app/utils.js';
+import { showDatePicker } from './datePicker.js';
 
 function buildWeeklyRrule(due) {
   const days = ['SU','MO','TU','WE','TH','FR','SA'];
@@ -35,7 +36,8 @@ export function openTaskModal(task, { onSave, onDelete }) {
 
     <div class="modal-field">
       <label>Due date</label>
-      <input type="date" id="tm-due" value="${task.due || ''}">
+      <input type="hidden" id="tm-due" value="${task.due || ''}">
+      <div id="tm-due-wrap"></div>
     </div>
 
     <div class="modal-row">
@@ -113,6 +115,35 @@ export function openTaskModal(task, { onSave, onDelete }) {
       <button class="btn btn-ghost" id="tm-cancel">Cancel</button>
     </div>
   `;
+
+  // ── Due date picker button ─────────────────────────────────────────────────
+  const dueInput = sheet.querySelector('#tm-due');
+  const dueWrap  = sheet.querySelector('#tm-due-wrap');
+  if (dueInput && dueWrap) {
+    const dueBtn = document.createElement('button');
+    dueBtn.type = 'button';
+    dueBtn.className = 'date-picker-btn';
+    function refreshDueBtn() {
+      if (dueInput.value) {
+        const d = new Date(dueInput.value + 'T00:00:00');
+        dueBtn.textContent = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      } else {
+        dueBtn.textContent = 'No due date';
+      }
+    }
+    refreshDueBtn();
+    dueBtn.addEventListener('click', () => {
+      const cur = dueInput.value ? new Date(dueInput.value + 'T00:00:00') : new Date();
+      showDatePicker(cur, selected => {
+        const y  = selected.getFullYear();
+        const mo = String(selected.getMonth() + 1).padStart(2, '0');
+        const d  = String(selected.getDate()).padStart(2, '0');
+        dueInput.value = `${y}-${mo}-${d}`;
+        refreshDueBtn();
+      });
+    });
+    dueWrap.appendChild(dueBtn);
+  }
 
   // Track categories in modal as mutable array
   const modalCats = [...taskCats];

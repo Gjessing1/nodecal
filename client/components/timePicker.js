@@ -1,133 +1,278 @@
-const WHEEL_ITEM_H = 40;
+const SVG_NS = 'http://www.w3.org/2000/svg';
 
-/**
- * Wraps buildTimeWheel with a tap-to-reveal button.
- * Shows a text display of the time; tapping it opens the scroll wheel.
- */
-export function buildTimeButton(id, date, timezone = 'UTC', onTimeChange) {
-  const wrap = document.createElement('div');
-  wrap.className = 'time-btn-wrap';
+// SVG viewBox is 200×200; all coordinates are in these units.
+const CX = 100, CY = 100;
+const R_FACE  = 88;   // clock face background circle
+const R_OUTER = 74;   // outer ring: hours 1-12 / all minutes
+const R_INNER = 50;   // inner ring: hours 0, 13-23
+const SEL_R   = 15;   // radius of the selection circle at the hand tip
 
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'time-display-btn';
-
-  const wheelPanel = document.createElement('div');
-  wheelPanel.className = 'time-wheel-panel hidden';
-
-  const pair = buildTimeWheel(id, date, timezone, val => {
-    btn.textContent = val;
-    if (onTimeChange) onTimeChange(val);
-  });
-  const hidden = pair.querySelector(`#${id}`);
-  btn.textContent = hidden.value;
-  wheelPanel.appendChild(pair);
-
-  btn.addEventListener('click', e => {
-    e.stopPropagation();
-    const isOpen = !wheelPanel.classList.contains('hidden');
-    document.querySelectorAll('.time-wheel-panel').forEach(p => {
-      if (p !== wheelPanel) {
-        p.classList.add('hidden');
-        p.previousElementSibling?.classList.remove('active');
-      }
-    });
-    wheelPanel.classList.toggle('hidden', isOpen);
-    btn.classList.toggle('active', !isOpen);
-    if (!isOpen) {
-      const closeOnOutside = ev => {
-        if (!wheelPanel.contains(ev.target)) {
-          wheelPanel.classList.add('hidden');
-          btn.classList.remove('active');
-          document.removeEventListener('click', closeOnOutside);
-        }
-      };
-      setTimeout(() => document.addEventListener('click', closeOnOutside), 0);
-    }
-  });
-
-  wrap.appendChild(btn);
-  wrap.appendChild(wheelPanel);
-  return wrap;
+// idx 0 = 12-o'clock, increases clockwise, 12 steps per revolution
+function idxToAngle(idx) {
+  return idx * (2 * Math.PI / 12) - Math.PI / 2;
+}
+function polar(r, angle) {
+  return [CX + r * Math.cos(angle), CY + r * Math.sin(angle)];
+}
+function svgEl(tag, attrs) {
+  const e = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  return e;
 }
 
-export function buildTimeWheel(id, date, timezone = 'UTC', onChange) {
+// 24h clock: outer ring has 12, 1-11 ; inner ring has 0, 13-23
+function hourToPos(h) {
+  if (h === 12) return { outer: true, idx: 0 };
+  if (h >= 1 && h <= 11) return { outer: true, idx: h };
+  if (h === 0) return { outer: false, idx: 0 };
+  return { outer: false, idx: h - 12 };
+}
+function posToHour(outer, idx) {
+  if (outer) return idx === 0 ? 12 : idx;
+  return idx === 0 ? 0 : idx + 12;
+}
+
+/**
+ * Build a tap-to-open time picker.
+ * Returns a div containing a hidden input (#id) and a display button.
+ * Tapping the button opens an overlay dial picker.
+ * Exposes wrap.updateTime(val) for programmatic updates (e.g. NLP).
+ *
+ * @param {string} id - id for the hidden input
+ * @param {Date} date - initial date/time
+ * @param {string} timezone - IANA timezone
+ * @param {function(string): void} [onChange] - called with "HH:MM" on change
+ */
+export function buildTimePicker(id, date, timezone, onChange) {
+  const tz = timezone || 'UTC';
+
+  // Parse initial time in the configured timezone
+  const parts = new Intl.DateTimeFormat('en-US', {
+    hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz,
+  }).formatToParts(date instanceof Date ? date : new Date());
+  let hour   = parseInt(parts.find(p => p.type === 'hour').value) % 24;
+  let minute = Math.round(parseInt(parts.find(p => p.type === 'minute').value) / 5) * 5 % 60;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'tp-wrap';
+
   const hidden = document.createElement('input');
   hidden.type = 'hidden';
   hidden.id = id;
 
-  // Read h/m in the configured timezone, not browser local time
-  const parts = new Intl.DateTimeFormat('en-US', {
-    hour: '2-digit', minute: '2-digit', hour12: false, timeZone: timezone,
-  }).formatToParts(date);
-  let hVal = parseInt(parts.find(p => p.type === 'hour').value) % 24;
-  let mVal = Math.round(parseInt(parts.find(p => p.type === 'minute').value) / 5) * 5 % 60;
-  hidden.value = `${String(hVal).padStart(2, '0')}:${String(mVal).padStart(2, '0')}`;
-
-  function sync() {
-    hidden.value = `${String(hVal).padStart(2, '0')}:${String(mVal).padStart(2, '0')}`;
-    if (onChange) onChange(hidden.value);
+  function syncValue() {
+    hidden.value = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
   }
+  syncValue();
 
-  function makeWheel(items, initial, onChange) {
-    const outer = document.createElement('div');
-    outer.className = 'time-wheel';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'tp-btn';
 
-    const indicator = document.createElement('div');
-    indicator.className = 'time-wheel-selection';
-    outer.appendChild(indicator);
+  function updateBtn() {
+    btn.textContent = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  }
+  updateBtn();
 
-    const scroller = document.createElement('div');
-    scroller.className = 'time-wheel-scroller';
+  btn.addEventListener('click', openPicker);
 
-    const padTop = document.createElement('div');
-    padTop.className = 'time-wheel-pad-item';
-    scroller.appendChild(padTop);
+  function openPicker() {
+    document.getElementById('time-picker-overlay')?.remove();
 
-    for (const v of items) {
-      const item = document.createElement('div');
-      item.className = 'time-wheel-item';
-      item.textContent = String(v).padStart(2, '0');
-      scroller.appendChild(item);
+    let pickHour   = hour;
+    let pickMinute = minute;
+    let mode       = 'hour';
+
+    // ── Overlay ───────────────────────────────────────────────────────────────
+    const overlay = document.createElement('div');
+    overlay.id = 'time-picker-overlay';
+    overlay.className = 'mini-cal-overlay';
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+
+    const panel = document.createElement('div');
+    panel.className = 'mini-cal-panel tp-panel';
+    panel.addEventListener('click', e => e.stopPropagation());
+
+    // Close button
+    const closeRow = document.createElement('div');
+    closeRow.className = 'tp-close-row';
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'tp-close-btn';
+    closeBtn.textContent = '×';
+    closeBtn.addEventListener('click', () => overlay.remove());
+    closeRow.appendChild(closeBtn);
+
+    // ── Display row: HH : MM ─────────────────────────────────────────────────
+    const displayRow = document.createElement('div');
+    displayRow.className = 'time-picker-display';
+
+    const hourSeg = document.createElement('button');
+    hourSeg.type = 'button';
+    hourSeg.className = 'time-picker-seg';
+
+    const colonEl = document.createElement('span');
+    colonEl.className = 'time-picker-colon';
+    colonEl.textContent = ':';
+
+    const minSeg = document.createElement('button');
+    minSeg.type = 'button';
+    minSeg.className = 'time-picker-seg';
+
+    hourSeg.addEventListener('click', () => setMode('hour'));
+    minSeg.addEventListener('click', () => setMode('minute'));
+    displayRow.append(hourSeg, colonEl, minSeg);
+
+    function updateSegs() {
+      hourSeg.textContent = String(pickHour).padStart(2, '0');
+      minSeg.textContent  = String(pickMinute).padStart(2, '0');
+      hourSeg.classList.toggle('active', mode === 'hour');
+      minSeg.classList.toggle('active', mode === 'minute');
     }
 
-    const padBot = document.createElement('div');
-    padBot.className = 'time-wheel-pad-item';
-    scroller.appendChild(padBot);
+    function setMode(m) {
+      mode = m;
+      updateSegs();
+      renderDial();
+    }
 
-    outer.appendChild(scroller);
+    // ── SVG dial ─────────────────────────────────────────────────────────────
+    const svg = svgEl('svg', { viewBox: '0 0 200 200', class: 'tp-dial' });
+    svg.appendChild(svgEl('circle', { cx: CX, cy: CY, r: R_FACE, class: 'dial-face' }));
 
-    requestAnimationFrame(() => {
-      scroller.scrollTop = items.indexOf(initial) * WHEEL_ITEM_H;
+    const handLine  = svgEl('line',   { x1: CX, y1: CY, class: 'dial-hand-line', 'stroke-linecap': 'round' });
+    const handDot   = svgEl('circle', { r: SEL_R, class: 'dial-hand-dot' });
+    const centerDot = svgEl('circle', { cx: CX, cy: CY, r: 4, class: 'dial-center-dot' });
+    svg.append(handLine, handDot, centerDot);
+
+    const numG = svgEl('g', {});
+    svg.appendChild(numG);
+
+    function renderDial() {
+      numG.innerHTML = '';
+
+      if (mode === 'hour') {
+        const { outer: selOut, idx: selIdx } = hourToPos(pickHour);
+
+        // Outer ring: 12, 1, 2 … 11
+        for (let i = 0; i < 12; i++) {
+          const h = i === 0 ? 12 : i;
+          const [x, y] = polar(R_OUTER, idxToAngle(i));
+          const t = svgEl('text', {
+            x, y, 'text-anchor': 'middle', 'dominant-baseline': 'central',
+            class: 'dial-num' + (selOut && selIdx === i ? ' sel' : ''),
+          });
+          t.textContent = String(h);
+          numG.appendChild(t);
+        }
+
+        // Inner ring: 0, 13, 14 … 23
+        for (let i = 0; i < 12; i++) {
+          const h = i === 0 ? 0 : i + 12;
+          const [x, y] = polar(R_INNER, idxToAngle(i));
+          const t = svgEl('text', {
+            x, y, 'text-anchor': 'middle', 'dominant-baseline': 'central',
+            class: 'dial-num dial-num-in' + (!selOut && selIdx === i ? ' sel' : ''),
+          });
+          t.textContent = String(h);
+          numG.appendChild(t);
+        }
+
+        const { outer, idx } = hourToPos(pickHour);
+        const [hx, hy] = polar(outer ? R_OUTER : R_INNER, idxToAngle(idx));
+        handLine.setAttribute('x2', hx); handLine.setAttribute('y2', hy);
+        handDot.setAttribute('cx', hx);  handDot.setAttribute('cy', hy);
+
+      } else {
+        // Minute mode: 0, 5, 10 … 55
+        for (let i = 0; i < 12; i++) {
+          const m = i * 5;
+          const [x, y] = polar(R_OUTER, idxToAngle(i));
+          const t = svgEl('text', {
+            x, y, 'text-anchor': 'middle', 'dominant-baseline': 'central',
+            class: 'dial-num' + (pickMinute === m ? ' sel' : ''),
+          });
+          t.textContent = m === 0 ? '00' : String(m);
+          numG.appendChild(t);
+        }
+
+        const [hx, hy] = polar(R_OUTER, idxToAngle(pickMinute / 5));
+        handLine.setAttribute('x2', hx); handLine.setAttribute('y2', hy);
+        handDot.setAttribute('cx', hx);  handDot.setAttribute('cy', hy);
+      }
+    }
+
+    // ── Pointer events ────────────────────────────────────────────────────────
+    function readPointer(e) {
+      const rect = svg.getBoundingClientRect();
+      const scale = rect.width / 200;
+      const px = e.touches ? e.touches[0].clientX : e.clientX;
+      const py = e.touches ? e.touches[0].clientY : e.clientY;
+      const dx = (px - rect.left) / scale - CX;
+      const dy = (py - rect.top)  / scale - CY;
+      return { angle: Math.atan2(dy, dx), dist: Math.sqrt(dx * dx + dy * dy) };
+    }
+
+    function applyPointer({ angle, dist }) {
+      if (dist > R_FACE || dist < 8) return;
+      // Normalize to [0, 2π) clockwise from 12-o'clock
+      let a = angle + Math.PI / 2;
+      if (a < 0) a += 2 * Math.PI;
+      if (a >= 2 * Math.PI) a -= 2 * Math.PI;
+      const idx = Math.round(a * 12 / (2 * Math.PI)) % 12;
+
+      if (mode === 'hour') {
+        pickHour = posToHour(dist > (R_OUTER + R_INNER) / 2, idx);
+      } else {
+        pickMinute = idx * 5;
+      }
+      updateSegs();
+      renderDial();
+    }
+
+    let _drag = false;
+    svg.addEventListener('pointerdown', e => {
+      _drag = true;
+      svg.setPointerCapture(e.pointerId);
+      applyPointer(readPointer(e));
+    });
+    svg.addEventListener('pointermove', e => { if (_drag) applyPointer(readPointer(e)); });
+    svg.addEventListener('pointerup', () => {
+      if (!_drag) return;
+      _drag = false;
+      if (mode === 'hour') {
+        setMode('minute');   // auto-advance after hour selection
+      } else {
+        commit();            // auto-close after minute selection
+      }
     });
 
-    let t;
-    scroller.addEventListener('scroll', () => {
-      clearTimeout(t);
-      t = setTimeout(() => {
-        const idx = Math.round(scroller.scrollTop / WHEEL_ITEM_H);
-        onChange(items[Math.max(0, Math.min(idx, items.length - 1))]);
-      }, 80);
-    }, { passive: true });
+    function commit() {
+      hour   = pickHour;
+      minute = pickMinute;
+      syncValue();
+      if (onChange) onChange(hidden.value);
+      updateBtn();
+      overlay.remove();
+    }
 
-    return outer;
+    // ── Assemble overlay ──────────────────────────────────────────────────────
+    updateSegs();
+    renderDial();
+    panel.append(closeRow, displayRow, svg);
+    overlay.appendChild(panel);
+    document.getElementById('app').appendChild(overlay);
   }
 
-  const pair = document.createElement('div');
-  pair.className = 'time-wheel-pair';
-  pair.appendChild(hidden);
+  // Programmatic update — called by NLP feedback
+  wrap.updateTime = (val) => {
+    const [h, m] = val.split(':').map(Number);
+    if (!isNaN(h)) hour = ((h % 24) + 24) % 24;
+    if (!isNaN(m)) minute = Math.round(m / 5) * 5 % 60;
+    syncValue();
+    updateBtn();
+  };
 
-  const hours = Array.from({ length: 24 }, (_, i) => i);
-  const mins = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
-
-  const hWheel = makeWheel(hours, hVal, v => { hVal = v; sync(); });
-  const sep = document.createElement('span');
-  sep.className = 'time-wheel-sep';
-  sep.textContent = ':';
-  const mWheel = makeWheel(mins, mVal, v => { mVal = v; sync(); });
-
-  pair.appendChild(hWheel);
-  pair.appendChild(sep);
-  pair.appendChild(mWheel);
-  return pair;
+  wrap.append(hidden, btn);
+  return wrap;
 }

@@ -449,6 +449,76 @@ mark.nlp-match {
   text-decoration-style: dotted;
 }
 
+/* ── Custom date picker button ──────────────────────────────── */
+.date-picker-btn {
+  width: 100%;
+  text-align: left;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: var(--font-size-md);
+  cursor: pointer;
+}
+.date-picker-btn:hover { background: var(--color-surface); }
+
+/* ── Dial time picker ────────────────────────────────────────── */
+.tp-wrap { display: inline-block; }
+.tp-btn {
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: var(--font-size-md);
+  font-weight: 500;
+  cursor: pointer;
+  min-width: 72px;
+  text-align: center;
+}
+.tp-btn:hover { background: var(--color-surface); }
+.tp-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  width: min(300px, 90vw);
+}
+.tp-close-row { width: 100%; display: flex; justify-content: flex-end; }
+.tp-close-btn { font-size: 20px; color: var(--color-text-muted); padding: 2px 8px; line-height: 1; }
+.tp-close-btn:hover { color: var(--color-text); }
+.time-picker-display {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: 6px 10px;
+}
+.time-picker-seg {
+  font-size: 36px;
+  font-weight: 600;
+  line-height: 1;
+  min-width: 56px;
+  text-align: center;
+  border-radius: var(--radius-sm);
+  padding: 4px 6px;
+  color: var(--color-text-muted);
+  transition: background 0.1s, color 0.1s;
+}
+.time-picker-seg.active { background: var(--color-accent); color: #fff; }
+.time-picker-colon { font-size: 36px; font-weight: 600; color: var(--color-text-muted); line-height: 1; }
+.tp-dial { width: 100%; max-width: 240px; touch-action: none; cursor: pointer; }
+.dial-face       { fill: var(--color-surface); }
+.dial-hand-line  { stroke: var(--color-accent); stroke-width: 2; }
+.dial-hand-dot   { fill: var(--color-accent); }
+.dial-center-dot { fill: var(--color-accent); }
+.dial-num { font-size: 13px; fill: var(--color-text); user-select: none; pointer-events: none; }
+.dial-num-in { font-size: 10px; fill: var(--color-text-muted); }
+.dial-num.sel { fill: #fff; }
+
 /* ── Time wheel (24h mode) ──────────────────────────────── */
 .time-wheel-pair {
   display: flex;
