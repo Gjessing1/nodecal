@@ -404,7 +404,25 @@ input, textarea, select {
 .rec-inline-extra { display: flex; align-items: center; gap: 4px; font-size: var(--font-size-sm); white-space: nowrap; }
 .rec-interval-inline { width: 44px; text-align: center; padding: 4px 4px; }
 /* After-completion row — never wrap */
-.rec-after-row { display: flex; align-items: center; gap: 6px; font-size: var(--font-size-md); flex-wrap: nowrap; white-space: nowrap; margin-top: var(--space-xs); }
+.rec-after-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-md);
+  flex-wrap: nowrap;
+  margin-top: var(--space-xs);
+}
+.rec-after-row input[type="number"] {
+  width: 68px;
+  padding: var(--space-sm);
+  text-align: center;
+  font-size: var(--font-size-md);
+}
+.rec-after-row select {
+  min-width: 96px;
+  padding: var(--space-sm);
+  font-size: var(--font-size-md);
+}
 .rec-row { display: flex; align-items: center; gap: var(--space-sm); font-size: var(--font-size-md); }
 .rec-interval-input { width: 56px; text-align: center; padding: 4px 6px; }
 .rec-freq-sel { width: auto; padding: 4px 6px; }
