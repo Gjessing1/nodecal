@@ -628,7 +628,7 @@ This is a single implementation used on all platforms (mobile and desktop), repl
 
 ---
 
-## Phase 6 — Recurrence Overhaul
+## Phase 6 — Recurrence Overhaul ✓ COMPLETE (commit `e409702`)
 
 This is the largest phase. The architecture must be reviewed and agreed on before any code is written. Do not start this phase while any other phase that touches `modalEditor.js` is in progress.
 
