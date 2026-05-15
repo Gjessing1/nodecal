@@ -146,6 +146,10 @@ export function getISOWeek(date) {
   return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
 }
 
+export function esc(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 export function localToUTC(dateStr, timeStr, timezone) {
   // Treat the naive datetime as UTC to parse it, then compute the real offset.
   const naive = new Date(`${dateStr}T${timeStr}:00Z`);
