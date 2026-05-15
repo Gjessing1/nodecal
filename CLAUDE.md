@@ -546,7 +546,7 @@ Move the repeat selector and the reminder selector to share one row in the task 
 
 ---
 
-## Phase 3 — NLP Enhancement
+## Phase 3 — NLP Enhancement ✓ COMPLETE (commit `5064f2e`)
 
 ### 3.1 Full Norwegian + English support, order-independent parsing
 
@@ -571,7 +571,7 @@ Move the repeat selector and the reminder selector to share one row in the task 
 
 ---
 
-## Phase 4 — Task Location and URL Fields
+## Phase 4 — Task Location and URL Fields ✓ COMPLETE (commit `b6a38d6`)
 
 ### 4.1 Add LOCATION and URL to VTODO backend
 
