@@ -256,6 +256,8 @@ function parseVtodo(icsText) {
       type: 'task',
       title: unescapeIcsText(props.SUMMARY?.value || '(No title)'),
       description: unescapeIcsText(props.DESCRIPTION?.value || ''),
+      location: unescapeIcsText(props.LOCATION?.value || ''),
+      url: unescapeIcsText(props.URL?.value || ''),
       status: props.STATUS?.value || 'NEEDS-ACTION',
       due,
       completed,
@@ -295,6 +297,8 @@ function serializeTask(task) {
   if (task.xRecurringType) lines.push(`X-RECURRING-TYPE:${task.xRecurringType}`);
   if (task.xRecurringInterval) lines.push(`X-RECURRING-INTERVAL:${task.xRecurringInterval}`);
   if (task.taskReminder && task.taskReminder !== 'none') lines.push(`X-REMINDER:${task.taskReminder}`);
+  if (task.location) lines.push(`LOCATION:${escapeIcsText(task.location)}`);
+  if (task.url) lines.push(`URL:${task.url}`);
   if (task.description) lines.push(`DESCRIPTION:${escapeIcsText(task.description)}`);
   lines.push('END:VTODO', 'END:VCALENDAR');
   return lines.map(foldLine).join(CRLF) + CRLF;

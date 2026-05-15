@@ -38,6 +38,17 @@ export function openTaskModal(task, { onSave, onDelete }) {
       <input type="date" id="tm-due" value="${task.due || ''}">
     </div>
 
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Location</label>
+        <input type="text" id="tm-location" value="${esc(task.location || '')}" placeholder="Location (optional)" autocomplete="off">
+      </div>
+      <div class="modal-field">
+        <label>URL</label>
+        <input type="url" id="tm-url" value="${esc(task.url || '')}" placeholder="https://…">
+      </div>
+    </div>
+
     <div class="modal-field">
       <label>Notes</label>
       <textarea id="tm-desc" rows="4">${esc(task.description || '')}</textarea>
@@ -210,6 +221,8 @@ export function openTaskModal(task, { onSave, onDelete }) {
     onSave({
       title,
       due:         sheet.querySelector('#tm-due').value || null,
+      location:    sheet.querySelector('#tm-location')?.value.trim() || '',
+      url:         sheet.querySelector('#tm-url')?.value.trim() || '',
       description: sheet.querySelector('#tm-desc').value.trim(),
       categories:  finalCats,
       status:      completedChecked ? 'COMPLETED' : 'NEEDS-ACTION',
