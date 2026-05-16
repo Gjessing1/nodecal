@@ -475,7 +475,7 @@ Audit done. Four extractions performed (commit `43fbe6f`):
   value, expand both automatically on open. Tapping the button expands both fields so the user
   can configure them.
 
-### 7.5 Event categories
+### 7.5 Event categories ✓ COMPLETE (commit `735fed0`)
 A new first-class feature: events can be tagged with one or more free-text categories
 (separate from task categories and calendar names).
 
