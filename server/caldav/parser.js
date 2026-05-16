@@ -198,7 +198,7 @@ function serializeEvent(event) {
   if (event.categories?.length) lines.push(`CATEGORIES:${event.categories.join(',')}`);
   if (event.rrule) lines.push(`RRULE:${event.rrule}`);
   if (event.exdates?.length) {
-    for (const ex of event.exdates) lines.push(`EXDATE:${ex}`);
+    for (const ex of event.exdates) lines.push(`${event.allDay ? 'EXDATE;VALUE=DATE:' : 'EXDATE:'}${ex}`);
   }
   if (event.recurrenceId) {
     lines.push(`RECURRENCE-ID:${formatIcsDate(new Date(event.recurrenceId), event.allDay)}`);
