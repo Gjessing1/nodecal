@@ -19,46 +19,70 @@ Nodecal is a self-hosted, mobile-first CalDAV calendar client. Single-user focus
 ## Project Structure
 
     /server
-      app.js
+      app.js                Serves static files + mounts all routes
       config.js             Load + validate .env
       caldav/
         client.js           CalDAV communication (Radicale-optimized)
         sync.js             Sync engine (etag-based incremental)
-        parser.js           ICS parsing + normalization
-        recurrence.js       RRULE handling via rrule.js
+        parser.js           ICS parsing + normalization (VEVENT + VTODO)
+        recurrence.js       RRULE expansion, EXDATE, computeNextDue for tasks
       nlp/
-        parser.js           Natural language → structured event (chrono-node)
+        parser.js           Event NLP — chrono-node + Norwegian normalization
+        taskParser.js       Task NLP — due date + recurrence extraction
       routes/
-        events.js
+        events.js           CRUD + POST /events/batch-shift
         calendars.js
-        sync.js
-        tasks.js
+        sync.js             POST /sync, POST /sync/clear
+        tasks.js            CRUD + POST /tasks/:id/complete
+        nlp.js              POST /nlp/parse, POST /nlp/parse-task
+        weather.js          GET /weather (met.no proxy)
+        settings.js         GET/PUT /settings
+        auth.js             POST /login, POST /logout, GET /auth/status
+      middleware/
+        auth.js             Session-cookie auth gate
       cache/
-        store.js            In-memory store, flushed to /cache/events.json on write
+        store.js            In-memory Map, flushed to /cache/events.json on write
 
     /client
       app/
-        main.js
-        state.js            Selected date, active view, loaded calendars
+        main.js             Boot, routing, event/task CRUD handlers
+        state.js            Single source of truth — events, tasks, config, weather
+        utils.js            Shared: formatTime, localDateStr, esc, getTimezone, …
+        taskUtils.js        getAllCategories, parseTagsFromTitle, groupTasksByCategory
+        eventUtils.js       getAllEventCategories
+        theme.js            Light/dark theme toggle
+        installPrompt.js    PWA install banner
       views/
-        day.js
-        week.js
-        month.js
-        agenda.js
-        tasks.js
+        day.js              Day time-grid view
+        week.js             Week time-grid view
+        month.js            Month cell grid
+        agenda.js           Linear day-list view (with category filter)
+        tasks.js            Task list — filtering, grouping, sorting
+        dayPopup.js         Shared day-detail popup (used by month + week)
       components/
-        eventCard.js
-        timeGrid.js
-        modalEditor.js
-        datePicker.js
-        taskItem.js
+        modalEditor.js      Event create/edit modal (date/time/recurrence/categories)
+        taskModal.js        Task create/edit modal
+        taskQuickAdd.js     Task quick-add bar (fixed above bottom-nav)
+        timePicker.js       24h dial time picker (overlay, all platforms)
+        datePicker.js       Custom mini-calendar date picker (respects weekStart)
+        recurrenceUI.js     Structured recurrence editor (presets, chips, preview)
+        rruleParser.js      parseRrule / serializeConfig / humanReadable (pure)
+        recurrencePreview.js getOccurrences + buildMiniCal (async, uses rrule ESM)
+        settingsPanel.js    Settings modal
+        calendarDrawer.js   Calendar sidebar/drawer
+        timeGrid.js         Shared time-column and hour-line builders
+        taskItem.js         Individual task row renderer
+        dnd.js              Drag-and-drop + long-press + swipe
       styles/
-        main.css            CSS custom properties for theming (light + dark)
+        main.css            Global styles + CSS custom properties (light + dark)
+        views.css           View-specific layout
+        month.css           Month grid + day-popup styles
+        tasks.css           Task list styles
 
     /public
       index.html
-      manifest.json         PWA config (wired from Phase 1)
-      service-worker.js     Offline shell (implemented Phase 7)
+      manifest.json         PWA config
+      service-worker.js     Offline shell
 
     /docker
       Dockerfile
@@ -66,7 +90,7 @@ Nodecal is a self-hosted, mobile-first CalDAV calendar client. Single-user focus
 
     .github/
       workflows/
-        docker.yml          Build + push to GHCR on push to main
+        docker.yml          Build + push multi-arch image to GHCR on push to main
 
 ## Configuration
 
@@ -111,29 +135,45 @@ docker-compose.yml:
 
 **Calendar Views:** Day (primary mobile), Week, Month, Agenda
 
-**Navigation:** Max 5 visible tabs. User selects which views are shown via Settings (options: Day, Week, Month, Agenda, Tasks). Tasks tab is hidden unless explicitly enabled.
+**Navigation:** Max 5 visible tabs (Agenda → Day → Week → Month → Tasks). User selects which views are shown via Settings. Tasks tab hidden unless explicitly enabled. Tapping the active view tab returns to today + scrolls to current time.
 
-**Multiple Calendars:** Radicale exposes multiple calendars per user. All are fetched, displayed with per-calendar color coding, and individually toggle-able. Calendar list is shown in a sidebar/drawer.
+**Multiple Calendars:** Radicale exposes multiple calendars per user. All are fetched, displayed with per-calendar color coding, and individually toggle-able via the sidebar drawer.
 
-**Event Management:** Create / edit / delete, drag-and-drop (desktop), long-press drag (mobile), timezone-aware
+**Event Management:** Create / edit / delete, drag-and-drop (desktop), long-press drag (mobile), timezone-aware, duplicate with all fields copied. Events open in the edit modal directly (no separate read-only mode).
 
-**Natural Language Input** (Phase 5):
-- "Meeting with John tomorrow 14:00"
-- "Gym every Monday at 19"
-- "Dinner Friday 18-21"
+**Event Categories:** Free-text tags stored as `CATEGORIES` in VEVENT, separate from task categories. Multi-value chip UI in the event modal with autocomplete from existing events. Category filter in Agenda view. **Batch shift**: shift all events in a category forward/back by N days — non-recurring events get new dates; finite recurring series have DTSTART moved; infinite recurring events get EXDATE entries for the vacation window so the program skips the gap and resumes normally.
+
+**Natural Language Input:**
+- English and Norwegian fully supported, order-independent (time/date/month can appear anywhere in the sentence)
+- "Meeting with John tomorrow 14:00" / "Treningsøkt 14:00 juni" / "Lunsj 12:30 neste onsdag"
 - Parsed into: title, start/end time, recurrence rule
-- NLP-resolved times always override default-time logic — if NLP sets a time, use it as-is, never clamped or rounded
+- NLP-resolved times always override default-time logic — never clamped or rounded
+- `#tag` syntax in task quick-add creates a category
 
-**Recurring Events:** Full RRULE via `rrule` package — daily/weekly/monthly/yearly, exceptions (EXDATE), edit single / this+future / entire series
+**Recurring Events:** Structured recurrence editor (RecurrenceConfig architecture):
+- Presets: None / Daily / Weekdays / Weekly / Monthly / Yearly / Custom
+- Weekly: interval spinner + day-of-week chips (ordered by weekStart setting)
+- Monthly: radio between day-of-month and Nth-weekday-of-month (both derived from start date)
+- End conditions: Never / On date / After N occurrences
+- Live human-readable summary + visual mini-calendar showing next 6 occurrences
+- Advanced section (collapsible): raw RRULE editor — falls back to this for complex imported rules
+- Edit scope: this occurrence / this and following / entire series
+- Tasks have an additional "After completion" mode (X-RECURRING-* properties)
 
-**CalDAV Sync:** Incremental via etag/last-modified, last-write-wins conflict strategy, manual + auto sync triggers
+**Date & Time Pickers:** Custom across all platforms:
+- Date: mini-calendar overlay (respects weekStart), collapsible button in modals
+- Time: 24h circular dial picker (overlay) — outer ring 1–12, inner ring 0/13–23; auto-advances hour→minute on selection
 
-**PWA:** Installable, offline UI shell showing cached events, fast startup
+**Weather:** Fetched from met.no on startup (when coordinates saved) and hourly. Shows emoji + temperature in Day/Week/Agenda headers and Month cells. Location auto-detected or manually set in Settings.
 
-**Tasks** (Phase 10, opt-in via Settings):
+**CalDAV Sync:** Incremental via etag/last-modified, last-write-wins conflict strategy, manual + auto sync triggers.
+
+**PWA:** Installable, offline UI shell showing cached events, fast startup. Quick-add bars are `position: fixed` to survive PWA refreshes.
+
+**Tasks** (opt-in via Settings):
 - Stored as VTODO in a dedicated Radicale CalDAV collection
-- Separate tasks view (To Do-style list), toggled on via Settings
-- Optional: show tasks on calendar views (separate toggle)
+- Separate tasks view (To Do-style list)
+- Optional: show tasks on calendar views (separate toggle per view)
 - See [Tasks](#tasks) section for full data model and rules
 
 ## Tasks
@@ -160,12 +200,14 @@ Minimal strict subset stored per task:
     UID
     SUMMARY              // title
     DESCRIPTION          // notes (optional)
+    LOCATION             // optional, plain text
+    URL                  // optional
     STATUS               // NEEDS-ACTION | COMPLETED
     DUE                  // date only (no time in UI, full datetime supported on backend)
     COMPLETED            // timestamp, set on completion
     CATEGORIES           // tags — multi-select, free text; also drives "important" star
-    RRULE                // standard recurring (optional, set by backend — never exposed by name in UI)
-    X-RECURRING-TYPE     // after-completion (optional, set by backend — never exposed by name in UI)
+    RRULE                // standard recurring (optional)
+    X-RECURRING-TYPE     // after-completion (optional)
     X-RECURRING-INTERVAL // weekly | 3d | 2w
     X-UPDATED            // optional, for sync/debug
 
@@ -196,14 +238,11 @@ Categories are stored in the standard `CATEGORIES` CalDAV field. They are free-t
 
 ### Recurring Rules
 
-**The user never sees "RRULE" or "X-RECURRING".** The UI presents four simple presets:
+The task edit modal has a top-level **mode toggle**: Fixed schedule vs After completion. These are mutually exclusive.
 
-- **Daily** → RRULE:FREQ=DAILY
-- **Weekly** → RRULE:FREQ=WEEKLY;BYDAY=\<day\> (day derived from DUE date)
-- **Monthly** → RRULE:FREQ=MONTHLY;BYMONTHDAY=\<day\> (day derived from DUE date)
-- **__ days/weeks after completion** → X-RECURRING-TYPE:after-completion + X-RECURRING-INTERVAL
+**Fixed schedule** uses the shared `RecurrenceConfig` recurrence editor (same as events, but with Weekdays preset hidden). Presets: None / Daily / Weekly / Monthly / Yearly / Custom. Includes end conditions and visual preview.
 
-No complex rule builder. These four presets are the full UI surface for task recurrence.
+**After completion** uses `X-RECURRING-TYPE:after-completion` + `X-RECURRING-INTERVAL`. UI shows: "Every [N] day(s)/week(s) after completion." No end conditions, no preview.
 
 `X-RECURRING-*` always overrides `RRULE` if both exist on the same task.
 
@@ -275,7 +314,7 @@ Mobile-first, To Do-style — not the event modal. Quick-add bar sits at the bot
 - Star icon on each task → toggles `important` in `CATEGORIES`
 - Notes preview: first 1–2 lines of `DESCRIPTION`, truncated with ellipsis
 - Tap task → **direct edit** (no read-only mode for tasks)
-- Edit view includes: title, notes, due date, recurrence preset, categories (chips), completed checkbox, source indicator
+- Edit view: title, due date (custom mini-calendar picker), location/URL (collapsible), notes, categories (chips + autocomplete), repeat/reminder (collapsible if unused), completed checkbox
 
 ### Calendar Rendering (when "show tasks on calendar" is enabled)
 
@@ -313,28 +352,29 @@ Migration is non-destructive: existing events are moved into the events array. I
 
 ## Events
 
-### Read-Only vs Edit
+### Event Modal
 
-- Events open in **read-only mode** by default — shows title, time, location, description, recurrence info
-- An explicit **Edit** button switches to edit mode
-- This prevents accidental edits from taps/swipes on mobile
-- Tasks open in **direct edit mode** (no read-only step) — simpler objects, lower risk of accidental change
+Events open directly in the edit modal (no separate read-only step). Modal fields:
+- **Title** — with ⧉ duplicate button beside it (copies all fields)
+- **Date/time** — custom date buttons (mini-calendar overlay) + 24h dial time picker; All-day toggle
+- **Calendar selector**
+- **Remind me + Repeat** — on the same row; collapsible behind `+ Reminder / Repeat` when both are unused
+  - Remind me: None / 5 min / 15 min / 1 hour / Custom before
+  - Repeat: structured editor (see Recurring Events in Core Features)
+- **Location / URL** — collapsible; shows inline summary when collapsed with values
+- **Categories** — chips + autocomplete + collapsible batch-shift panel
+- **Description** — textarea
+- **Edit scope** (recurring events only): This event only / This and following / All events in series
 
 ### Event Creation
 
 **Default time logic:**
-- New events default to the nearest future 15-minute slot relative to current time (e.g. if it's 17:48, default start is 18:00)
-- If the selected date is in the future (not today), default to a configurable time in Settings (default: 09:00)
-- NLP-resolved times always override default-time logic — if NLP sets a time, it is used as-is, never clamped or rounded
-
-**Location field:**
-- V1: plain text only, no search or autocomplete
-- Stored as LOCATION in VEVENT
-- Shown in read-only view and edit view
+- New events default to the nearest future hour relative to current time
+- Future dates default to a configurable time in Settings (default: 09:00)
+- NLP-resolved times always override — never clamped or rounded
 
 **Duplicate event:**
-- Available as an action in the event edit view
-- Creates a new event with all fields copied; opens in edit mode for adjustment before save
+- ⧉ button beside the title copies all fields (title, time, location, url, description, rrule, alarmMinutes, categories) and opens the edit modal for adjustment before save
 
 ## Calendar UX
 
@@ -354,11 +394,19 @@ Migration is non-destructive: existing events are moved into the events array. I
 - Agenda view: scroll is sufficient — no swipe nav needed
 
 **Day view date header:**
-- Tapping the date in the Day view header opens the date picker / calendar modal
+- Tapping the date in the Day view header opens the custom date picker
 
-**Time scroll wheel:**
-- Only visible when the user taps/clicks directly on a time field in the event edit view
-- Not shown on read-only view or on initial modal open
+**Week view date header:**
+- Tapping the date number in a column header opens the day popup for that day (same popup as month view)
+
+**Day popup:**
+- Shared component (`dayPopup.js`) used by both month and week views
+- Shows events and tasks for that day; footer buttons for + Event, + Task, Day view →
+
+**Time picker:**
+- 24h circular dial (tap-to-open overlay): outer ring 1–12, inner ring 0/13–23
+- Tapping the hour segment selects hour; auto-advances to minute selection on release
+- Minute selection auto-closes the picker
 
 ## Week Numbers
 
@@ -409,8 +457,11 @@ If CalDAV is unreachable: show last cached state, surface a non-blocking sync er
     POST   /events
     PUT    /events/:id
     DELETE /events/:id
+    POST   /events/batch-shift            { category, shiftDays }
+
     GET    /calendars
     POST   /sync
+    POST   /sync/clear
     GET    /health
 
     GET    /tasks
@@ -418,10 +469,23 @@ If CalDAV is unreachable: show last cached state, surface a non-blocking sync er
     PUT    /tasks/:id
     DELETE /tasks/:id
     POST   /tasks/:id/complete
+    GET    /task-sources
+
+    POST   /nlp/parse                     { text } → { parsed, title, start, end, allDay, rrule, parsedText }
+    POST   /nlp/parse-task                { text } → { parsed, title, due, rrule, xRecurringType, xRecurringInterval }
+
+    GET    /weather?lat=&lon=             Proxies met.no, returns { current, daily }
+
+    GET    /settings
+    PUT    /settings
+
+    POST   /login
+    POST   /logout
+    GET    /auth/status
 
 ## Testing
 
-No tests in Phases 0–3. Unit tests for recurrence logic in Phase 4 (RRULE edge cases are where bugs live). Integration tests for sync engine in Phase 6. Unit tests for task recurrence edge cases in Phase 10.
+No automated tests currently. RRULE edge cases and NLP parsing are the highest-risk areas. The `test/` directory has historical recurrence + NLP test files but they are not wired to a test runner.
 
 ## Instructions for Claude
 
@@ -431,9 +495,12 @@ No tests in Phases 0–3. Unit tests for recurrence logic in Phase 4 (RRULE edge
 - Keep files small and focused. Split when a file exceeds ~150 lines.
 - Use Conventional Commits: `feat:`, `fix:`, `chore:`, `refactor:`
 - Do not add npm dependencies without flagging it first.
-- **Approved deps:** `express`, `rrule`, `chrono-node`, `dotenv`, and one CalDAV library (evaluate `tsdav` vs `dav` at Phase 1, flag recommendation).
+- **Current approved deps (server):** `express`, `rrule`, `chrono-node`, `dotenv`, `node-fetch` (or built-in fetch), CalDAV via custom HTTP client.
+- **rrule ESM** is served to the client at `/rrule` via a static route in `server/app.js` — no bundling needed.
 - Plain CSS only — no Tailwind, no CSS-in-JS, no preprocessors.
 - No TypeScript. Plain JS with JSDoc where types matter.
+- The `RecurrenceConfig` typedef lives in `client/components/rruleParser.js`.
+- Event categories are separate from task categories — never mix them in the same UI or utility function.
 
 ## Roadmap
 
