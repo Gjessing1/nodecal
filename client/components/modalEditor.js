@@ -104,16 +104,20 @@ function renderForm(event, defaultDate, explicitTime = false) {
     <div class="modal-datetime-row" id="time-row"${event?.allDay ? ' style="display:none"' : ''}>
       <div class="datetime-col">
         <label class="datetime-label">From</label>
-        <input type="hidden" id="f-start-date" value="${toDateInputValue(start, tz)}">
-        <div id="f-start-date-wrap"></div>
-        <div id="f-start-time-wrap"></div>
+        <div class="datetime-inputs">
+          <input type="hidden" id="f-start-date" value="${toDateInputValue(start, tz)}">
+          <div id="f-start-date-wrap"></div>
+          <div id="f-start-time-wrap"></div>
+        </div>
       </div>
       <span class="datetime-arrow">→</span>
       <div class="datetime-col">
         <label class="datetime-label">To</label>
-        <input type="hidden" id="f-end-date" value="${toDateInputValue(end, tz)}">
-        <div id="f-end-date-wrap"></div>
-        <div id="f-end-time-wrap"></div>
+        <div class="datetime-inputs">
+          <input type="hidden" id="f-end-date" value="${toDateInputValue(end, tz)}">
+          <div id="f-end-date-wrap"></div>
+          <div id="f-end-time-wrap"></div>
+        </div>
       </div>
     </div>
     <div class="modal-cal-allday-row">
@@ -131,6 +135,7 @@ function renderForm(event, defaultDate, explicitTime = false) {
     <div class="modal-collapsibles-row">
       <div id="f-rr-toggle" class="collapsible-field-wrap"></div>
       <div id="f-location-url-wrap" class="collapsible-field-wrap"></div>
+      <div id="f-categories-section" class="collapsible-field-wrap"></div>
     </div>
     <div id="f-rr-body">
       <div class="modal-row">
@@ -284,16 +289,14 @@ function renderForm(event, defaultDate, explicitTime = false) {
     const hiddenEvCats = state.config.hiddenEventCategories || [];
     const allCats   = getAllEventCategories(state.events).filter(c => !hiddenEvCats.includes(c));
 
-    catSection.className = 'modal-field';
-
-    // Toggle header + collapsible body
+    // Toggle header + collapsible body (catSection is already in modal-collapsibles-row)
     const catToggleEl = document.createElement('div');
-    catToggleEl.className = 'collapsible-field-wrap';
     const catBodyEl = document.createElement('div');
     catSection.append(catToggleEl, catBodyEl);
     mountCollapsibleToggle(catToggleEl, catBodyEl, {
       label: 'Categories',
       hasContent: modalCats.length > 0,
+      onToggle: (expanded) => catSection.classList.toggle('collapsible-expanded', expanded),
     });
 
     const chipsEl  = document.createElement('div');

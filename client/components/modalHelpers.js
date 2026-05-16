@@ -149,7 +149,7 @@ export function mountLocationUrlSection(wrap, opts) {
  * @param {HTMLElement} bodyEl   - the section to show/hide
  * @param {{ label: string, hasContent: boolean }} opts
  */
-export function mountCollapsibleToggle(toggleEl, bodyEl, { label, hasContent }) {
+export function mountCollapsibleToggle(toggleEl, bodyEl, { label, hasContent, onToggle } = {}) {
   if (!toggleEl || !bodyEl) return;
   toggleEl.innerHTML = '';
 
@@ -167,8 +167,10 @@ export function mountCollapsibleToggle(toggleEl, bodyEl, { label, hasContent }) 
     expanded = !expanded;
     bodyEl.style.display = expanded ? '' : 'none';
     update();
+    onToggle?.(expanded);
   });
   toggleEl.appendChild(btn);
+  onToggle?.(expanded); // report initial state so parent can set expanded class
 }
 
 /**

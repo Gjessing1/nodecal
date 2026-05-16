@@ -385,6 +385,13 @@ input, textarea, select {
   min-width: 0;
 }
 .datetime-col input[type="date"] { width: 100%; }
+.datetime-inputs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+.datetime-inputs .date-picker-btn { flex: 1; width: auto; }
+.datetime-inputs .tp-wrap { flex-shrink: 0; }
 .datetime-label {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
@@ -426,7 +433,15 @@ input, textarea, select {
 }
 .batch-shift-apply { font-size: var(--font-size-sm); padding: 4px 10px; }
 .batch-shift-status { font-size: var(--font-size-sm); color: var(--color-text-muted); }
-.agenda-cat-filter { padding: var(--space-xs) var(--space-md); border-bottom: 1px solid var(--color-border); flex-shrink: 0; }
+.agenda-cat-filter {
+  padding: var(--space-xs) var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--color-bg);
+}
 
 /* ── Recurrence editor ──────────────────────────────────── */
 .rec-editor { display: flex; flex-direction: column; gap: var(--space-sm); }
