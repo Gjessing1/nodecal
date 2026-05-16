@@ -14,6 +14,8 @@ const DAY_MS = 86400000;
  * @param {function(Date): void} [onLongPress] - long-press on a day opens new event for that date
  */
 export function renderAgenda(container, onEventClick, onTaskClick, onTaskComplete, onLongPress) {
+  container.innerHTML = '';
+
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const agendaDays = state.config.agendaDays ?? 90;
