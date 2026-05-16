@@ -1,7 +1,8 @@
 const { Router } = require('express');
+const { RRule, rrulestr } = require('rrule');
 const { putEvent, deleteEvent } = require('../caldav/client');
 const { serializeEvent, formatIcsDate } = require('../caldav/parser');
-const { expandRecurring, setRruleUntil } = require('../caldav/recurrence');
+const { expandRecurring, setRruleUntil, parseExdate } = require('../caldav/recurrence');
 const store = require('../cache/store');
 
 const router = Router();
@@ -29,14 +30,15 @@ router.get('/events', (req, res) => {
 
 router.post('/events', async (req, res) => {
   try {
-    const { calendarId, title, start, end, allDay, description, location, url, rrule, alarmMinutes } = req.body;
+    const { calendarId, title, start, end, allDay, description, location, url, rrule, alarmMinutes, categories } = req.body;
     if (!calendarId || !title || !start) return res.status(400).json({ error: 'calendarId, title, start required' });
 
     const uid = crypto.randomUUID();
     const now = new Date().toISOString();
     const event = { uid, calendarId, title, start, end: end || start, allDay: !!allDay,
       description: description || '', location: location || '', url: url || '', rrule: rrule || null,
-      alarmMinutes: alarmMinutes != null ? parseInt(alarmMinutes) : null };
+      alarmMinutes: alarmMinutes != null ? parseInt(alarmMinutes) : null,
+      categories: Array.isArray(categories) ? categories : [] };
     const ics = serializeEvent(event);
     const { href, etag } = await putEvent(calendarId, uid, ics);
     const stored = { ...event, href, etag, localModifiedAt: now, lastSyncedAt: now };
@@ -171,7 +173,7 @@ async function handleFutureEdit(base, changes, occurrenceDate, res) {
 // ── Helpers ───────────────────────────────────────────────
 
 function filterChanges(changes) {
-  const allowed = ['title', 'start', 'end', 'allDay', 'description', 'location', 'url', 'alarmMinutes'];
+  const allowed = ['title', 'start', 'end', 'allDay', 'description', 'location', 'url', 'alarmMinutes', 'categories'];
   const out = {};
   for (const k of allowed) {
     if (k in changes) out[k] = changes[k];
@@ -190,6 +192,7 @@ function toApiShape(ev) {
     description: ev.description,
     location: ev.location,
     url: ev.url || '',
+    categories: ev.categories || [],
     calendarId: ev.calendarId,
     recurring: ev.recurring || !!ev.rrule,
     rrule: ev.rrule || null,
@@ -197,5 +200,69 @@ function toApiShape(ev) {
     alarmMinutes: ev.alarmMinutes ?? null,
   };
 }
+
+// ── POST /events/batch-shift ──────────────────────────────
+
+router.post('/events/batch-shift', async (req, res) => {
+  try {
+    const { category, shiftDays } = req.body;
+    if (!category || !shiftDays) return res.status(400).json({ error: 'category and shiftDays required' });
+
+    const shiftMs = Math.round(shiftDays) * 86400000;
+    const now = new Date();
+    const windowEnd = new Date(now.getTime() + shiftMs);
+
+    const matching = store.getAllEvents().filter(ev =>
+      (ev.categories || []).includes(category)
+    );
+
+    let shifted = 0, exdated = 0, skipped = 0;
+    const errors = [];
+
+    for (const ev of matching) {
+      try {
+        if (!ev.rrule) {
+          // Non-recurring: shift start and end
+          const newStart = new Date(new Date(ev.start).getTime() + shiftMs);
+          const newEnd   = new Date(new Date(ev.end).getTime() + shiftMs);
+          const updated = { ...ev, start: newStart.toISOString(), end: newEnd.toISOString() };
+          const ics = serializeEvent(updated);
+          const { href, etag } = await putEvent(ev.calendarId, ev.uid, ics, ev.etag);
+          store.setEvent({ ...updated, href, etag });
+          shifted++;
+        } else if (/COUNT=|UNTIL=/i.test(ev.rrule)) {
+          // Finite recurring: shift DTSTART (all occurrences move with it)
+          const newStart = new Date(new Date(ev.start).getTime() + shiftMs);
+          const newEnd   = new Date(new Date(ev.end).getTime() + shiftMs);
+          const updated  = { ...ev, start: newStart.toISOString(), end: newEnd.toISOString() };
+          const ics = serializeEvent(updated);
+          const { href, etag } = await putEvent(ev.calendarId, ev.uid, ics, ev.etag);
+          store.setEvent({ ...updated, href, etag });
+          shifted++;
+        } else {
+          // Infinite recurring: add EXDATEs for occurrences within the shift window
+          const dtstart = formatIcsDate(new Date(ev.start), ev.allDay);
+          const rule = rrulestr(`DTSTART:${dtstart}\nRRULE:${ev.rrule}`);
+          const occurrences = rule.between(now, windowEnd, true);
+          if (occurrences.length === 0) { skipped++; continue; }
+          const newExdates = occurrences.map(d => formatIcsDate(d, ev.allDay));
+          const updated = { ...ev, exdates: [...(ev.exdates || []), ...newExdates] };
+          const ics = serializeEvent(updated);
+          const { href, etag } = await putEvent(ev.calendarId, ev.uid, ics, ev.etag);
+          store.setEvent({ ...updated, href, etag });
+          exdated++;
+        }
+      } catch (err) {
+        errors.push({ uid: ev.uid, title: ev.title, error: err.message });
+        skipped++;
+      }
+    }
+
+    res.json({ ok: true, shifted, exdated, skipped, total: matching.length, errors });
+  } catch (err) {
+    console.error('POST /events/batch-shift:', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
 
 module.exports = router;

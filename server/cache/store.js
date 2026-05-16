@@ -78,6 +78,8 @@ function getRecurringBases() {
   return Array.from(events.values()).filter(ev => ev.rrule);
 }
 
+function getAllEvents() { return Array.from(events.values()); }
+
 function getEventsByCalendar(calendarId) {
   return Array.from(events.values()).filter(ev => ev.calendarId === calendarId);
 }
@@ -132,7 +134,7 @@ function clearAll() {
 module.exports = {
   getCalendars, setCalendars,
   getCalendarCtag, setCalendarCtag,
-  getEvent, getEventCount,
+  getEvent, getEventCount, getAllEvents,
   getEventsInRange, getNonRecurringInRange, getRecurringBases,
   getEventsByCalendar, getEventByHref,
   setEvent, removeEvent, clearEvents,

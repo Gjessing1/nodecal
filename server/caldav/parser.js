@@ -142,6 +142,11 @@ function parseIcs(icsText, { timezone = 'UTC' } = {}) {
       }
     }
 
+    const rawCats = props.CATEGORIES?.value || '';
+    const categories = rawCats
+      ? rawCats.split(',').map(c => c.trim()).filter(Boolean)
+      : [];
+
     events.push({
       uid,
       title: unescapeIcsText(props.SUMMARY?.value || '(No title)'),
@@ -151,6 +156,7 @@ function parseIcs(icsText, { timezone = 'UTC' } = {}) {
       description: unescapeIcsText(props.DESCRIPTION?.value || ''),
       location: unescapeIcsText(props.LOCATION?.value || ''),
       url: unescapeIcsText(props.URL?.value || ''),
+      categories,
       rrule: props.RRULE?.value || null,
       exdates: exdates.length > 0 ? exdates : null,
       recurrenceId: props['RECURRENCE-ID']?.value || null,
@@ -189,6 +195,7 @@ function serializeEvent(event) {
     `DTSTART${event.allDay ? ';VALUE=DATE' : ''}:${formatIcsDate(new Date(event.start), event.allDay)}`,
     `DTEND${event.allDay ? ';VALUE=DATE' : ''}:${formatIcsDate(new Date(event.end), event.allDay)}`,
   ];
+  if (event.categories?.length) lines.push(`CATEGORIES:${event.categories.join(',')}`);
   if (event.rrule) lines.push(`RRULE:${event.rrule}`);
   if (event.exdates?.length) {
     for (const ex of event.exdates) lines.push(`EXDATE:${ex}`);

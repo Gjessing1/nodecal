@@ -1,6 +1,7 @@
 import { state, calendarById } from '../app/state.js';
 import { formatTime, localDateStr, getISOWeek, weatherBadge } from '../app/utils.js';
 import { initLongPressCreate } from '../components/dnd.js';
+import { getAllEventCategories } from '../app/eventUtils.js';
 
 const DAY_MS = 86400000;
 
@@ -16,17 +17,61 @@ export function renderAgenda(container, onEventClick, onTaskClick, onTaskComplet
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const agendaDays = state.config.agendaDays ?? 90;
-  const fragments = [];
 
-  for (let i = 0; i < agendaDays; i++) {
+  // ── Category filter ──────────────────────────────────────
+  let activeCategoryFilter = '';
+  const allCats = getAllEventCategories(state.events);
+
+  const filterBar = document.createElement('div');
+  filterBar.className = 'tasks-cat-filter-row agenda-cat-filter';
+
+  function buildCatFilter() {
+    filterBar.innerHTML = '';
+    if (!allCats.length) return;
+    const label = document.createElement('span');
+    label.className = 'tasks-cat-filter-label'; label.textContent = 'Category:';
+    filterBar.appendChild(label);
+
+    const allChip = document.createElement('button');
+    allChip.className = 'tasks-cat-chip-filter' + (!activeCategoryFilter ? ' active' : '');
+    allChip.textContent = 'All';
+    allChip.addEventListener('click', () => {
+      activeCategoryFilter = ''; buildCatFilter(); renderDays();
+    });
+    filterBar.appendChild(allChip);
+
+    for (const cat of allCats) {
+      const chip = document.createElement('button');
+      chip.className = 'tasks-cat-chip-filter' + (activeCategoryFilter === cat ? ' active' : '');
+      chip.textContent = cat;
+      chip.addEventListener('click', () => {
+        activeCategoryFilter = activeCategoryFilter === cat ? '' : cat;
+        buildCatFilter(); renderDays();
+      });
+      filterBar.appendChild(chip);
+    }
+  }
+  buildCatFilter();
+  container.appendChild(filterBar);
+
+  // ── Day groups ───────────────────────────────────────────
+  const dayContainer = document.createElement('div');
+  container.appendChild(dayContainer);
+
+  function renderDays() {
+    const fragments = [];
+    for (let i = 0; i < agendaDays; i++) {
     const raw = new Date(today.getTime() + i * DAY_MS);
     const day = new Date(raw.getFullYear(), raw.getMonth(), raw.getDate());
     const dayEnd = new Date(day.getTime() + DAY_MS);
     const str = localDateStr(day);
-    const dayEvents = state.events.filter(ev => {
+    let dayEvents = state.events.filter(ev => {
       if (ev.allDay) return ev.start.slice(0, 10) <= str && ev.end.slice(0, 10) > str;
       return new Date(ev.start) < dayEnd && new Date(ev.end) > day;
     });
+    if (activeCategoryFilter) {
+      dayEvents = dayEvents.filter(ev => (ev.categories || []).includes(activeCategoryFilter));
+    }
     const dayTasks = (state.config.showTasksOnAgenda ?? state.config.showTasksOnCalendar)
       ? state.tasks.filter(t => t.due === str && t.status !== 'COMPLETED')
       : [];
@@ -57,10 +102,11 @@ export function renderAgenda(container, onEventClick, onTaskClick, onTaskComplet
       });
     }
 
-    fragments.push(header);
+      fragments.push(header);
+    }
+    dayContainer.replaceChildren(...fragments);
   }
-
-  container.replaceChildren(...fragments);
+  renderDays();
 }
 
 function buildEventCard(ev, onClick) {

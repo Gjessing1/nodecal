@@ -3,6 +3,7 @@ import { toDateInputValue, toTimeInputValue, localToUTC, esc } from '../app/util
 import { buildTimePicker } from './timePicker.js';
 import { buildRecurrenceEditor } from './recurrenceUI.js';
 import { showDatePicker } from './datePicker.js';
+import { getAllEventCategories } from '../app/eventUtils.js';
 
 let overlay, sheet, onSaveCb, onDeleteCb, onDuplicateCb;
 
@@ -157,6 +158,7 @@ function renderForm(event, defaultDate, explicitTime = false) {
       </select>
     </div>` : ''}
     <div id="f-location-url-wrap" class="collapsible-field-wrap"></div>
+    <div id="f-categories-section"></div>
     <div class="modal-field">
       <label>Description</label>
       <textarea id="f-desc" rows="5">${esc(event?.description || '')}</textarea>
@@ -383,6 +385,156 @@ function renderForm(event, defaultDate, explicitTime = false) {
     });
   }
 
+  // ── Categories ────────────────────────────────────────────────────────────
+  const catSection = sheet.querySelector('#f-categories-section');
+  if (catSection) {
+    const modalCats = [...(event?.categories || [])];
+    const allCats   = getAllEventCategories(state.events);
+
+    catSection.className = 'modal-field collapsible-field-wrap';
+
+    // Label + chips row
+    const label = document.createElement('label');
+    label.className = 'modal-field-label-sm';
+    label.textContent = 'Categories';
+    catSection.appendChild(label);
+
+    // Chips container
+    const chipsEl = document.createElement('div');
+    chipsEl.className = 'tm-cats-chips-inline';
+
+    function renderCatChips() {
+      chipsEl.innerHTML = '';
+      for (const c of modalCats) {
+        const chip = document.createElement('span');
+        chip.className = 'task-cat-chip tm-cat-chip-rm';
+        chip.textContent = c + ' ×';
+        chip.addEventListener('click', () => {
+          const idx = modalCats.indexOf(c);
+          if (idx !== -1) { modalCats.splice(idx, 1); renderCatChips(); refreshBatchShift(); }
+        });
+        chipsEl.appendChild(chip);
+      }
+    }
+    renderCatChips();
+
+    // Input + autocomplete
+    const inputWrap = document.createElement('div');
+    inputWrap.className = 'tm-cats-combined';
+    const catInput = document.createElement('input');
+    catInput.type = 'text'; catInput.placeholder = 'Add category…'; catInput.autocomplete = 'off';
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button'; addBtn.className = 'btn btn-ghost tm-cat-add-btn'; addBtn.textContent = '+';
+    const autoList = document.createElement('ul');
+    autoList.className = 'tasks-autocomplete tm-cat-autocomplete'; autoList.style.display = 'none';
+
+    function showCatAuto() {
+      const q = catInput.value.trim().toLowerCase();
+      const matches = allCats.filter(c => !modalCats.includes(c) && c.startsWith(q));
+      if (!matches.length) { autoList.style.display = 'none'; return; }
+      autoList.innerHTML = '';
+      for (const cat of matches.slice(0, 8)) {
+        const li = document.createElement('li');
+        li.textContent = cat;
+        li.addEventListener('mousedown', e => {
+          e.preventDefault();
+          addCategory(cat); catInput.value = ''; autoList.style.display = 'none';
+        });
+        autoList.appendChild(li);
+      }
+      autoList.style.display = '';
+    }
+    function addCategory(cat) {
+      const c = cat.trim().toLowerCase();
+      if (c && !modalCats.includes(c)) { modalCats.push(c); renderCatChips(); refreshBatchShift(); }
+    }
+    catInput.addEventListener('input', showCatAuto);
+    catInput.addEventListener('blur', () => setTimeout(() => { autoList.style.display = 'none'; }, 150));
+    catInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); addCategory(catInput.value); catInput.value = ''; autoList.style.display = 'none'; }
+      if (e.key === 'Escape') autoList.style.display = 'none';
+    });
+    addBtn.addEventListener('click', () => { addCategory(catInput.value); catInput.value = ''; autoList.style.display = 'none'; });
+    inputWrap.append(chipsEl, catInput, addBtn, autoList);
+    catSection.appendChild(inputWrap);
+
+    // Batch shift (collapsible, shown only when there are categories)
+    const batchToggle = document.createElement('div');
+    batchToggle.className = 'collapsible-field-wrap';
+    const batchBody = document.createElement('div');
+    batchBody.className = 'hidden';
+
+    function refreshBatchShift() {
+      batchToggle.innerHTML = ''; batchBody.innerHTML = '';
+      if (!modalCats.length) return;
+      const toggleBtn = document.createElement('button');
+      toggleBtn.type = 'button'; toggleBtn.className = 'add-field-btn';
+      toggleBtn.textContent = 'Batch shift ›';
+      let open = false;
+      toggleBtn.addEventListener('click', () => {
+        open = !open; batchBody.classList.toggle('hidden', !open);
+        toggleBtn.textContent = open ? 'Batch shift ▾' : 'Batch shift ›';
+      });
+      batchToggle.appendChild(toggleBtn);
+
+      for (const cat of modalCats) {
+        const row = document.createElement('div');
+        row.className = 'batch-shift-row';
+        const catLabel = document.createElement('span');
+        catLabel.className = 'task-cat-chip'; catLabel.textContent = cat;
+        const nInput = document.createElement('input');
+        nInput.type = 'number'; nInput.min = '-365'; nInput.max = '365';
+        nInput.className = 'rec-interval-input'; nInput.value = '7';
+        const unitSel = document.createElement('select');
+        unitSel.className = 'rec-freq-sel';
+        for (const [v, l] of [['7','day(s)'],['7week','week(s)']]) {
+          const o = document.createElement('option'); o.value = v; o.textContent = l; unitSel.appendChild(o);
+        }
+        // Reuse simpler approach: just days input
+        unitSel.innerHTML = '';
+        for (const [v, l] of [['1','day(s)'],['7','week(s)']]) {
+          const o = document.createElement('option'); o.value = v; o.textContent = l; unitSel.appendChild(o);
+        }
+        const applyBtn = document.createElement('button');
+        applyBtn.type = 'button'; applyBtn.className = 'btn btn-ghost batch-shift-apply';
+        applyBtn.textContent = 'Shift all';
+        const status = document.createElement('span');
+        status.className = 'batch-shift-status';
+
+        applyBtn.addEventListener('click', async () => {
+          const n = parseInt(nInput.value) || 7;
+          const multiplier = parseInt(unitSel.value) || 1;
+          const shiftDays = n * multiplier;
+          applyBtn.disabled = true; status.textContent = '…';
+          try {
+            const r = await fetch('/events/batch-shift', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ category: cat, shiftDays }),
+            });
+            const data = await r.json();
+            if (!data.ok) throw new Error(data.error);
+            status.textContent = `✓ ${data.shifted + data.exdated} event${(data.shifted + data.exdated) !== 1 ? 's' : ''} updated`;
+          } catch (err) {
+            status.textContent = '✗ ' + err.message;
+          } finally {
+            applyBtn.disabled = false;
+          }
+        });
+        row.append(catLabel, nInput, unitSel, applyBtn, status);
+        batchBody.appendChild(row);
+      }
+    }
+    refreshBatchShift();
+    catSection.append(batchToggle, batchBody);
+
+    // Store reference so handleSave can read categories
+    catSection._getCategories = () => {
+      const pending = catInput.value.trim().toLowerCase();
+      if (pending && !modalCats.includes(pending)) modalCats.push(pending);
+      return [...modalCats];
+    };
+  }
+
   sheet.querySelector('#f-save').addEventListener('click', () => handleSave(event));
   sheet.querySelector('#f-cancel').addEventListener('click', closeModal);
 
@@ -454,8 +606,9 @@ function handleSave(event) {
     ? (parseInt(sheet.querySelector('#f-alarm-custom')?.value || '0') || null)
     : (parseInt(alarmSelVal) > 0 ? parseInt(alarmSelVal) : null);
 
+  const categories = sheet.querySelector('#f-categories-section')?._getCategories?.() || (event?.categories || []);
   const data = { title, start: startDt.toISOString(), end: endDt.toISOString(), allDay, calendarId, description, location, url,
-    rrule: rrule || null, alarmMinutes };
+    rrule: rrule || null, alarmMinutes, categories };
   if (event?.recurring) {
     data.recurringScope = sheet.querySelector('#f-scope')?.value || 'single';
     data.uid = event.uid;
