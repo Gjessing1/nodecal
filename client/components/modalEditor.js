@@ -2,7 +2,7 @@ import { state } from '../app/state.js';
 import { toDateInputValue, toTimeInputValue, localToUTC, esc } from '../app/utils.js';
 import { buildTimePicker } from './timePicker.js';
 import { buildRecurrenceEditor } from './recurrenceUI.js';
-import { showDatePicker } from './datePicker.js';
+import { buildDatePickerButton, mountLocationUrlSection, mountCollapsibleToggle, wireCategoryUI } from './modalHelpers.js';
 import { getAllEventCategories } from '../app/eventUtils.js';
 
 let overlay, sheet, onSaveCb, onDeleteCb, onDuplicateCb;
@@ -175,42 +175,9 @@ function renderForm(event, defaultDate, explicitTime = false) {
   const endWrap = sheet.querySelector('#f-end-time-wrap');
 
   // ── Date picker buttons ──────────────────────────────────────────────────────
-  function makeDateBtn(inputId, wrapId, onDateChange) {
-    const input = sheet.querySelector(`#${inputId}`);
-    const wrap  = sheet.querySelector(`#${wrapId}`);
-    if (!input || !wrap) return;
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'date-picker-btn';
-    function refresh() {
-      if (input.value) {
-        const d = new Date(input.value + 'T00:00:00');
-        btn.textContent = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-      } else {
-        btn.textContent = 'Pick date';
-      }
-    }
-    refresh();
-    btn.addEventListener('click', () => {
-      const cur = input.value ? new Date(input.value + 'T00:00:00') : new Date();
-      showDatePicker(cur, selected => {
-        const y = selected.getFullYear();
-        const mo = String(selected.getMonth() + 1).padStart(2, '0');
-        const d  = String(selected.getDate()).padStart(2, '0');
-        input.value = `${y}-${mo}-${d}`;
-        refresh();
-        input.dispatchEvent(new Event('change'));
-        if (onDateChange) onDateChange(selected);
-      });
-    });
-    // Keep button text in sync if input is changed programmatically (e.g. NLP)
-    input.addEventListener('change', refresh);
-    wrap.appendChild(btn);
-  }
-
-  makeDateBtn('f-date', 'f-date-wrap');
-  makeDateBtn('f-start-date', 'f-start-date-wrap');
-  makeDateBtn('f-end-date', 'f-end-date-wrap');
+  buildDatePickerButton(sheet.querySelector('#f-date'),       sheet.querySelector('#f-date-wrap'));
+  buildDatePickerButton(sheet.querySelector('#f-start-date'), sheet.querySelector('#f-start-date-wrap'));
+  buildDatePickerButton(sheet.querySelector('#f-end-date'),   sheet.querySelector('#f-end-date-wrap'));
 
   // ── Helper: shift end time by same delta when start changes ──────────────────
   function shiftEnd(prevStartVal, newStartVal) {
@@ -256,96 +223,19 @@ function renderForm(event, defaultDate, explicitTime = false) {
   });
 
   // ── Location / URL (collapsible) ─────────────────────────────────────────
-  function mountLocationUrl(expanded) {
-    const wrap = sheet.querySelector('#f-location-url-wrap');
-    if (!wrap) return;
-    wrap.innerHTML = '';
-    if (!expanded) {
-      const locVal = sheet.querySelector('#f-location')?.value || event?.location || '';
-      const urlVal = sheet.querySelector('#f-url')?.value || event?.url || '';
-      if (locVal || urlVal) {
-        // Has values: show inline summary + collapse button
-        const row = document.createElement('div');
-        row.className = 'collapsible-summary-row';
-        const text = document.createElement('span');
-        text.className = 'collapsible-summary-text';
-        text.textContent = [locVal && `📍 ${locVal}`, urlVal && `🔗 ${urlVal}`].filter(Boolean).join('  ');
-        const expandBtn = document.createElement('button');
-        expandBtn.type = 'button'; expandBtn.className = 'add-field-btn';
-        expandBtn.textContent = 'Edit';
-        expandBtn.addEventListener('click', () => mountLocationUrl(true));
-        row.append(text, expandBtn);
-        wrap.appendChild(row);
-      } else {
-        const btn = document.createElement('button');
-        btn.type = 'button'; btn.className = 'add-field-btn';
-        btn.textContent = '+ Location / URL';
-        btn.addEventListener('click', () => mountLocationUrl(true));
-        wrap.appendChild(btn);
-      }
-    } else {
-      wrap.innerHTML = `
-        <div class="modal-row">
-          <div class="modal-field">
-            <label>Location</label>
-            <input type="text" id="f-location" value="${esc(event?.location || '')}" placeholder="Location (optional)" autocomplete="off">
-          </div>
-          <div class="modal-field">
-            <label>URL</label>
-            <input type="url" id="f-url" value="${esc(event?.url || '')}" placeholder="https://…">
-          </div>
-        </div>`;
-      // Collapse button — only visible when both fields are empty
-      const collapseBtn = document.createElement('button');
-      collapseBtn.type = 'button'; collapseBtn.className = 'add-field-btn';
-      collapseBtn.textContent = '− Remove';
-      collapseBtn.addEventListener('click', () => mountLocationUrl(false));
-      wrap.appendChild(collapseBtn);
-      // Wire URL open link
-      const urlInput = wrap.querySelector('#f-url');
-      if (urlInput) {
-        function updateUrlLink() {
-          const existing = wrap.querySelector('.url-open-link');
-          if (existing) existing.remove();
-          if (urlInput.value.trim()) {
-            const link = document.createElement('a');
-            link.href = urlInput.value.trim();
-            link.target = '_blank'; link.rel = 'noopener noreferrer';
-            link.textContent = '↗ Open'; link.className = 'url-open-link btn btn-ghost';
-            urlInput.parentElement.appendChild(link);
-          }
-        }
-        updateUrlLink();
-        urlInput.addEventListener('input', updateUrlLink);
-        // Update collapse button visibility based on field content
-        function updateCollapseBtn() {
-          const hasContent = urlInput.value.trim() || wrap.querySelector('#f-location')?.value.trim();
-          collapseBtn.textContent = hasContent ? '− Clear & collapse' : '− Remove';
-        }
-        urlInput.addEventListener('input', updateCollapseBtn);
-        wrap.querySelector('#f-location')?.addEventListener('input', updateCollapseBtn);
-      }
-    }
-  }
-  mountLocationUrl(!!(event?.location || event?.url));
+  mountLocationUrlSection(sheet.querySelector('#f-location-url-wrap'), {
+    locId: 'f-location', urlId: 'f-url',
+    initLoc: event?.location || '', initUrl: event?.url || '',
+    showUrlLink: true,
+  });
 
   // ── Reminder / Repeat collapse when unused ────────────────────────────────
   const _alarmVal = event?.alarmMinutes ?? state.config.alarmDefaultMinutes ?? 0;
-  const _hasRR = !!(_alarmVal > 0 || event?.rrule);
-  const rrToggleEl = sheet.querySelector('#f-rr-toggle');
-  const rrBodyEl   = sheet.querySelector('#f-rr-body');
-  function mountRRToggle(expanded) {
-    rrToggleEl.innerHTML = '';
-    rrBodyEl.style.display = expanded ? '' : 'none';
-    if (!expanded) {
-      const btn = document.createElement('button');
-      btn.type = 'button'; btn.className = 'add-field-btn';
-      btn.textContent = '+ Reminder / Repeat';
-      btn.addEventListener('click', () => mountRRToggle(true));
-      rrToggleEl.appendChild(btn);
-    }
-  }
-  mountRRToggle(_hasRR);
+  mountCollapsibleToggle(
+    sheet.querySelector('#f-rr-toggle'),
+    sheet.querySelector('#f-rr-body'),
+    { label: '+ Reminder / Repeat', hasContent: !!(_alarmVal > 0 || event?.rrule) }
+  );
 
   // Alarm select → show/hide custom minutes row
   const alarmSel = sheet.querySelector('#f-alarm');
@@ -393,70 +283,30 @@ function renderForm(event, defaultDate, explicitTime = false) {
 
     catSection.className = 'modal-field collapsible-field-wrap';
 
-    // Label + chips row
+    // Label + chips + input + autocomplete
     const label = document.createElement('label');
     label.className = 'modal-field-label-sm';
     label.textContent = 'Categories';
     catSection.appendChild(label);
 
-    // Chips container
-    const chipsEl = document.createElement('div');
+    const chipsEl  = document.createElement('div');
     chipsEl.className = 'tm-cats-chips-inline';
-
-    function renderCatChips() {
-      chipsEl.innerHTML = '';
-      for (const c of modalCats) {
-        const chip = document.createElement('span');
-        chip.className = 'task-cat-chip tm-cat-chip-rm';
-        chip.textContent = c + ' ×';
-        chip.addEventListener('click', () => {
-          const idx = modalCats.indexOf(c);
-          if (idx !== -1) { modalCats.splice(idx, 1); renderCatChips(); refreshBatchShift(); }
-        });
-        chipsEl.appendChild(chip);
-      }
-    }
-    renderCatChips();
-
-    // Input + autocomplete
-    const inputWrap = document.createElement('div');
-    inputWrap.className = 'tm-cats-combined';
     const catInput = document.createElement('input');
     catInput.type = 'text'; catInput.placeholder = 'Add category…'; catInput.autocomplete = 'off';
-    const addBtn = document.createElement('button');
+    const addBtn   = document.createElement('button');
     addBtn.type = 'button'; addBtn.className = 'btn btn-ghost tm-cat-add-btn'; addBtn.textContent = '+';
     const autoList = document.createElement('ul');
     autoList.className = 'tasks-autocomplete tm-cat-autocomplete'; autoList.style.display = 'none';
 
-    function showCatAuto() {
-      const q = catInput.value.trim().toLowerCase();
-      const matches = allCats.filter(c => !modalCats.includes(c) && c.startsWith(q));
-      if (!matches.length) { autoList.style.display = 'none'; return; }
-      autoList.innerHTML = '';
-      for (const cat of matches.slice(0, 8)) {
-        const li = document.createElement('li');
-        li.textContent = cat;
-        li.addEventListener('mousedown', e => {
-          e.preventDefault();
-          addCategory(cat); catInput.value = ''; autoList.style.display = 'none';
-        });
-        autoList.appendChild(li);
-      }
-      autoList.style.display = '';
-    }
-    function addCategory(cat) {
-      const c = cat.trim().toLowerCase();
-      if (c && !modalCats.includes(c)) { modalCats.push(c); renderCatChips(); refreshBatchShift(); }
-    }
-    catInput.addEventListener('input', showCatAuto);
-    catInput.addEventListener('blur', () => setTimeout(() => { autoList.style.display = 'none'; }, 150));
-    catInput.addEventListener('keydown', e => {
-      if (e.key === 'Enter') { e.preventDefault(); addCategory(catInput.value); catInput.value = ''; autoList.style.display = 'none'; }
-      if (e.key === 'Escape') autoList.style.display = 'none';
-    });
-    addBtn.addEventListener('click', () => { addCategory(catInput.value); catInput.value = ''; autoList.style.display = 'none'; });
+    const inputWrap = document.createElement('div');
+    inputWrap.className = 'tm-cats-combined';
     inputWrap.append(chipsEl, catInput, addBtn, autoList);
     catSection.appendChild(inputWrap);
+
+    const catCtrl = wireCategoryUI(chipsEl, catInput, addBtn, autoList, modalCats, allCats, {
+      onAdd:    () => refreshBatchShift(),
+      onRemove: () => refreshBatchShift(),
+    });
 
     // Batch shift (collapsible, shown only when there are categories)
     const batchToggle = document.createElement('div');
@@ -528,11 +378,7 @@ function renderForm(event, defaultDate, explicitTime = false) {
     catSection.append(batchToggle, batchBody);
 
     // Store reference so handleSave can read categories
-    catSection._getCategories = () => {
-      const pending = catInput.value.trim().toLowerCase();
-      if (pending && !modalCats.includes(pending)) modalCats.push(pending);
-      return [...modalCats];
-    };
+    catSection._getCategories = catCtrl.getCategories;
   }
 
   sheet.querySelector('#f-save').addEventListener('click', () => handleSave(event));

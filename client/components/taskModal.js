@@ -1,8 +1,8 @@
 import { state } from '../app/state.js';
 import { getAllCategories, visibleCategories } from '../app/taskUtils.js';
 import { esc } from '../app/utils.js';
-import { showDatePicker } from './datePicker.js';
 import { buildRecurrenceEditor } from './recurrenceUI.js';
+import { buildDatePickerButton, mountLocationUrlSection, mountCollapsibleToggle, wireCategoryUI } from './modalHelpers.js';
 
 export function openTaskModal(task, { onSave, onDelete }) {
   const overlay = document.getElementById('modal-overlay');
@@ -109,181 +109,32 @@ export function openTaskModal(task, { onSave, onDelete }) {
   `;
 
   // ── Due date picker button ─────────────────────────────────────────────────
-  const dueInput = sheet.querySelector('#tm-due');
-  const dueWrap  = sheet.querySelector('#tm-due-wrap');
-  if (dueInput && dueWrap) {
-    const dueBtn = document.createElement('button');
-    dueBtn.type = 'button';
-    dueBtn.className = 'date-picker-btn';
-    function refreshDueBtn() {
-      if (dueInput.value) {
-        const d = new Date(dueInput.value + 'T00:00:00');
-        dueBtn.textContent = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-      } else {
-        dueBtn.textContent = 'No due date';
-      }
-    }
-    refreshDueBtn();
-    dueBtn.addEventListener('click', () => {
-      const cur = dueInput.value ? new Date(dueInput.value + 'T00:00:00') : new Date();
-      showDatePicker(cur, selected => {
-        const y  = selected.getFullYear();
-        const mo = String(selected.getMonth() + 1).padStart(2, '0');
-        const d  = String(selected.getDate()).padStart(2, '0');
-        dueInput.value = `${y}-${mo}-${d}`;
-        refreshDueBtn();
-      });
-    });
-    dueWrap.appendChild(dueBtn);
-  }
+  buildDatePickerButton(sheet.querySelector('#tm-due'), sheet.querySelector('#tm-due-wrap'), { emptyLabel: 'No due date' });
 
   // ── Location / URL (collapsible) ─────────────────────────────────────────
-  function mountTaskLocationUrl(expanded) {
-    const wrap = sheet.querySelector('#tm-location-url-wrap');
-    if (!wrap) return;
-    wrap.innerHTML = '';
-    if (!expanded) {
-      const locVal = task.location || '';
-      const urlVal = task.url || '';
-      if (locVal || urlVal) {
-        const row = document.createElement('div');
-        row.className = 'collapsible-summary-row';
-        const text = document.createElement('span');
-        text.className = 'collapsible-summary-text';
-        text.textContent = [locVal && `📍 ${locVal}`, urlVal && `🔗 ${urlVal}`].filter(Boolean).join('  ');
-        const expandBtn = document.createElement('button');
-        expandBtn.type = 'button'; expandBtn.className = 'add-field-btn';
-        expandBtn.textContent = 'Edit';
-        expandBtn.addEventListener('click', () => mountTaskLocationUrl(true));
-        row.append(text, expandBtn);
-        wrap.appendChild(row);
-      } else {
-        const btn = document.createElement('button');
-        btn.type = 'button'; btn.className = 'add-field-btn';
-        btn.textContent = '+ Location / URL';
-        btn.addEventListener('click', () => mountTaskLocationUrl(true));
-        wrap.appendChild(btn);
-      }
-    } else {
-      wrap.innerHTML = `
-        <div class="modal-row">
-          <div class="modal-field">
-            <label>Location</label>
-            <input type="text" id="tm-location" value="${esc(task.location || '')}" placeholder="Location (optional)" autocomplete="off">
-          </div>
-          <div class="modal-field">
-            <label>URL</label>
-            <input type="url" id="tm-url" value="${esc(task.url || '')}" placeholder="https://…">
-          </div>
-        </div>`;
-      const collapseBtn = document.createElement('button');
-      collapseBtn.type = 'button'; collapseBtn.className = 'add-field-btn';
-      collapseBtn.textContent = '− Remove';
-      collapseBtn.addEventListener('click', () => mountTaskLocationUrl(false));
-      wrap.appendChild(collapseBtn);
-      const locInput = wrap.querySelector('#tm-location');
-      const urlInp   = wrap.querySelector('#tm-url');
-      function updateCollapseBtn() {
-        collapseBtn.textContent = (locInput?.value.trim() || urlInp?.value.trim()) ? '− Clear & collapse' : '− Remove';
-      }
-      locInput?.addEventListener('input', updateCollapseBtn);
-      urlInp?.addEventListener('input', updateCollapseBtn);
-    }
-  }
-  mountTaskLocationUrl(!!(task.location || task.url));
+  mountLocationUrlSection(sheet.querySelector('#tm-location-url-wrap'), {
+    locId: 'tm-location', urlId: 'tm-url',
+    initLoc: task.location || '', initUrl: task.url || '',
+  });
 
   // ── Reminder / Repeat collapse when unused ────────────────────────────────
-  const _hasReminder = !!(task.taskReminder && task.taskReminder !== 'none');
-  const _hasRepeat   = !!(isRecRrule || isRecAfterCompletion);
-  const tmRrToggleEl = sheet.querySelector('#tm-rr-toggle');
-  const tmRrBodyEl   = sheet.querySelector('#tm-rr-body');
-  function mountTmRRToggle(expanded) {
-    tmRrToggleEl.innerHTML = '';
-    tmRrBodyEl.style.display = expanded ? '' : 'none';
-    if (!expanded) {
-      const btn = document.createElement('button');
-      btn.type = 'button'; btn.className = 'add-field-btn';
-      btn.textContent = '+ Reminder / Repeat';
-      btn.addEventListener('click', () => mountTmRRToggle(true));
-      tmRrToggleEl.appendChild(btn);
-    }
-  }
-  mountTmRRToggle(_hasReminder || _hasRepeat);
+  mountCollapsibleToggle(
+    sheet.querySelector('#tm-rr-toggle'),
+    sheet.querySelector('#tm-rr-body'),
+    { label: '+ Reminder / Repeat', hasContent: !!(task.taskReminder && task.taskReminder !== 'none') || !!(isRecRrule || isRecAfterCompletion) }
+  );
 
   // Track categories in modal as mutable array
   const modalCats = [...taskCats];
 
-  function renderCatChips() {
-    const chipsEl = sheet.querySelector('#tm-cats-chips');
-    chipsEl.innerHTML = '';
-    for (const c of modalCats) {
-      const chip = document.createElement('span');
-      chip.className = 'task-cat-chip tm-cat-chip-rm';
-      chip.textContent = c + ' ×';
-      chip.dataset.cat = c;
-      chip.addEventListener('click', () => {
-        const idx = modalCats.indexOf(c);
-        if (idx !== -1) modalCats.splice(idx, 1);
-        renderCatChips();
-      });
-      chipsEl.appendChild(chip);
-    }
-  }
-  // Wire up existing chip remove buttons from innerHTML
-  sheet.querySelectorAll('.tm-cat-chip-rm').forEach(chip => {
-    chip.addEventListener('click', () => {
-      const cat = chip.dataset.cat;
-      const idx = modalCats.indexOf(cat);
-      if (idx !== -1) modalCats.splice(idx, 1);
-      renderCatChips();
-    });
-  });
-
-  function addCategory(cat) {
-    const c = cat.trim().toLowerCase();
-    if (c && !modalCats.includes(c)) { modalCats.push(c); renderCatChips(); }
-  }
-
-  // Category autocomplete dropdown
-  const catInput = sheet.querySelector('#tm-cat-input');
-  const catAutoList = sheet.querySelector('.tm-cat-autocomplete');
-
-  function showCatAutocomplete() {
-    const q = catInput.value.trim().toLowerCase();
-    const matches = existingCats.filter(c => !modalCats.includes(c) && c.startsWith(q));
-    if (!matches.length) { catAutoList.style.display = 'none'; return; }
-    catAutoList.innerHTML = '';
-    for (const cat of matches.slice(0, 8)) {
-      const li = document.createElement('li');
-      li.textContent = cat;
-      li.addEventListener('mousedown', e => {
-        e.preventDefault();
-        addCategory(cat);
-        catInput.value = '';
-        catAutoList.style.display = 'none';
-      });
-      catAutoList.appendChild(li);
-    }
-    catAutoList.style.display = '';
-  }
-
-  catInput.addEventListener('input', showCatAutocomplete);
-  catInput.addEventListener('blur', () => setTimeout(() => { catAutoList.style.display = 'none'; }, 150));
-
-  sheet.querySelector('#tm-cat-add').addEventListener('click', () => {
-    addCategory(catInput.value);
-    catInput.value = '';
-    catAutoList.style.display = 'none';
-  });
-  catInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      addCategory(catInput.value);
-      catInput.value = '';
-      catAutoList.style.display = 'none';
-    }
-    if (e.key === 'Escape') catAutoList.style.display = 'none';
-  });
+  const catCtrl = wireCategoryUI(
+    sheet.querySelector('#tm-cats-chips'),
+    sheet.querySelector('#tm-cat-input'),
+    sheet.querySelector('#tm-cat-add'),
+    sheet.querySelector('.tm-cat-autocomplete'),
+    modalCats,
+    existingCats
+  );
 
   // ── Recurrence mode toggle + editor ──────────────────────────────────────
   const fixedContainer = sheet.querySelector('#tm-rec-fixed');
@@ -333,13 +184,8 @@ export function openTaskModal(task, { onSave, onDelete }) {
       rrule = fixedCont ? (fixedCont.dataset.rrule || null) : null;
     }
 
-    // Auto-add any category text that was typed but not yet submitted with the + button
-    const pendingCat = catInput.value.trim().toLowerCase();
-    if (pendingCat && !modalCats.includes(pendingCat)) modalCats.push(pendingCat);
-
     const completedChecked = sheet.querySelector('#tm-completed').checked;
-    const important = (task.categories || []).includes('important');
-    const finalCats = important ? [...modalCats, 'important'] : [...modalCats];
+    const finalCats = catCtrl.getCategories();
 
     onSave({
       title,

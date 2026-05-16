@@ -163,13 +163,13 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, on
     wxEl.textContent = wx;
     numWrap.appendChild(wxEl);
   }
+  const dayStr = localDateStr(day);
+
   numWrap.addEventListener('click', e => {
     e.stopPropagation();
     showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask, onLongPress);
   });
   cell.appendChild(numWrap);
-
-  const dayStr = localDateStr(day);
   const dayStart = new Date(day);
   const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
   const dayEvs = events
