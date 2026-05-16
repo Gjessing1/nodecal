@@ -486,7 +486,7 @@ If CalDAV is unreachable: show last cached state, surface a non-blocking sync er
 ## Testing
 
 No automated tests currently. RRULE edge cases and NLP parsing are the highest-risk areas. The `test/` directory has historical recurrence + NLP test files but they are not wired to a test runner.
-
+- [ ] create said test runner
 ## Instructions for Claude
 
 - Complete one phase at a time. Do not start the next phase until confirmed.
@@ -510,6 +510,54 @@ No automated tests currently. RRULE edge cases and NLP parsing are the highest-r
 - [x] **Move sync range fields to Sync section** — `s-sync-history` and `s-sync-future` moved from Events to Sync section in `settingsPanel.js`.
 - [x] **Replace native time inputs with custom picker** — `s-task-reminder-morning`, `s-task-reminder-evening`, and `s-default-event-time` now use `buildTimePicker` via UTC anchor dates; hidden input ids unchanged so `handleSave` reads them identically.
 - [x] **Split `settingsPanel.js`** — extracted `renderTaskSourcesSection` and `renderCategoriesSection` into `client/components/settingsHelpers.js` (202 lines); `settingsPanel.js` reduced from 648 → 468 lines.
+
+### Phase 9 — Batch shift: split at anchor (history-preserving)
+
+**Problem with current approach:** Shifting DTSTART rewrites the whole series including past occurrences. A user who completed Jan 1, Jan 29, Feb 26 and shifts in March doesn't want their history rewritten — they want future occurrences to adapt while completed sessions stay fixed.
+
+**Model:** past occurrences = immutable history; future occurrences = flexible plan.
+
+#### UX change (client-side)
+
+The batch shift row gets two buttons instead of one:
+- **Shift future** (default, highlighted) — splits the series at the anchor, leaves history untouched
+- **Shift all** — current behavior, shifts DTSTART of the entire series (kept for edge cases)
+
+The **anchor date** = the `occurrenceDate` (or `start`) of the event that opened the modal. The user opens "Apr 23" → anchor is Apr 23 → everything before Apr 23 is untouched, Apr 23 and later shifts.
+
+API call gains a new optional field: `{ category, shiftDays, anchorDate? }`. When `anchorDate` is absent, behavior is "shift all" (current default).
+
+#### Server algorithm for "shift future" mode
+
+For each matching event:
+
+**Non-recurring:** only shift if `ev.start >= anchorDate`. Events that already happened stay put.
+
+**Recurring, DTSTART >= anchorDate:** entire series is already in the future — shift DTSTART normally, same as "shift all".
+
+**Recurring, DTSTART < anchorDate (needs split):**
+1. Find `lastBefore` = last occurrence strictly before `anchorDate` using `rrule.before(anchorDate, false)`.
+2. Find `firstAtOrAfter` = first occurrence at or after `anchorDate` using `rrule.after(anchorDate, true)`. If none exists (series already ended), skip.
+3. **Update existing series**: add `UNTIL=lastBefore` to the RRULE (using `setRruleUntil`). PUT back to Radicale.
+4. **Create new series**: new UID, same title/categories/all other fields, `DTSTART = firstAtOrAfter + shiftMs`, same RRULE without UNTIL, `exdates: null`. POST to Radicale.
+
+Result:
+```
+Series A (history):  DTSTART=Jan 1,  RRULE=FREQ=WEEKLY;INTERVAL=4;UNTIL=20260226
+Series B (shifted):  DTSTART=Apr 2,  RRULE=FREQ=WEEKLY;INTERVAL=4
+```
+Cadence preserved, history immutable, future shifted.
+
+#### Known pre-existing issue to fix alongside
+
+`setRruleUntil(rruleStr, untilDate)` in `server/caldav/recurrence.js` always writes `UNTIL=` in DATETIME format (`formatIcsDate(date, false)`). For all-day recurring events the RRULE must have `UNTIL` as a DATE value (no time component). Fix: pass `ev.allDay` through to `setRruleUntil` and use `formatIcsDate(date, allDay)`.
+
+#### Files to touch
+
+- `server/routes/events.js` — `POST /events/batch-shift`: accept `anchorDate`, implement split logic
+- `server/caldav/recurrence.js` — fix `setRruleUntil` to handle all-day
+- `server/caldav/client.js` — already has `putEventAtHref`; need `putEvent(calendarId, uid, ics)` for the new series (no etag, create)
+- `client/components/modalEditor.js` — two-button UI, pass `anchorDate = event.occurrenceDate || event.start` with "Shift future", omit for "Shift all"
 
 ### Future — not scheduled
 
