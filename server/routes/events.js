@@ -254,7 +254,7 @@ router.post('/events/batch-shift', async (req, res) => {
           exdated++;
         }
       } catch (err) {
-        console.error(`[batch-shift] skipped "${ev.title}" (${ev.uid}): ${err.message}`);
+        console.error(`[batch-shift] skipped "${ev.title}" (${ev.uid}) href=${ev.href}: ${err.message}`);
         errors.push({ uid: ev.uid, title: ev.title, error: err.message });
         skipped++;
       }

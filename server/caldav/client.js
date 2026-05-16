@@ -228,7 +228,11 @@ async function putEventAtHref(href, icsData, etag = null) {
     delete headers['If-Match'];
     res = await fetch(url, { method: 'PUT', headers, body: icsData });
   }
-  if (!res.ok) throw new Error(`PUT event failed: ${res.status}`);
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    console.error(`[putEventAtHref] ${res.status} for ${url}:\n${body}`);
+    throw new Error(`PUT event failed: ${res.status} — ${body.slice(0, 200)}`);
+  }
   return { href: url, etag: (res.headers.get('etag') || etag || '').replace(/"/g, '') };
 }
 
