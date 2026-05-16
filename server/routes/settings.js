@@ -26,7 +26,8 @@ router.get('/settings', (req, res) => {
     showTasksOnCalendar: false,
     taskSortOrder:       'due',
     tasksCalDAVUrl:      config.caldav.tasksUrl || '',
-    hiddenCategories:    [],
+    hiddenCategories:       [],
+    hiddenEventCategories:  [],
     ...overrides,
   });
 });
@@ -35,7 +36,7 @@ router.put('/settings', (req, res) => {
   const allowed = [
     'defaultView', 'timeFormat', 'weekStart', 'enabledViews', 'defaultCalendar',
     'enableTasksView', 'showTasksOnCalendar', 'taskSortOrder', 'tasksCalDAVUrl',
-    'hiddenCategories', 'taskSources', 'defaultTaskSource',
+    'hiddenCategories', 'hiddenEventCategories', 'taskSources', 'defaultTaskSource',
     'defaultEventTime', 'defaultEventDuration', 'showWeekNumbers', 'dateFormat',
     'weatherLat', 'weatherLon', 'weatherDays', 'weatherDaysWeek', 'weatherDaysMonth', 'weatherDaysAgenda',
     'showWeekendBg',

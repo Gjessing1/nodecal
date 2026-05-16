@@ -279,15 +279,20 @@ function renderForm(event, defaultDate, explicitTime = false) {
   const catSection = sheet.querySelector('#f-categories-section');
   if (catSection) {
     const modalCats = [...(event?.categories || [])];
-    const allCats   = getAllEventCategories(state.events);
+    const hiddenEvCats = state.config.hiddenEventCategories || [];
+    const allCats   = getAllEventCategories(state.events).filter(c => !hiddenEvCats.includes(c));
 
-    catSection.className = 'modal-field collapsible-field-wrap';
+    catSection.className = 'modal-field';
 
-    // Label + chips + input + autocomplete
-    const label = document.createElement('label');
-    label.className = 'modal-field-label-sm';
-    label.textContent = 'Categories';
-    catSection.appendChild(label);
+    // Toggle header + collapsible body
+    const catToggleEl = document.createElement('div');
+    catToggleEl.className = 'collapsible-field-wrap';
+    const catBodyEl = document.createElement('div');
+    catSection.append(catToggleEl, catBodyEl);
+    mountCollapsibleToggle(catToggleEl, catBodyEl, {
+      label: 'Categories',
+      hasContent: modalCats.length > 0,
+    });
 
     const chipsEl  = document.createElement('div');
     chipsEl.className = 'tm-cats-chips-inline';
@@ -301,7 +306,7 @@ function renderForm(event, defaultDate, explicitTime = false) {
     const inputWrap = document.createElement('div');
     inputWrap.className = 'tm-cats-combined';
     inputWrap.append(chipsEl, catInput, addBtn, autoList);
-    catSection.appendChild(inputWrap);
+    catBodyEl.appendChild(inputWrap);
 
     const catCtrl = wireCategoryUI(chipsEl, catInput, addBtn, autoList, modalCats, allCats, {
       onAdd:    () => refreshBatchShift(),

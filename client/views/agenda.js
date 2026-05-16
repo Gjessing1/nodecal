@@ -22,7 +22,8 @@ export function renderAgenda(container, onEventClick, onTaskClick, onTaskComplet
 
   // ── Category filter ──────────────────────────────────────
   let activeCategoryFilter = '';
-  const allCats = getAllEventCategories(state.events);
+  const hiddenEvCats = state.config.hiddenEventCategories || [];
+  const allCats = getAllEventCategories(state.events).filter(c => !hiddenEvCats.includes(c));
 
   const filterBar = document.createElement('div');
   filterBar.className = 'tasks-cat-filter-row agenda-cat-filter';

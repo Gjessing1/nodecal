@@ -58,14 +58,16 @@ export function buildDatePickerButton(inputEl, wrapEl, opts = {}) {
  *   showUrlLink — event modal shows an "↗ Open" link; task modal does not
  */
 export function mountLocationUrlSection(wrap, opts) {
-  const { locId, urlId, initLoc = '', initUrl = '', showUrlLink = false } = opts;
+  const { locId, urlId, showUrlLink = false } = opts;
+  let initLoc = opts.initLoc ?? '';
+  let initUrl = opts.initUrl ?? '';
   if (!wrap) return;
 
   function mount(expanded) {
     wrap.innerHTML = '';
     if (!expanded) {
-      const locVal = wrap.closest('form, .modal-sheet')?.querySelector(`#${locId}`)?.value ?? initLoc;
-      const urlVal = wrap.closest('form, .modal-sheet')?.querySelector(`#${urlId}`)?.value ?? initUrl;
+      const locVal = initLoc;
+      const urlVal = initUrl;
       if (locVal || urlVal) {
         const row = document.createElement('div');
         row.className = 'collapsible-summary-row';
@@ -86,7 +88,23 @@ export function mountLocationUrlSection(wrap, opts) {
         wrap.appendChild(btn);
       }
     } else {
-      wrap.innerHTML = `
+      // Clickable header — collapses back to summary on click
+      const hdr = document.createElement('button');
+      hdr.type = 'button'; hdr.className = 'add-field-btn';
+      hdr.textContent = '▼ Location / URL';
+      hdr.style.marginBottom = 'var(--space-xs)';
+      hdr.addEventListener('click', () => {
+        // Persist current input values as initLoc/initUrl before collapsing
+        const locEl = wrap.querySelector(`#${locId}`);
+        const urlEl = wrap.querySelector(`#${urlId}`);
+        initLoc = locEl?.value.trim() ?? initLoc;
+        initUrl = urlEl?.value.trim() ?? initUrl;
+        mount(false);
+      });
+      wrap.appendChild(hdr);
+
+      const inputRow = document.createElement('div');
+      inputRow.innerHTML = `
         <div class="modal-row">
           <div class="modal-field">
             <label>Location</label>
@@ -97,21 +115,10 @@ export function mountLocationUrlSection(wrap, opts) {
             <input type="url" id="${urlId}" value="${esc(initUrl)}" placeholder="https://…">
           </div>
         </div>`;
-      const collapseBtn = document.createElement('button');
-      collapseBtn.type = 'button'; collapseBtn.className = 'add-field-btn';
-      collapseBtn.textContent = '− Remove';
-      collapseBtn.addEventListener('click', () => mount(false));
-      wrap.appendChild(collapseBtn);
+      wrap.appendChild(inputRow);
 
       const locInput = wrap.querySelector(`#${locId}`);
       const urlInput = wrap.querySelector(`#${urlId}`);
-
-      function updateCollapseLabel() {
-        collapseBtn.textContent = (locInput?.value.trim() || urlInput?.value.trim())
-          ? '− Clear & collapse' : '− Remove';
-      }
-      locInput?.addEventListener('input', updateCollapseLabel);
-      urlInput?.addEventListener('input', updateCollapseLabel);
 
       if (showUrlLink && urlInput) {
         function updateUrlLink() {
@@ -133,29 +140,34 @@ export function mountLocationUrlSection(wrap, opts) {
 }
 
 /**
- * Mount a collapsible section toggle.
- * When hasContent is false: shows an expand button; bodyEl is hidden.
- * When hasContent is true: bodyEl is visible immediately; no button.
- * Clicking the button permanently reveals bodyEl for the session.
+ * Mount a persistent collapsible toggle header.
+ * Clicking the header toggles the body open/closed.
+ * Starts expanded when hasContent is true, collapsed otherwise.
  *
- * @param {HTMLElement} toggleEl - container for the expand button
+ * @param {HTMLElement} toggleEl - container for the header button
  * @param {HTMLElement} bodyEl   - the section to show/hide
  * @param {{ label: string, hasContent: boolean }} opts
  */
 export function mountCollapsibleToggle(toggleEl, bodyEl, { label, hasContent }) {
   if (!toggleEl || !bodyEl) return;
   toggleEl.innerHTML = '';
-  bodyEl.style.display = hasContent ? '' : 'none';
-  if (!hasContent) {
-    const btn = document.createElement('button');
-    btn.type = 'button'; btn.className = 'add-field-btn';
-    btn.textContent = label;
-    btn.addEventListener('click', () => {
-      bodyEl.style.display = '';
-      toggleEl.innerHTML = '';
-    });
-    toggleEl.appendChild(btn);
-  }
+
+  const cleanLabel = label.replace(/^\+\s*/, '');
+  let expanded = hasContent;
+  bodyEl.style.display = expanded ? '' : 'none';
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'add-field-btn';
+  btn.style.cssText = 'display:flex;align-items:center;gap:4px;';
+  function update() { btn.textContent = (expanded ? '▼ ' : '▶ ') + cleanLabel; }
+  update();
+  btn.addEventListener('click', () => {
+    expanded = !expanded;
+    bodyEl.style.display = expanded ? '' : 'none';
+    update();
+  });
+  toggleEl.appendChild(btn);
 }
 
 /**

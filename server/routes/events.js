@@ -157,11 +157,11 @@ async function handleFutureEdit(base, changes, occurrenceDate, res) {
   // 2. Create a new recurring series from this occurrence onward
   const newUid = crypto.randomUUID();
   const newEvent = {
-    ...filterChanges(changes),
     uid: newUid,
     calendarId: base.calendarId,
     allDay: base.allDay,
-    rrule: base.rrule, // original rule (no UNTIL)
+    rrule: base.rrule, // fallback to original rule; overridden below if user changed it
+    ...filterChanges(changes),
   };
   const newIcs = serializeEvent(newEvent);
   const { href: nHref, etag: nEtag } = await putEvent(base.calendarId, newUid, newIcs);
@@ -173,7 +173,7 @@ async function handleFutureEdit(base, changes, occurrenceDate, res) {
 // ── Helpers ───────────────────────────────────────────────
 
 function filterChanges(changes) {
-  const allowed = ['title', 'start', 'end', 'allDay', 'description', 'location', 'url', 'alarmMinutes', 'categories'];
+  const allowed = ['title', 'start', 'end', 'allDay', 'description', 'location', 'url', 'rrule', 'alarmMinutes', 'categories'];
   const out = {};
   for (const k of allowed) {
     if (k in changes) out[k] = changes[k];

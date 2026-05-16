@@ -27,6 +27,7 @@ export const state = {
     taskSortOrder: 'due',
     tasksCalDAVUrl: '',
     hiddenCategories: [],
+    hiddenEventCategories: [],
     defaultTaskSource: '',
     defaultEventTime: '09:00',
     defaultEventDuration: 60,

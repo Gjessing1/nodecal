@@ -38,14 +38,14 @@ export function openTaskModal(task, { onSave, onDelete }) {
     </div>
 
     <div class="modal-field">
-      <label>Categories</label>
-      <div class="tm-cats-combined">
-        <div id="tm-cats-chips" class="tm-cats-chips-inline">
-          ${taskCats.map(c => `<span class="task-cat-chip tm-cat-chip-rm" data-cat="${esc(c)}">${esc(c)} ×</span>`).join('')}
+      <div id="tm-cat-toggle" class="collapsible-field-wrap"></div>
+      <div id="tm-cat-body">
+        <div class="tm-cats-combined">
+          <div id="tm-cats-chips" class="tm-cats-chips-inline"></div>
+          <input type="text" id="tm-cat-input" placeholder="Add category…" autocomplete="off">
+          <button type="button" id="tm-cat-add" class="btn btn-ghost tm-cat-add-btn">+</button>
+          <ul class="tasks-autocomplete tm-cat-autocomplete" style="display:none"></ul>
         </div>
-        <input type="text" id="tm-cat-input" placeholder="Add category…" autocomplete="off">
-        <button type="button" id="tm-cat-add" class="btn btn-ghost tm-cat-add-btn">+</button>
-        <ul class="tasks-autocomplete tm-cat-autocomplete" style="display:none"></ul>
       </div>
     </div>
 
@@ -124,8 +124,13 @@ export function openTaskModal(task, { onSave, onDelete }) {
     { label: '+ Reminder / Repeat', hasContent: !!(task.taskReminder && task.taskReminder !== 'none') || !!(isRecRrule || isRecAfterCompletion) }
   );
 
-  // Track categories in modal as mutable array
+  // ── Categories (collapsible) ──────────────────────────────────────────────
   const modalCats = [...taskCats];
+  mountCollapsibleToggle(
+    sheet.querySelector('#tm-cat-toggle'),
+    sheet.querySelector('#tm-cat-body'),
+    { label: 'Categories', hasContent: taskCats.length > 0 }
+  );
 
   const catCtrl = wireCategoryUI(
     sheet.querySelector('#tm-cats-chips'),

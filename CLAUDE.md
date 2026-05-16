@@ -504,9 +504,18 @@ No automated tests currently. RRULE edge cases and NLP parsing are the highest-r
 
 ## Roadmap
 
-### Open items
+### Open items — Settings improvements
 
-- [ ] Settings: add timezone selector (IANA list) — users must currently edit .env or settings.json directly
+- [x] **Event categories in Settings** — added collapsible "Event categories" section in `settingsHelpers.js`; hides event categories from agenda filter bar and event modal autocomplete via `hiddenEventCategories` config field.
+- [x] **Move sync range fields to Sync section** — `s-sync-history` and `s-sync-future` moved from Events to Sync section in `settingsPanel.js`.
+- [x] **Replace native time inputs with custom picker** — `s-task-reminder-morning`, `s-task-reminder-evening`, and `s-default-event-time` now use `buildTimePicker` via UTC anchor dates; hidden input ids unchanged so `handleSave` reads them identically.
+- [x] **Split `settingsPanel.js`** — extracted `renderTaskSourcesSection` and `renderCategoriesSection` into `client/components/settingsHelpers.js` (202 lines); `settingsPanel.js` reduced from 648 → 468 lines.
+
+### Future — not scheduled
+
+- [ ] **Timezone selector** — Right now the timezone can only be changed by editing `.env` or `settings.json` on the server. Adding it to the Settings UI would mean: shipping a static list of IANA timezone names (e.g. `Europe/Oslo`, `America/New_York`) to the client as a JSON file; rendering a searchable `<select>` in Settings; saving the chosen value to `settings.json` via `PUT /settings`; then reloading the page so all views and time formatters re-initialize with the new zone. The reload is mandatory because the timezone flows through `state.config.timezone` which is read at boot and baked into dozens of `formatTime()` calls — there is no live re-render path today. This is a non-trivial amount of surface area to test and the audience (single-user, self-hosted) can reasonably edit a config file, so it is deferred until there is a clear demand.
+
+- [ ] **Clarify "Events future (days)" sync limit** — In the Settings panel there is a number input labelled `"Events future (days, 0=all)"`. The `, 0=all` part is tacked onto the label and easy to miss. What it means: when set to `0`, the server fetches all future events from CalDAV with no upper date bound; when set to e.g. `365`, it only syncs events within the next year (saving memory and sync time for very large calendars). The confusion is that `0` is both the default value and a magic sentinel meaning "unlimited" — a user who blanks the field or types `0` wanting "zero days ahead" would accidentally enable unlimited sync instead. The fix could be a dropdown with an explicit "No limit" option, or just changing the label to `"Events future (days, blank = no limit)"` and treating blank/0 the same way. Deferred because it requires a careful label + validation change in both the frontend (`settingsPanel.js`) and possibly the backend sync range logic in `server/caldav/sync.js`.
 
 ### Phase 8 — Code health + modal duplication
 
@@ -525,6 +534,11 @@ From the Phase 0 round-2 audit, these duplications and bugs remain:
 
 #### 8.3 `month.js` — `dayStr` defined after use in closure ✓ COMPLETE
 - [x] Moved `const dayStr = localDateStr(day)` above the `numWrap` click callback that uses it.
+
+### Bug fixes (post-Phase 8)
+
+- [x] **RRULE silently dropped on event edit** — `filterChanges()` in `server/routes/events.js` did not include `rrule` in its allowlist, so any change to a recurring rule (add, modify, remove) was stripped on PUT. Fixed by adding `'rrule'` to the allowed array. Also fixed `handleFutureEdit` where `rrule: base.rrule` was placed after `...filterChanges(changes)` in the object literal, always overriding the user's new rule — spread order swapped so user change wins.
+- [x] **Modal collapsibles UX** — Location/URL: removed the "Remove" button; the `▼ Location / URL` header is now the collapse trigger and persists current input values. Remind me / Repeat: `mountCollapsibleToggle` is now a proper two-way toggle (was expand-only). Categories in task and event modals: wrapped in `mountCollapsibleToggle` — collapsed by default when empty, expanded when there are categories.
 
 ## Remember
 Update CLAUDE.md roadmap each time you finish a phase to track current progress.

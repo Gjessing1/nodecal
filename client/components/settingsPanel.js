@@ -1,6 +1,7 @@
 import { state, setConfig, setTaskSources } from '../app/state.js';
 import { esc } from '../app/utils.js';
-import { getAllCategories } from '../app/taskUtils.js';
+import { buildTimePicker } from './timePicker.js';
+import { renderTaskSourcesSection, renderCategoriesSection } from './settingsHelpers.js';
 
 const ALL_VIEWS = [
   { id: 'agenda', label: 'Agenda' },
@@ -24,6 +25,11 @@ export function openSettings() {
 
 export function closeSettings() {
   overlay.classList.add('hidden');
+}
+
+function timeStrToDate(str) {
+  const [h, m] = (str || '09:00').split(':').map(Number);
+  return new Date(Date.UTC(2000, 0, 1, h, m, 0));
 }
 
 function renderForm() {
@@ -155,11 +161,11 @@ function renderForm() {
     <div class="modal-row">
       <div class="modal-field">
         <label>Morning time</label>
-        <input type="time" id="s-task-reminder-morning" value="${cfg.taskReminderMorningTime || '09:00'}">
+        <div id="s-morning-pick-wrap"></div>
       </div>
       <div class="modal-field">
         <label>Evening time</label>
-        <input type="time" id="s-task-reminder-evening" value="${cfg.taskReminderEveningTime || '18:00'}">
+        <div id="s-evening-pick-wrap"></div>
       </div>
     </div>
 
@@ -175,13 +181,23 @@ function renderForm() {
         <input type="number" id="s-agenda-days" value="${cfg.agendaDays ?? 90}" min="7" max="365" step="7">
       </div>
     </div>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Events history (days)</label>
+        <input type="number" id="s-sync-history" value="${cfg.syncHistoryDays ?? 730}" min="30">
+      </div>
+      <div class="modal-field">
+        <label>Events future (days, 0=all)</label>
+        <input type="number" id="s-sync-future" value="${cfg.syncFutureDays ?? 0}" min="0">
+      </div>
+    </div>
 
     <div class="modal-section-label">Events</div>
 
     <div class="modal-row">
       <div class="modal-field">
         <label>Default time (future dates)</label>
-        <input type="time" id="s-default-event-time" value="${cfg.defaultEventTime || '09:00'}">
+        <div id="s-default-event-time-wrap"></div>
       </div>
       <div class="modal-field">
         <label>Default duration (minutes)</label>
@@ -207,17 +223,6 @@ function renderForm() {
         <input type="checkbox" id="s-weekend-bg" ${cfg.showWeekendBg !== false ? 'checked' : ''}>
         <span>Highlight weekends</span>
       </label>
-    </div>
-
-    <div class="modal-row">
-      <div class="modal-field">
-        <label>Events history (days)</label>
-        <input type="number" id="s-sync-history" value="${cfg.syncHistoryDays ?? 730}" min="30">
-      </div>
-      <div class="modal-field">
-        <label>Events future (days, 0=all)</label>
-        <input type="number" id="s-sync-future" value="${cfg.syncFutureDays ?? 0}" min="0">
-      </div>
     </div>
 
     <div class="modal-section-label">Tasks</div>
@@ -274,8 +279,19 @@ function renderForm() {
     </div>
   `;
 
-  // Notification permission + status + test
-  const notifCheck = sheet.querySelector('#s-notif-enable');
+  // ── Time pickers (replace native <input type="time">) ──────────────────────
+  sheet.querySelector('#s-morning-pick-wrap').appendChild(
+    buildTimePicker('s-task-reminder-morning', timeStrToDate(cfg.taskReminderMorningTime || '09:00'), 'UTC')
+  );
+  sheet.querySelector('#s-evening-pick-wrap').appendChild(
+    buildTimePicker('s-task-reminder-evening', timeStrToDate(cfg.taskReminderEveningTime || '18:00'), 'UTC')
+  );
+  sheet.querySelector('#s-default-event-time-wrap').appendChild(
+    buildTimePicker('s-default-event-time', timeStrToDate(cfg.defaultEventTime || '09:00'), 'UTC')
+  );
+
+  // ── Notification permission + status + test ────────────────────────────────
+  const notifCheck  = sheet.querySelector('#s-notif-enable');
   const notifStatus = sheet.querySelector('#s-notif-status');
   const notifTest   = sheet.querySelector('#s-notif-test');
 
@@ -315,7 +331,6 @@ function renderForm() {
         updateNotifStatus();
         if (r !== 'granted') return;
       }
-      // Use service worker showNotification for PWA (Android requires this)
       if ('serviceWorker' in navigator) {
         try {
           const reg = await navigator.serviceWorker.ready;
@@ -327,13 +342,11 @@ function renderForm() {
     });
   }
 
-  // Task sources section (replaces single tasksCalDAVUrl)
+  // ── Dynamic sections ───────────────────────────────────────────────────────
   renderTaskSourcesSection(sheet, cfg);
-
-  // Categories section — show all categories with hide/unhide controls
   renderCategoriesSection(sheet, cfg);
 
-  // Weather location detect button
+  // ── Weather detect ────────────────────────────────────────────────────────
   const detectBtn = sheet.querySelector('#s-weather-detect');
   if (detectBtn) {
     detectBtn.addEventListener('click', () => {
@@ -359,12 +372,8 @@ function renderForm() {
     try {
       const res = await fetch('/sync/clear', { method: 'POST' });
       const data = await res.json();
-      if (data.ok) {
-        closeSettings();
-        onChangeCb();
-      } else {
-        alert('Clear failed: ' + data.error);
-      }
+      if (data.ok) { closeSettings(); onChangeCb(); }
+      else { alert('Clear failed: ' + data.error); }
     } catch (err) {
       alert('Clear failed: ' + err.message);
     } finally {
@@ -374,195 +383,6 @@ function renderForm() {
   });
   if (cfg.authEnabled) {
     sheet.querySelector('#s-logout').addEventListener('click', handleLogout);
-  }
-}
-
-function renderTaskSourcesSection(sheet, cfg) {
-  const section = sheet.querySelector('#s-task-sources-section');
-  const sources = [...(state.taskSources || [])];
-  const defUrl  = cfg.defaultTaskSource || sources[0]?.url || '';
-
-  section.innerHTML = '';
-
-  const headerLabel = document.createElement('div');
-  headerLabel.className = 'modal-field';
-  headerLabel.innerHTML = '<label>Task sources <span style="font-weight:normal;font-size:11px;color:var(--color-text-muted)">(select which calendar collection stores tasks)</span></label>';
-  section.appendChild(headerLabel);
-
-  // Build calendar options list — available CalDAV calendars + custom URL option
-  const calOptions = state.calendars.map(c => ({ value: c.id, label: c.name }));
-  const CUSTOM = '__custom__';
-
-  const addRow = (src, idx) => {
-    const isCustom = !calOptions.find(o => o.value === src.url);
-    const row = document.createElement('div');
-    row.style.cssText = 'display:flex;gap:6px;align-items:flex-start;margin-bottom:8px';
-
-    // Default radio
-    const radio = document.createElement('input');
-    radio.type = 'radio';
-    radio.name = 'task-src-default';
-    radio.value = src.url || `__new__${idx}`;
-    radio.checked = !!src.url && (src.url === defUrl || (!defUrl && idx === 0));
-    radio.title = 'Default source for new tasks';
-    radio.style.marginTop = '10px';
-    radio.addEventListener('change', () => { state.config.defaultTaskSource = src.url; });
-
-    // Calendar dropdown
-    const sel = document.createElement('select');
-    sel.style.flex = '1';
-    sel.innerHTML = calOptions.map(o =>
-      `<option value="${esc(o.value)}" ${src.url === o.value ? 'selected' : ''}>${esc(o.label)}</option>`
-    ).join('') + `<option value="${CUSTOM}" ${isCustom ? 'selected' : ''}>Custom URL…</option>`;
-
-    // Custom URL input (shown only when "Custom URL" selected)
-    const customInput = document.createElement('input');
-    customInput.type = 'url';
-    customInput.placeholder = 'https://…/user/tasks/';
-    customInput.style.cssText = 'flex:1;display:' + (isCustom ? 'block' : 'none');
-    customInput.value = isCustom ? src.url : '';
-
-    const colWrap = document.createElement('div');
-    colWrap.style.cssText = 'flex:1;display:flex;flex-direction:column;gap:4px';
-    colWrap.appendChild(sel);
-    colWrap.appendChild(customInput);
-
-    sel.addEventListener('change', () => {
-      const val = sel.value;
-      if (val === CUSTOM) {
-        customInput.style.display = 'block';
-        sources[idx].url = customInput.value.trim();
-        sources[idx].name = 'Custom';
-      } else {
-        customInput.style.display = 'none';
-        sources[idx].url = val;
-        sources[idx].name = calOptions.find(o => o.value === val)?.label || '';
-        radio.value = val;
-        if (radio.checked) state.config.defaultTaskSource = val;
-      }
-    });
-    customInput.addEventListener('input', () => {
-      sources[idx].url = customInput.value.trim();
-      radio.value = sources[idx].url;
-      if (radio.checked) state.config.defaultTaskSource = sources[idx].url;
-    });
-
-    // Pre-fill name from calendar list if not custom
-    if (!isCustom && !src.name) {
-      sources[idx].name = calOptions.find(o => o.value === src.url)?.label || src.url;
-    }
-
-    const removeBtn = document.createElement('button');
-    removeBtn.type = 'button';
-    removeBtn.className = 'btn btn-ghost';
-    removeBtn.style.cssText = 'padding:4px 8px;font-size:var(--font-size-sm);color:var(--color-danger);flex-shrink:0;margin-top:2px';
-    removeBtn.textContent = '×';
-    removeBtn.addEventListener('click', () => {
-      sources.splice(idx, 1);
-      state.taskSources = [...sources];
-      renderTaskSourcesSection(sheet, { ...cfg, defaultTaskSource: state.config.defaultTaskSource });
-    });
-
-    row.appendChild(radio);
-    row.appendChild(colWrap);
-    row.appendChild(removeBtn);
-    section.appendChild(row);
-  };
-
-  sources.forEach((src, i) => addRow(src, i));
-
-  // If no sources configured, auto-show one row with the first calendar pre-selected
-  if (!sources.length && calOptions.length) {
-    const firstCal = calOptions[0];
-    sources.push({ url: firstCal.value, name: firstCal.label });
-    state.taskSources = [...sources];
-    addRow(sources[0], 0);
-  }
-
-  const addBtn = document.createElement('button');
-  addBtn.type = 'button';
-  addBtn.className = 'btn btn-ghost';
-  addBtn.style.cssText = 'font-size:var(--font-size-sm);padding:4px 12px;margin-bottom:var(--space-md)';
-  addBtn.textContent = '+ Add task source';
-  addBtn.addEventListener('click', () => {
-    const firstCal = calOptions[0];
-    sources.push({ url: firstCal?.value || '', name: firstCal?.label || '' });
-    state.taskSources = [...sources];
-    renderTaskSourcesSection(sheet, cfg);
-  });
-  section.appendChild(addBtn);
-
-  state.taskSources = [...sources];
-}
-
-function renderCategoriesSection(sheet, cfg) {
-  const allCats = getAllCategories(state.tasks);
-  const section = sheet.querySelector('#s-categories-section');
-  if (!allCats.length) { section.innerHTML = ''; return; }
-
-  const hidden = cfg.hiddenCategories || [];
-  section.innerHTML = '';
-
-  const header = document.createElement('div');
-  header.className = 'modal-section-label settings-collapse-header';
-
-  const arrow = document.createElement('span');
-  arrow.className = 'settings-collapse-arrow';
-  arrow.textContent = '▶';
-  header.appendChild(arrow);
-  header.appendChild(document.createTextNode(' Categories'));
-
-  const listWrap = document.createElement('div');
-  listWrap.className = 'modal-field settings-collapse-body';
-  listWrap.style.gap = '6px';
-  listWrap.hidden = true;
-
-  header.addEventListener('click', () => {
-    listWrap.hidden = !listWrap.hidden;
-    arrow.textContent = listWrap.hidden ? '▶' : '▼';
-  });
-
-  section.appendChild(header);
-  section.appendChild(listWrap);
-
-  for (const cat of allCats) {
-    const row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:4px 0';
-
-    const name = document.createElement('span');
-    name.className = 'task-cat-chip';
-    name.textContent = cat;
-
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'btn btn-ghost';
-    btn.style.cssText = 'padding:2px 10px;font-size:var(--font-size-sm)';
-    const isHidden = hidden.includes(cat);
-    btn.textContent = isHidden ? 'Unhide' : 'Hide';
-    btn.style.color = isHidden ? 'var(--color-accent)' : 'var(--color-text-muted)';
-
-    btn.addEventListener('click', async () => {
-      const current = state.config.hiddenCategories || [];
-      const next = isHidden
-        ? current.filter(c => c !== cat)
-        : [...current, cat];
-      try {
-        const res = await fetch('/settings', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ hiddenCategories: next }),
-        });
-        if (!res.ok) throw new Error((await res.json()).error);
-        setConfig({ hiddenCategories: next });
-        renderCategoriesSection(sheet, { ...cfg, hiddenCategories: next });
-      } catch (err) {
-        alert('Could not update: ' + err.message);
-      }
-    });
-
-    row.appendChild(name);
-    row.appendChild(btn);
-    listWrap.appendChild(row);
   }
 }
 
@@ -619,7 +439,8 @@ async function handleSave() {
     enabledViews, defaultView, timeFormat, weekStart,
     enableTasksView, showTasksOnCalendar, taskSortOrder,
     showTasksOnDay, showTasksOnWeek, showTasksOnMonth, showTasksOnAgenda,
-    hiddenCategories: state.config.hiddenCategories || [],
+    hiddenCategories:      state.config.hiddenCategories || [],
+    hiddenEventCategories: state.config.hiddenEventCategories || [],
     taskSources: state.taskSources || [],
     defaultTaskSource: state.config.defaultTaskSource || '',
     enableNotifications, alarmDefaultMinutes, taskReminderDefault, taskReminderMorningTime, taskReminderEveningTime,
