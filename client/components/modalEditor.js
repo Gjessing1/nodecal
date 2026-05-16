@@ -364,13 +364,12 @@ function renderForm(event, defaultDate, explicitTime = false) {
             });
             const data = await r.json();
             if (!data.ok) throw new Error(data.error);
-            const n = data.shifted + data.exdated;
             if (data.total === 0) {
               status.textContent = '✗ No events found with this category';
-            } else if (n === 0 && data.errors?.length) {
+            } else if (!data.shifted && data.errors?.length) {
               status.textContent = `✗ ${data.errors[0].error}`;
             } else {
-              status.textContent = `✓ ${n}/${data.total} updated${data.skipped ? ` (${data.skipped} skipped)` : ''}`;
+              status.textContent = `✓ ${data.shifted}/${data.total} shifted${data.skipped ? ` (${data.skipped} skipped)` : ''}`;
             }
           } catch (err) {
             status.textContent = '✗ ' + err.message;

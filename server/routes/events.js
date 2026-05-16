@@ -1,5 +1,5 @@
 const { Router } = require('express');
-const { RRule, rrulestr } = require('rrule');
+const { RRule } = require('rrule');
 const { putEvent, putEventAtHref, deleteEvent } = require('../caldav/client');
 const { serializeEvent, formatIcsDate } = require('../caldav/parser');
 const { expandRecurring, setRruleUntil, parseExdate } = require('../caldav/recurrence');
@@ -209,59 +209,36 @@ router.post('/events/batch-shift', async (req, res) => {
     if (!category || !shiftDays) return res.status(400).json({ error: 'category and shiftDays required' });
 
     const shiftMs = Math.round(shiftDays) * 86400000;
-    const now = new Date();
-    const windowEnd = new Date(now.getTime() + shiftMs);
 
     const catLower = category.toLowerCase();
     const matching = store.getAllEvents().filter(ev =>
       (ev.categories || []).some(c => c.toLowerCase() === catLower)
     );
 
-    let shifted = 0, exdated = 0, skipped = 0;
+    let shifted = 0, skipped = 0;
     const errors = [];
 
     for (const ev of matching) {
       try {
-        if (!ev.rrule) {
-          // Non-recurring: shift start and end
-          const newStart = new Date(new Date(ev.start).getTime() + shiftMs);
-          const newEnd   = new Date(new Date(ev.end).getTime() + shiftMs);
-          const updated = { ...ev, start: newStart.toISOString(), end: newEnd.toISOString() };
-          const ics = serializeEvent(updated);
-          const { href, etag } = await putEventAtHref(ev.href, ics, ev.etag);
-          store.setEvent({ ...updated, href, etag });
-          shifted++;
-        } else if (/COUNT=|UNTIL=/i.test(ev.rrule)) {
-          // Finite recurring: shift DTSTART (all occurrences move with it)
-          const newStart = new Date(new Date(ev.start).getTime() + shiftMs);
-          const newEnd   = new Date(new Date(ev.end).getTime() + shiftMs);
-          const updated  = { ...ev, start: newStart.toISOString(), end: newEnd.toISOString() };
-          const ics = serializeEvent(updated);
-          const { href, etag } = await putEventAtHref(ev.href, ics, ev.etag);
-          store.setEvent({ ...updated, href, etag });
-          shifted++;
-        } else {
-          // Infinite recurring: add EXDATEs for occurrences within the shift window
-          const dtstart = formatIcsDate(new Date(ev.start), ev.allDay);
-          const rule = rrulestr(`DTSTART:${dtstart}\nRRULE:${ev.rrule}`);
-          const occurrences = rule.between(now, windowEnd, true);
-          if (occurrences.length === 0) { skipped++; continue; }
-          const newExdates = occurrences.map(d => formatIcsDate(d, ev.allDay));
-          const updated = { ...ev, exdates: [...(ev.exdates || []), ...newExdates] };
-          const ics = serializeEvent(updated);
-          const { href, etag } = await putEventAtHref(ev.href, ics, ev.etag);
-          store.setEvent({ ...updated, href, etag });
-          exdated++;
-        }
+        // Shift DTSTART for all events — moves the entire series for recurring events,
+        // and the date for non-recurring. Clears any stale EXDATEs on recurring events
+        // so the shifted series starts clean.
+        const newStart = new Date(new Date(ev.start).getTime() + shiftMs);
+        const newEnd   = new Date(new Date(ev.end).getTime() + shiftMs);
+        const updated  = { ...ev, start: newStart.toISOString(), end: newEnd.toISOString(),
+          ...(ev.rrule ? { exdates: null } : {}) };
+        const ics = serializeEvent(updated);
+        const { href, etag } = await putEventAtHref(ev.href, ics, ev.etag);
+        store.setEvent({ ...updated, href, etag });
+        shifted++;
       } catch (err) {
-        console.error(`[batch-shift] skipped "${ev.title}" (${ev.uid}) href=${ev.href}: ${err.message}`);
+        console.error(`[batch-shift] skipped "${ev.title}" (${ev.uid}): ${err.message}`);
         errors.push({ uid: ev.uid, title: ev.title, error: err.message });
         skipped++;
       }
     }
 
-    if (errors.length) console.error('[batch-shift] first error:', errors[0].error);
-    res.json({ ok: true, shifted, exdated, skipped, total: matching.length, errors });
+    res.json({ ok: true, shifted, skipped, total: matching.length, errors });
   } catch (err) {
     console.error('POST /events/batch-shift:', err.message);
     res.status(502).json({ error: err.message });
