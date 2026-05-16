@@ -522,7 +522,7 @@ No automated tests currently. RRULE edge cases and NLP parsing are the highest-r
 #### 9.3 Event modal — Location/URL and Reminder/Repeat on same row when collapsed
 - [x] Both `#f-rr-toggle` and `#f-location-url-wrap` are currently stacked vertically even when both are collapsed (showing only `+ Reminder / Repeat` and `+ Location / URL`). Wrap them in a shared `display:flex; flex-wrap:wrap; gap` container so the two collapsed buttons appear side by side. The `#f-rr-body` (expanded reminder/repeat content) sits below that row as a separate sibling element, unchanged.
 
-### Phase 10 — Batch shift: split at anchor (history-preserving, after Phase 9)
+### Phase 10 — Batch shift: split at anchor (history-preserving) ✓ COMPLETE
 
 **Problem with current approach:** Shifting DTSTART rewrites the whole series including past occurrences. A user who completed Jan 1, Jan 29, Feb 26 and shifts in March doesn't want their history rewritten — they want future occurrences to adapt while completed sessions stay fixed.
 

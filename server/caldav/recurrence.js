@@ -46,13 +46,15 @@ function expandRecurring(event, from, to) {
 
 /**
  * Return a new RRULE string with UNTIL set to the given date (and COUNT removed).
- * @param {string} rruleStr - e.g. "FREQ=WEEKLY;BYDAY=MO"
+ * All-day events require a DATE-only UNTIL value; timed events use DATETIME.
+ * @param {string} rruleStr
  * @param {Date} untilDate
+ * @param {boolean} [allDay]
  * @returns {string}
  */
-function setRruleUntil(rruleStr, untilDate) {
+function setRruleUntil(rruleStr, untilDate, allDay = false) {
   let result = rruleStr.replace(/;?(UNTIL|COUNT)=[^;]*/gi, '').replace(/;$/, '');
-  return result + ';UNTIL=' + formatIcsDate(untilDate, false);
+  return result + ';UNTIL=' + formatIcsDate(untilDate, allDay);
 }
 
 /**
@@ -113,4 +115,4 @@ function computeNextDue(task, completionDate) {
   return null;
 }
 
-module.exports = { expandRecurring, setRruleUntil, parseExdate, computeNextDue, parseXInterval };
+module.exports = { expandRecurring, setRruleUntil, parseExdate, computeNextDue, parseXInterval, rrulestr };

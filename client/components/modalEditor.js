@@ -348,26 +348,34 @@ function renderForm(event, defaultDate, explicitTime = false) {
         for (const [v, l] of [['1','day(s)'],['7','week(s)']]) {
           const o = document.createElement('option'); o.value = v; o.textContent = l; unitSel.appendChild(o);
         }
-        const applyBtn = document.createElement('button');
-        applyBtn.type = 'button'; applyBtn.className = 'btn btn-ghost batch-shift-apply';
-        applyBtn.textContent = 'Shift all';
+        const futureBtn = document.createElement('button');
+        futureBtn.type = 'button'; futureBtn.className = 'btn btn-primary batch-shift-apply';
+        futureBtn.textContent = 'Shift future';
+        const allBtn = document.createElement('button');
+        allBtn.type = 'button'; allBtn.className = 'btn btn-ghost batch-shift-apply';
+        allBtn.textContent = 'Shift all';
         const status = document.createElement('span');
         status.className = 'batch-shift-status';
 
-        applyBtn.addEventListener('click', async () => {
+        async function doShift(withAnchor) {
           const n = parseInt(nInput.value) || 7;
           const multiplier = parseInt(unitSel.value) || 1;
           const shiftDays = n * multiplier;
-          applyBtn.disabled = true; status.textContent = '…';
+          futureBtn.disabled = true; allBtn.disabled = true; status.textContent = '…';
           try {
+            const body = { category: cat, shiftDays };
+            if (withAnchor) {
+              const anchorDate = event?.occurrenceDate || event?.start || null;
+              if (anchorDate) body.anchorDate = anchorDate;
+            }
             const r = await fetch('/events/batch-shift', {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ category: cat, shiftDays }),
+              body: JSON.stringify(body),
             });
             const data = await r.json();
             if (!data.ok) throw new Error(data.error);
             if (data.total === 0) {
-              status.textContent = '✗ No events found with this category';
+              status.textContent = '✗ No events found';
             } else if (!data.shifted && data.errors?.length) {
               status.textContent = `✗ ${data.errors[0].error}`;
             } else {
@@ -376,12 +384,15 @@ function renderForm(event, defaultDate, explicitTime = false) {
           } catch (err) {
             status.textContent = '✗ ' + err.message;
           } finally {
-            applyBtn.disabled = false;
+            futureBtn.disabled = false; allBtn.disabled = false;
           }
-        });
+        }
+        futureBtn.addEventListener('click', () => doShift(true));
+        allBtn.addEventListener('click', () => doShift(false));
+
         const controls = document.createElement('div');
         controls.className = 'batch-shift-controls';
-        controls.append(nInput, unitSel, applyBtn, status);
+        controls.append(nInput, unitSel, futureBtn, allBtn, status);
         row.append(catLabel, controls);
         batchBody.appendChild(row);
       }

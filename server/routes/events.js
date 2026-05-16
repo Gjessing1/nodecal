@@ -2,7 +2,7 @@ const { Router } = require('express');
 const { RRule } = require('rrule');
 const { putEvent, putEventAtHref, deleteEvent } = require('../caldav/client');
 const { serializeEvent, formatIcsDate } = require('../caldav/parser');
-const { expandRecurring, setRruleUntil, parseExdate } = require('../caldav/recurrence');
+const { expandRecurring, setRruleUntil, parseExdate, rrulestr } = require('../caldav/recurrence');
 const store = require('../cache/store');
 
 const router = Router();
@@ -205,13 +205,13 @@ function toApiShape(ev) {
 
 router.post('/events/batch-shift', async (req, res) => {
   try {
-    const { category, shiftDays } = req.body;
+    const { category, shiftDays, anchorDate } = req.body;
     if (!category || !shiftDays) return res.status(400).json({ error: 'category and shiftDays required' });
 
-    const shiftMs = Math.round(shiftDays) * 86400000;
-
-    const catLower = category.toLowerCase();
-    const matching = store.getAllEvents().filter(ev =>
+    const shiftMs   = Math.round(shiftDays) * 86400000;
+    const anchor    = anchorDate ? new Date(anchorDate) : null;
+    const catLower  = category.toLowerCase();
+    const matching  = store.getAllEvents().filter(ev =>
       (ev.categories || []).some(c => c.toLowerCase() === catLower)
     );
 
@@ -220,17 +220,70 @@ router.post('/events/batch-shift', async (req, res) => {
 
     for (const ev of matching) {
       try {
-        // Shift DTSTART for all events — moves the entire series for recurring events,
-        // and the date for non-recurring. Clears any stale EXDATEs on recurring events
-        // so the shifted series starts clean.
-        const newStart = new Date(new Date(ev.start).getTime() + shiftMs);
-        const newEnd   = new Date(new Date(ev.end).getTime() + shiftMs);
-        const updated  = { ...ev, start: newStart.toISOString(), end: newEnd.toISOString(),
-          ...(ev.rrule ? { exdates: null } : {}) };
-        const ics = serializeEvent(updated);
-        const { href, etag } = await putEventAtHref(ev.href, ics, ev.etag);
-        store.setEvent({ ...updated, href, etag });
+        const evStart = new Date(ev.start);
+        const durMs   = new Date(ev.end) - evStart;
+
+        // ── "Shift all" mode (no anchor) ────────────────────
+        if (!anchor) {
+          const updated = {
+            ...ev,
+            start: new Date(evStart.getTime() + shiftMs).toISOString(),
+            end:   new Date(evStart.getTime() + durMs + shiftMs).toISOString(),
+            ...(ev.rrule ? { exdates: null } : {}),
+          };
+          const { href, etag } = await putEventAtHref(ev.href, serializeEvent(updated), ev.etag);
+          store.setEvent({ ...updated, href, etag });
+          shifted++;
+          continue;
+        }
+
+        // ── "Shift future" mode (anchor present) ────────────
+        if (!ev.rrule) {
+          // Non-recurring: skip events that ended before anchor
+          if (evStart < anchor) { skipped++; continue; }
+          const updated = {
+            ...ev,
+            start: new Date(evStart.getTime() + shiftMs).toISOString(),
+            end:   new Date(evStart.getTime() + durMs + shiftMs).toISOString(),
+          };
+          const { href, etag } = await putEventAtHref(ev.href, serializeEvent(updated), ev.etag);
+          store.setEvent({ ...updated, href, etag });
+          shifted++;
+          continue;
+        }
+
+        // Recurring: find split point using rrule library
+        const dtstart = formatIcsDate(evStart, false);
+        const rule    = rrulestr(`DTSTART:${dtstart}\nRRULE:${ev.rrule}`);
+        const lastBefore    = rule.before(anchor, false); // last occurrence strictly before anchor
+        const firstAtOrAfter = rule.after(anchor, true);  // first occurrence at or after anchor
+
+        if (!firstAtOrAfter) { skipped++; continue; } // series already ended before anchor
+
+        if (!lastBefore || evStart >= anchor) {
+          // Entire series is at or after anchor — just shift DTSTART
+          const newStart = new Date(firstAtOrAfter.getTime() + shiftMs);
+          const updated  = { ...ev, start: newStart.toISOString(), end: new Date(newStart.getTime() + durMs).toISOString(), exdates: null };
+          const { href, etag } = await putEventAtHref(ev.href, serializeEvent(updated), ev.etag);
+          store.setEvent({ ...updated, href, etag });
+          shifted++;
+          continue;
+        }
+
+        // Split: cap history series, create new shifted series
+        const cappedRrule  = setRruleUntil(ev.rrule, lastBefore, ev.allDay);
+        const cappedBase   = { ...ev, rrule: cappedRrule };
+        const { href: bHref, etag: bEtag } = await putEventAtHref(ev.href, serializeEvent(cappedBase), ev.etag);
+        store.setEvent({ ...cappedBase, href: bHref, etag: bEtag });
+
+        const newUid   = crypto.randomUUID();
+        const newStart = new Date(firstAtOrAfter.getTime() + shiftMs);
+        const openRrule = ev.rrule.replace(/;?(UNTIL|COUNT)=[^;]*/gi, '').replace(/^;|;$/g, '');
+        const newSeries = { ...ev, uid: newUid, start: newStart.toISOString(), end: new Date(newStart.getTime() + durMs).toISOString(), rrule: openRrule, exdates: null };
+        const { href: nHref, etag: nEtag } = await putEvent(ev.calendarId, newUid, serializeEvent(newSeries));
+        store.setEvent({ ...newSeries, href: nHref, etag: nEtag });
         shifted++;
+
       } catch (err) {
         console.error(`[batch-shift] skipped "${ev.title}" (${ev.uid}): ${err.message}`);
         errors.push({ uid: ev.uid, title: ev.title, error: err.message });
