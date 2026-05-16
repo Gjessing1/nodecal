@@ -39,7 +39,7 @@ Nodecal is a self-hosted, mobile-first CalDAV calendar client. Single-user focus
         settings.js         GET/PUT /settings
         auth.js             POST /login, POST /logout, GET /auth/status
       middleware/
-        auth.js             Session-cookie auth gate
+        auth.js             Session-cookie auth gate; multiple concurrent sessions supported (one token per device, stored as array in /config/session.json)
       cache/
         store.js            In-memory Map, flushed to /cache/events.json on write
 
@@ -68,7 +68,9 @@ Nodecal is a self-hosted, mobile-first CalDAV calendar client. Single-user focus
         recurrenceUI.js     Structured recurrence editor (presets, chips, preview)
         rruleParser.js      parseRrule / serializeConfig / humanReadable (pure)
         recurrencePreview.js getOccurrences + buildMiniCal (async, uses rrule ESM)
+        modalHelpers.js     Shared modal helpers (mountLocationUrlSection, wireCategoryUI, buildDatePickerButton, mountCollapsibleToggle)
         settingsPanel.js    Settings modal
+        settingsHelpers.js  Settings panel helpers (renderTaskSourcesSection, renderCategoriesSection)
         calendarDrawer.js   Calendar sidebar/drawer
         timeGrid.js         Shared time-column and hour-line builders
         taskItem.js         Individual task row renderer
@@ -141,7 +143,7 @@ docker-compose.yml:
 
 **Event Management:** Create / edit / delete, drag-and-drop (desktop), long-press drag (mobile), timezone-aware, duplicate with all fields copied. Events open in the edit modal directly (no separate read-only mode).
 
-**Event Categories:** Free-text tags stored as `CATEGORIES` in VEVENT, separate from task categories. Multi-value chip UI in the event modal with autocomplete from existing events. Category filter in Agenda view. **Batch shift**: shift all events in a category forward/back by N days — non-recurring events get new dates; finite recurring series have DTSTART moved; infinite recurring events get EXDATE entries for the vacation window so the program skips the gap and resumes normally.
+**Event Categories:** Free-text tags stored as `CATEGORIES` in VEVENT, separate from task categories. Multi-value chip UI in the event modal with autocomplete from existing events. Category filter in Agenda view. **Batch shift**: shift events in a category forward/back by N days. Two modes — **Shift this and future events** (default): splits a recurring series at the anchor date; past occurrences stay intact as a capped series (`UNTIL=lastBefore`), future occurrences become a new series with shifted DTSTART; non-recurring events only shift if their date is at or after the anchor. **Shift all**: moves DTSTART of the entire series regardless of history. Anchor date = the occurrence that opened the modal (`occurrenceDate || start`).
 
 **Natural Language Input:**
 - English and Norwegian fully supported, order-independent (time/date/month can appear anywhere in the sentence)
@@ -379,7 +381,7 @@ Events open directly in the edit modal (no separate read-only step). Modal field
 ## Calendar UX
 
 **Long-press to create:**
-- Long-press on blank space in Day or Week view → creates a new event at that time/date
+- Long-press on blank space in Day or Week view → creates a new event at that time/date; time snaps to the nearest half hour (:00 or :30)
 - Long-press on a date cell in Month view → creates a new event on that date
 - Default duration for new events created this way is configurable in Settings (default: 60 minutes)
 
@@ -457,7 +459,7 @@ If CalDAV is unreachable: show last cached state, surface a non-blocking sync er
     POST   /events
     PUT    /events/:id
     DELETE /events/:id
-    POST   /events/batch-shift            { category, shiftDays }
+    POST   /events/batch-shift            { category, shiftDays, anchorDate? }
 
     GET    /calendars
     POST   /sync
@@ -486,7 +488,7 @@ If CalDAV is unreachable: show last cached state, surface a non-blocking sync er
 ## Testing
 
 No automated tests currently. RRULE edge cases and NLP parsing are the highest-risk areas. The `test/` directory has historical recurrence + NLP test files but they are not wired to a test runner.
-- [ ] create said test runner
+
 ## Instructions for Claude
 
 - Complete one phase at a time. Do not start the next phase until confirmed.
@@ -504,100 +506,15 @@ No automated tests currently. RRULE edge cases and NLP parsing are the highest-r
 
 ## Roadmap
 
-### Open items — Settings improvements
+### Phase 1 — Testing infrastructure
 
-- [x] **Event categories in Settings** — added collapsible "Event categories" section in `settingsHelpers.js`; hides event categories from agenda filter bar and event modal autocomplete via `hiddenEventCategories` config field.
-- [x] **Move sync range fields to Sync section** — `s-sync-history` and `s-sync-future` moved from Events to Sync section in `settingsPanel.js`.
-- [x] **Replace native time inputs with custom picker** — `s-task-reminder-morning`, `s-task-reminder-evening`, and `s-default-event-time` now use `buildTimePicker` via UTC anchor dates; hidden input ids unchanged so `handleSave` reads them identically.
-- [x] **Split `settingsPanel.js`** — extracted `renderTaskSourcesSection` and `renderCategoriesSection` into `client/components/settingsHelpers.js` (202 lines); `settingsPanel.js` reduced from 648 → 468 lines.
-
-### Phase 9 — Three bugs + UX fixes (implement before batch shift)
-
-#### 9.1 Month view drag-and-drop returns 401
-- [x] `handleEventMove(eventId, ...)` in `main.js` calls `saveEvent(eventId, { start, end })` which sends `PUT /events/{eventId}`. For recurring event occurrences, `eventId = uid_occDateIso` (e.g. `abc123_20260516T100000Z`). The server's PUT handler does `store.getEvent(baseUid || req.params.id)` — `baseUid` is not in the drag body, so it tries to look up by the occurrence id, finds nothing, and returns an error. The 401 response suggests the auth middleware is intercepting (session may expire during drag, or the occurrence id gets mangled in the URL). Fix: `handleEventMove` must extract the base UID from the occurrence id and include `uid: baseUid`, `recurringScope: 'single'`, and `occurrenceDate` in the PUT body — same pattern as editing a single occurrence in the event modal.
-
-#### 9.2 Agenda category filter — filter by visible calendars only
-- [x] `allCats` in `agenda.js` is computed once at render time from ALL events including those in hidden calendars. It should mirror the tasks view pattern: recompute inside `buildCatFilter()` on every call, and filter out categories from hidden calendars (`state.hiddenCalendars`). Also `dayEvents` in `renderDays()` does not filter by `state.hiddenCalendars` — hidden calendar events still appear in the agenda.
-
-#### 9.3 Event modal — Location/URL and Reminder/Repeat on same row when collapsed
-- [x] Both `#f-rr-toggle` and `#f-location-url-wrap` are currently stacked vertically even when both are collapsed (showing only `+ Reminder / Repeat` and `+ Location / URL`). Wrap them in a shared `display:flex; flex-wrap:wrap; gap` container so the two collapsed buttons appear side by side. The `#f-rr-body` (expanded reminder/repeat content) sits below that row as a separate sibling element, unchanged.
-
-### Phase 10 — Batch shift: split at anchor (history-preserving) ✓ COMPLETE
-
-**Problem with current approach:** Shifting DTSTART rewrites the whole series including past occurrences. A user who completed Jan 1, Jan 29, Feb 26 and shifts in March doesn't want their history rewritten — they want future occurrences to adapt while completed sessions stay fixed.
-
-**Model:** past occurrences = immutable history; future occurrences = flexible plan.
-
-#### UX change (client-side)
-
-The batch shift row gets two buttons instead of one:
-- **Shift future** (default, highlighted) — splits the series at the anchor, leaves history untouched
-- **Shift all** — current behavior, shifts DTSTART of the entire series (kept for edge cases)
-
-The **anchor date** = the `occurrenceDate` (or `start`) of the event that opened the modal. The user opens "Apr 23" → anchor is Apr 23 → everything before Apr 23 is untouched, Apr 23 and later shifts.
-
-API call gains a new optional field: `{ category, shiftDays, anchorDate? }`. When `anchorDate` is absent, behavior is "shift all" (current default).
-
-#### Server algorithm for "shift future" mode
-
-For each matching event:
-
-**Non-recurring:** only shift if `ev.start >= anchorDate`. Events that already happened stay put.
-
-**Recurring, DTSTART >= anchorDate:** entire series is already in the future — shift DTSTART normally, same as "shift all".
-
-**Recurring, DTSTART < anchorDate (needs split):**
-1. Find `lastBefore` = last occurrence strictly before `anchorDate` using `rrule.before(anchorDate, false)`.
-2. Find `firstAtOrAfter` = first occurrence at or after `anchorDate` using `rrule.after(anchorDate, true)`. If none exists (series already ended), skip.
-3. **Update existing series**: add `UNTIL=lastBefore` to the RRULE (using `setRruleUntil`). PUT back to Radicale.
-4. **Create new series**: new UID, same title/categories/all other fields, `DTSTART = firstAtOrAfter + shiftMs`, same RRULE without UNTIL, `exdates: null`. POST to Radicale.
-
-Result:
-```
-Series A (history):  DTSTART=Jan 1,  RRULE=FREQ=WEEKLY;INTERVAL=4;UNTIL=20260226
-Series B (shifted):  DTSTART=Apr 2,  RRULE=FREQ=WEEKLY;INTERVAL=4
-```
-Cadence preserved, history immutable, future shifted.
-
-#### Known pre-existing issue to fix alongside
-
-`setRruleUntil(rruleStr, untilDate)` in `server/caldav/recurrence.js` always writes `UNTIL=` in DATETIME format (`formatIcsDate(date, false)`). For all-day recurring events the RRULE must have `UNTIL` as a DATE value (no time component). Fix: pass `ev.allDay` through to `setRruleUntil` and use `formatIcsDate(date, allDay)`.
-
-#### Files to touch
-
-- `server/routes/events.js` — `POST /events/batch-shift`: accept `anchorDate`, implement split logic
-- `server/caldav/recurrence.js` — fix `setRruleUntil` to handle all-day
-- `server/caldav/client.js` — already has `putEventAtHref`; need `putEvent(calendarId, uid, ics)` for the new series (no etag, create)
-- `client/components/modalEditor.js` — two-button UI, pass `anchorDate = event.occurrenceDate || event.start` with "Shift future", omit for "Shift all"
+- [ ] Wire existing `test/` files (recurrence + NLP) to a test runner. RRULE edge cases and NLP parsing are the highest-risk areas.
 
 ### Future — not scheduled
 
 - [ ] **Timezone selector** — Right now the timezone can only be changed by editing `.env` or `settings.json` on the server. Adding it to the Settings UI would mean: shipping a static list of IANA timezone names (e.g. `Europe/Oslo`, `America/New_York`) to the client as a JSON file; rendering a searchable `<select>` in Settings; saving the chosen value to `settings.json` via `PUT /settings`; then reloading the page so all views and time formatters re-initialize with the new zone. The reload is mandatory because the timezone flows through `state.config.timezone` which is read at boot and baked into dozens of `formatTime()` calls — there is no live re-render path today. This is a non-trivial amount of surface area to test and the audience (single-user, self-hosted) can reasonably edit a config file, so it is deferred until there is a clear demand.
 
 - [ ] **Clarify "Events future (days)" sync limit** — In the Settings panel there is a number input labelled `"Events future (days, 0=all)"`. The `, 0=all` part is tacked onto the label and easy to miss. What it means: when set to `0`, the server fetches all future events from CalDAV with no upper date bound; when set to e.g. `365`, it only syncs events within the next year (saving memory and sync time for very large calendars). The confusion is that `0` is both the default value and a magic sentinel meaning "unlimited" — a user who blanks the field or types `0` wanting "zero days ahead" would accidentally enable unlimited sync instead. The fix could be a dropdown with an explicit "No limit" option, or just changing the label to `"Events future (days, blank = no limit)"` and treating blank/0 the same way. Deferred because it requires a careful label + validation change in both the frontend (`settingsPanel.js`) and possibly the backend sync range logic in `server/caldav/sync.js`.
-
-### Phase 8 — Code health + modal duplication
-
-From the Phase 0 round-2 audit, these duplications and bugs remain:
-
-#### 8.1 Bug: 'important' category re-injected on task save
-- [x] `taskModal.js` save handler re-adds `'important'` to categories even if the user removed
-  the star during editing. `finalCats` should simply be `[...modalCats]` — 'important' is
-  already in the array if the user kept it.
-
-#### 8.2 Extract shared modal helpers (reduce duplication) ✓ COMPLETE
-- [x] **Location/URL collapse** — extracted to `mountLocationUrlSection` in `modalHelpers.js`
-- [x] **Category chips + autocomplete** — extracted to `wireCategoryUI` in `modalHelpers.js`
-- [x] **Date picker button** — extracted to `buildDatePickerButton` in `modalHelpers.js`
-- [x] **Reminder/Repeat collapse** — extracted to `mountCollapsibleToggle` in `modalHelpers.js`
-
-#### 8.3 `month.js` — `dayStr` defined after use in closure ✓ COMPLETE
-- [x] Moved `const dayStr = localDateStr(day)` above the `numWrap` click callback that uses it.
-
-### Bug fixes (post-Phase 8)
-
-- [x] **RRULE silently dropped on event edit** — `filterChanges()` in `server/routes/events.js` did not include `rrule` in its allowlist, so any change to a recurring rule (add, modify, remove) was stripped on PUT. Fixed by adding `'rrule'` to the allowed array. Also fixed `handleFutureEdit` where `rrule: base.rrule` was placed after `...filterChanges(changes)` in the object literal, always overriding the user's new rule — spread order swapped so user change wins.
-- [x] **Modal collapsibles UX** — Location/URL: removed the "Remove" button; the `▼ Location / URL` header is now the collapse trigger and persists current input values. Remind me / Repeat: `mountCollapsibleToggle` is now a proper two-way toggle (was expand-only). Categories in task and event modals: wrapped in `mountCollapsibleToggle` — collapsed by default when empty, expanded when there are categories.
 
 ## Remember
 Update CLAUDE.md roadmap each time you finish a phase to track current progress.

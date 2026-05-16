@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const config = require('../config');
-const { setActiveToken, generateToken, saveToken, setCookie, clearCookie } = require('../middleware/auth');
+const { addActiveToken, removeActiveToken, generateToken, saveTokens, setCookie, clearCookie, parseCookies } = require('../middleware/auth');
 
 const router = Router();
 
@@ -11,14 +11,17 @@ router.post('/login', (req, res) => {
     return res.status(401).json({ error: 'Wrong password' });
   }
   const token = generateToken();
-  setActiveToken(token);
-  saveToken(token);
+  addActiveToken(token);
+  saveTokens();
   setCookie(res, token);
   res.json({ ok: true });
 });
 
 router.post('/logout', (req, res) => {
-  setActiveToken(null);
+  const cookies = parseCookies(req.headers.cookie);
+  const COOKIE_NAME = 'nodecal_session';
+  removeActiveToken(cookies[COOKIE_NAME]);
+  saveTokens();
   clearCookie(res);
   res.json({ ok: true });
 });

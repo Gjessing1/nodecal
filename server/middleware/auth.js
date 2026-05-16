@@ -6,28 +6,33 @@ const COOKIE_NAME = 'nodecal_session';
 const SESSION_FILE = '/config/session.json';
 const MAX_AGE_SECS = 30 * 24 * 60 * 60; // 30 days
 
-let activeToken = null;
+let activeTokens = new Set();
 
 if (config.app.appPassword) {
   try {
     const data = JSON.parse(fs.readFileSync(SESSION_FILE, 'utf8'));
-    activeToken = data.token || null;
+    const tokens = Array.isArray(data.tokens) ? data.tokens : (data.token ? [data.token] : []);
+    activeTokens = new Set(tokens);
   } catch { /* no saved session */ }
 }
 
-function setActiveToken(token) {
-  activeToken = token;
+function addActiveToken(token) {
+  activeTokens.add(token);
+}
+
+function removeActiveToken(token) {
+  activeTokens.delete(token);
 }
 
 function generateToken() {
   return crypto.randomBytes(32).toString('hex');
 }
 
-function saveToken(token) {
+function saveTokens() {
   try {
     fs.mkdirSync('/config', { recursive: true });
-    fs.writeFileSync(SESSION_FILE, JSON.stringify({ token }), 'utf8');
-  } catch { /* ignore — session just won't survive restarts */ }
+    fs.writeFileSync(SESSION_FILE, JSON.stringify({ tokens: [...activeTokens] }), 'utf8');
+  } catch { /* ignore — sessions just won't survive restarts */ }
 }
 
 function parseCookies(cookieHeader) {
@@ -52,7 +57,7 @@ function clearCookie(res) {
 function isAuthenticated(req) {
   if (!config.app.appPassword) return true;
   const cookies = parseCookies(req.headers.cookie);
-  return !!activeToken && cookies[COOKIE_NAME] === activeToken;
+  return activeTokens.has(cookies[COOKIE_NAME]);
 }
 
 function authMiddleware(req, res, next) {
@@ -64,6 +69,6 @@ function authMiddleware(req, res, next) {
 
 module.exports = {
   authMiddleware, isAuthenticated,
-  setActiveToken, generateToken, saveToken,
-  setCookie, clearCookie,
+  addActiveToken, removeActiveToken, generateToken, saveTokens,
+  setCookie, clearCookie, parseCookies,
 };

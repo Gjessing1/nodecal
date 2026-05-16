@@ -353,7 +353,7 @@ function renderForm(event, defaultDate, explicitTime = false) {
         }
         const futureBtn = document.createElement('button');
         futureBtn.type = 'button'; futureBtn.className = 'btn btn-primary batch-shift-apply';
-        futureBtn.textContent = 'Shift future';
+        futureBtn.textContent = 'Shift this and future events';
         const allBtn = document.createElement('button');
         allBtn.type = 'button'; allBtn.className = 'btn btn-ghost batch-shift-apply';
         allBtn.textContent = 'Shift all';
