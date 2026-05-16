@@ -369,9 +369,13 @@ function renderForm(event, defaultDate, explicitTime = false) {
             const data = await r.json();
             if (!data.ok) throw new Error(data.error);
             const n = data.shifted + data.exdated;
-            status.textContent = data.total === 0
-              ? '✗ No events found with this category'
-              : `✓ ${n}/${data.total} updated${data.skipped ? ` (${data.skipped} skipped)` : ''}`;
+            if (data.total === 0) {
+              status.textContent = '✗ No events found with this category';
+            } else if (n === 0 && data.errors?.length) {
+              status.textContent = `✗ ${data.errors[0].error}`;
+            } else {
+              status.textContent = `✓ ${n}/${data.total} updated${data.skipped ? ` (${data.skipped} skipped)` : ''}`;
+            }
           } catch (err) {
             status.textContent = '✗ ' + err.message;
           } finally {

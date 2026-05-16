@@ -254,11 +254,13 @@ router.post('/events/batch-shift', async (req, res) => {
           exdated++;
         }
       } catch (err) {
+        console.error(`[batch-shift] skipped "${ev.title}" (${ev.uid}): ${err.message}`);
         errors.push({ uid: ev.uid, title: ev.title, error: err.message });
         skipped++;
       }
     }
 
+    if (errors.length) console.error('[batch-shift] first error:', errors[0].error);
     res.json({ ok: true, shifted, exdated, skipped, total: matching.length, errors });
   } catch (err) {
     console.error('POST /events/batch-shift:', err.message);
