@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const { RRule, rrulestr } = require('rrule');
-const { putEvent, deleteEvent } = require('../caldav/client');
+const { putEvent, putEventAtHref, deleteEvent } = require('../caldav/client');
 const { serializeEvent, formatIcsDate } = require('../caldav/parser');
 const { expandRecurring, setRruleUntil, parseExdate } = require('../caldav/recurrence');
 const store = require('../cache/store');
@@ -228,7 +228,7 @@ router.post('/events/batch-shift', async (req, res) => {
           const newEnd   = new Date(new Date(ev.end).getTime() + shiftMs);
           const updated = { ...ev, start: newStart.toISOString(), end: newEnd.toISOString() };
           const ics = serializeEvent(updated);
-          const { href, etag } = await putEvent(ev.calendarId, ev.uid, ics, ev.etag);
+          const { href, etag } = await putEventAtHref(ev.href, ics, ev.etag);
           store.setEvent({ ...updated, href, etag });
           shifted++;
         } else if (/COUNT=|UNTIL=/i.test(ev.rrule)) {
@@ -237,7 +237,7 @@ router.post('/events/batch-shift', async (req, res) => {
           const newEnd   = new Date(new Date(ev.end).getTime() + shiftMs);
           const updated  = { ...ev, start: newStart.toISOString(), end: newEnd.toISOString() };
           const ics = serializeEvent(updated);
-          const { href, etag } = await putEvent(ev.calendarId, ev.uid, ics, ev.etag);
+          const { href, etag } = await putEventAtHref(ev.href, ics, ev.etag);
           store.setEvent({ ...updated, href, etag });
           shifted++;
         } else {
@@ -249,7 +249,7 @@ router.post('/events/batch-shift', async (req, res) => {
           const newExdates = occurrences.map(d => formatIcsDate(d, ev.allDay));
           const updated = { ...ev, exdates: [...(ev.exdates || []), ...newExdates] };
           const ics = serializeEvent(updated);
-          const { href, etag } = await putEvent(ev.calendarId, ev.uid, ics, ev.etag);
+          const { href, etag } = await putEventAtHref(ev.href, ics, ev.etag);
           store.setEvent({ ...updated, href, etag });
           exdated++;
         }

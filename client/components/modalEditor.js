@@ -332,11 +332,6 @@ function renderForm(event, defaultDate, explicitTime = false) {
       });
       batchToggle.appendChild(toggleBtn);
 
-      const note = document.createElement('span');
-      note.className = 'batch-shift-note';
-      note.textContent = 'Shifts all events in this category — not just this one';
-      batchToggle.appendChild(note);
-
       for (const cat of modalCats) {
         const row = document.createElement('div');
         row.className = 'batch-shift-row';

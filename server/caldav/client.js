@@ -216,6 +216,23 @@ async function putEvent(calendarHref, uid, icsData, etag = null) {
 }
 
 /**
+ * Update an existing event at a known href — no URL construction, no If-None-Match.
+ * Use this when the event is confirmed to already exist on the server (has a stored href).
+ */
+async function putEventAtHref(href, icsData, etag = null) {
+  const url = fullUrl(href);
+  const headers = { 'Authorization': getAuth(), 'Content-Type': 'text/calendar; charset=utf-8' };
+  if (etag) headers['If-Match'] = `"${etag}"`;
+  let res = await fetch(url, { method: 'PUT', headers, body: icsData });
+  if (res.status === 412 && etag) {
+    delete headers['If-Match'];
+    res = await fetch(url, { method: 'PUT', headers, body: icsData });
+  }
+  if (!res.ok) throw new Error(`PUT event failed: ${res.status}`);
+  return { href: url, etag: (res.headers.get('etag') || etag || '').replace(/"/g, '') };
+}
+
+/**
  * Delete an event from the server.
  */
 async function deleteEvent(eventHref, etag = null) {
@@ -329,7 +346,7 @@ async function deleteTask(href, etag = null) {
 }
 
 module.exports = {
-  listCalendars, listEventEtags, fetchEventsByHref, putEvent, deleteEvent,
+  listCalendars, listEventEtags, fetchEventsByHref, putEvent, putEventAtHref, deleteEvent,
   getEffectiveTasksUrl, getEffectiveTasksSources, getDefaultTaskSourceUrl,
   listTaskEtags, fetchTasksByHref, putTask, deleteTask,
 };
