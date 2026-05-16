@@ -230,7 +230,7 @@ async function putEventAtHref(href, icsData, etag = null) {
   }
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    console.error(`[putEventAtHref] ${res.status} for ${url}:\n${body}`);
+    console.error(`[putEventAtHref] ${res.status} for ${url}:\n${body}\n--- ICS sent ---\n${icsData}\n---`);
     throw new Error(`PUT event failed: ${res.status} — ${body.slice(0, 200)}`);
   }
   return { href: url, etag: (res.headers.get('etag') || etag || '').replace(/"/g, '') };
