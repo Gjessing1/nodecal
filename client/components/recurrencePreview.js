@@ -1,12 +1,17 @@
 import { state } from '../app/state.js';
 
 async function loadRRule() {
-  if (window._rruleModule) return window._rruleModule;
-  try {
-    const m = await import('/rrule/index.js');
-    window._rruleModule = m;
-    return m;
-  } catch { return null; }
+  // rrule's ESM build uses bare specifiers that browsers can't resolve — load the UMD
+  // bundle as a script instead, which sets window.rrule
+  if (window.rrule) return window.rrule;
+  await new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = '/rrule/rrule.js';
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  return window.rrule || null;
 }
 
 /**

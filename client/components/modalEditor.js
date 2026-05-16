@@ -324,13 +324,18 @@ function renderForm(event, defaultDate, explicitTime = false) {
       if (!modalCats.length) return;
       const toggleBtn = document.createElement('button');
       toggleBtn.type = 'button'; toggleBtn.className = 'add-field-btn';
-      toggleBtn.textContent = 'Batch shift ›';
+      toggleBtn.textContent = '+ Batch shift';
       let open = false;
       toggleBtn.addEventListener('click', () => {
         open = !open; batchBody.classList.toggle('hidden', !open);
-        toggleBtn.textContent = open ? 'Batch shift ▾' : 'Batch shift ›';
+          toggleBtn.textContent = open ? '− Batch shift' : '+ Batch shift';
       });
       batchToggle.appendChild(toggleBtn);
+
+      const note = document.createElement('span');
+      note.className = 'batch-shift-note';
+      note.textContent = 'Shifts all events in this category — not just this one';
+      batchToggle.appendChild(note);
 
       for (const cat of modalCats) {
         const row = document.createElement('div');
@@ -368,7 +373,10 @@ function renderForm(event, defaultDate, explicitTime = false) {
             });
             const data = await r.json();
             if (!data.ok) throw new Error(data.error);
-            status.textContent = `✓ ${data.shifted + data.exdated} event${(data.shifted + data.exdated) !== 1 ? 's' : ''} updated`;
+            const n = data.shifted + data.exdated;
+            status.textContent = data.total === 0
+              ? '✗ No events found with this category'
+              : `✓ ${n}/${data.total} updated${data.skipped ? ` (${data.skipped} skipped)` : ''}`;
           } catch (err) {
             status.textContent = '✗ ' + err.message;
           } finally {

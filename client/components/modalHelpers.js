@@ -91,7 +91,7 @@ export function mountLocationUrlSection(wrap, opts) {
       // Clickable header — collapses back to summary on click
       const hdr = document.createElement('button');
       hdr.type = 'button'; hdr.className = 'add-field-btn';
-      hdr.textContent = '▼ Location / URL';
+      hdr.textContent = '− Location / URL';
       hdr.style.marginBottom = 'var(--space-xs)';
       hdr.addEventListener('click', () => {
         // Persist current input values as initLoc/initUrl before collapsing
@@ -160,7 +160,7 @@ export function mountCollapsibleToggle(toggleEl, bodyEl, { label, hasContent }) 
   btn.type = 'button';
   btn.className = 'add-field-btn';
   btn.style.cssText = 'display:flex;align-items:center;gap:4px;';
-  function update() { btn.textContent = (expanded ? '▼ ' : '▶ ') + cleanLabel; }
+  function update() { btn.textContent = (expanded ? '− ' : '+ ') + cleanLabel; }
   update();
   btn.addEventListener('click', () => {
     expanded = !expanded;

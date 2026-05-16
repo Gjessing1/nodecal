@@ -212,8 +212,9 @@ router.post('/events/batch-shift', async (req, res) => {
     const now = new Date();
     const windowEnd = new Date(now.getTime() + shiftMs);
 
+    const catLower = category.toLowerCase();
     const matching = store.getAllEvents().filter(ev =>
-      (ev.categories || []).includes(category)
+      (ev.categories || []).some(c => c.toLowerCase() === catLower)
     );
 
     let shifted = 0, exdated = 0, skipped = 0;
