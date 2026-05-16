@@ -337,16 +337,12 @@ function renderForm(event, defaultDate, explicitTime = false) {
         row.className = 'batch-shift-row';
         const catLabel = document.createElement('span');
         catLabel.className = 'task-cat-chip'; catLabel.textContent = cat;
+
         const nInput = document.createElement('input');
         nInput.type = 'number'; nInput.min = '-365'; nInput.max = '365';
         nInput.className = 'rec-interval-input'; nInput.value = '7';
         const unitSel = document.createElement('select');
         unitSel.className = 'rec-freq-sel';
-        for (const [v, l] of [['7','day(s)'],['7week','week(s)']]) {
-          const o = document.createElement('option'); o.value = v; o.textContent = l; unitSel.appendChild(o);
-        }
-        // Reuse simpler approach: just days input
-        unitSel.innerHTML = '';
         for (const [v, l] of [['1','day(s)'],['7','week(s)']]) {
           const o = document.createElement('option'); o.value = v; o.textContent = l; unitSel.appendChild(o);
         }
@@ -382,7 +378,10 @@ function renderForm(event, defaultDate, explicitTime = false) {
             applyBtn.disabled = false;
           }
         });
-        row.append(catLabel, nInput, unitSel, applyBtn, status);
+        const controls = document.createElement('div');
+        controls.className = 'batch-shift-controls';
+        controls.append(nInput, unitSel, applyBtn, status);
+        row.append(catLabel, controls);
         batchBody.appendChild(row);
       }
     }

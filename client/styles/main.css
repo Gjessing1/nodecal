@@ -406,10 +406,15 @@ input, textarea, select {
 .modal-field-label-sm { font-size: var(--font-size-sm); color: var(--color-text-muted); font-weight: 500; margin-bottom: var(--space-xs); display: block; }
 .batch-shift-row {
   display: flex;
-  align-items: center;
-  gap: var(--space-sm);
+  flex-direction: column;
+  gap: var(--space-xs);
   padding: var(--space-xs) 0;
-  flex-wrap: wrap;
+}
+.batch-shift-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-wrap: nowrap;
 }
 .batch-shift-apply { font-size: var(--font-size-sm); padding: 4px 10px; }
 .batch-shift-status { font-size: var(--font-size-sm); color: var(--color-text-muted); }
