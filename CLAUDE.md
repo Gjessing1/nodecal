@@ -511,7 +511,18 @@ No automated tests currently. RRULE edge cases and NLP parsing are the highest-r
 - [x] **Replace native time inputs with custom picker** — `s-task-reminder-morning`, `s-task-reminder-evening`, and `s-default-event-time` now use `buildTimePicker` via UTC anchor dates; hidden input ids unchanged so `handleSave` reads them identically.
 - [x] **Split `settingsPanel.js`** — extracted `renderTaskSourcesSection` and `renderCategoriesSection` into `client/components/settingsHelpers.js` (202 lines); `settingsPanel.js` reduced from 648 → 468 lines.
 
-### Phase 9 — Batch shift: split at anchor (history-preserving)
+### Phase 9 — Three bugs + UX fixes (implement before batch shift)
+
+#### 9.1 Month view drag-and-drop returns 401
+- [x] `handleEventMove(eventId, ...)` in `main.js` calls `saveEvent(eventId, { start, end })` which sends `PUT /events/{eventId}`. For recurring event occurrences, `eventId = uid_occDateIso` (e.g. `abc123_20260516T100000Z`). The server's PUT handler does `store.getEvent(baseUid || req.params.id)` — `baseUid` is not in the drag body, so it tries to look up by the occurrence id, finds nothing, and returns an error. The 401 response suggests the auth middleware is intercepting (session may expire during drag, or the occurrence id gets mangled in the URL). Fix: `handleEventMove` must extract the base UID from the occurrence id and include `uid: baseUid`, `recurringScope: 'single'`, and `occurrenceDate` in the PUT body — same pattern as editing a single occurrence in the event modal.
+
+#### 9.2 Agenda category filter — filter by visible calendars only
+- [x] `allCats` in `agenda.js` is computed once at render time from ALL events including those in hidden calendars. It should mirror the tasks view pattern: recompute inside `buildCatFilter()` on every call, and filter out categories from hidden calendars (`state.hiddenCalendars`). Also `dayEvents` in `renderDays()` does not filter by `state.hiddenCalendars` — hidden calendar events still appear in the agenda.
+
+#### 9.3 Event modal — Location/URL and Reminder/Repeat on same row when collapsed
+- [x] Both `#f-rr-toggle` and `#f-location-url-wrap` are currently stacked vertically even when both are collapsed (showing only `+ Reminder / Repeat` and `+ Location / URL`). Wrap them in a shared `display:flex; flex-wrap:wrap; gap` container so the two collapsed buttons appear side by side. The `#f-rr-body` (expanded reminder/repeat content) sits below that row as a separate sibling element, unchanged.
+
+### Phase 10 — Batch shift: split at anchor (history-preserving, after Phase 9)
 
 **Problem with current approach:** Shifting DTSTART rewrites the whole series including past occurrences. A user who completed Jan 1, Jan 29, Feb 26 and shifts in March doesn't want their history rewritten — they want future occurrences to adapt while completed sessions stay fixed.
 

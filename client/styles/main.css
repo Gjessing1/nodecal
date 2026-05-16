@@ -321,7 +321,15 @@ input, textarea, select {
 .modal-row-start { align-items: flex-start; }
 .modal-actions { display: flex; gap: var(--space-sm); padding-top: var(--space-sm); }
 /* Collapsible field wrappers — consistent vertical spacing */
-.collapsible-field-wrap { margin-bottom: var(--space-md); }
+.collapsible-field-wrap { margin-bottom: var(--space-xs); }
+.modal-collapsibles-row {
+  display: flex;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-md);
+}
+.modal-collapsibles-row .collapsible-field-wrap { margin-bottom: 0; }
+.modal-collapsibles-row .collapsible-expanded { flex: 0 0 100%; }
 .collapsible-summary-row { display: flex; align-items: center; gap: var(--space-sm); }
 .collapsible-summary-text { font-size: var(--font-size-sm); color: var(--color-text-muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 

@@ -128,7 +128,10 @@ function renderForm(event, defaultDate, explicitTime = false) {
         <input type="checkbox" id="f-allday" ${event?.allDay ? 'checked' : ''}>
       </div>
     </div>
-    <div id="f-rr-toggle" class="collapsible-field-wrap"></div>
+    <div class="modal-collapsibles-row">
+      <div id="f-rr-toggle" class="collapsible-field-wrap"></div>
+      <div id="f-location-url-wrap" class="collapsible-field-wrap"></div>
+    </div>
     <div id="f-rr-body">
       <div class="modal-row">
         <div class="modal-field">
@@ -157,7 +160,6 @@ function renderForm(event, defaultDate, explicitTime = false) {
         <option value="all">All events in series</option>
       </select>
     </div>` : ''}
-    <div id="f-location-url-wrap" class="collapsible-field-wrap"></div>
     <div id="f-categories-section"></div>
     <div class="modal-field">
       <label>Description</label>

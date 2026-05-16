@@ -367,11 +367,18 @@ function handleEventMove(eventId, day, startMin) {
   if (!ev) return;
   const tz = state.config.timezone;
   const duration = new Date(ev.end) - new Date(ev.start);
-  const dateStr = localDateStr(day); // day is local-midnight; date label matches grid column
+  const dateStr = localDateStr(day);
   const h = String(Math.floor(startMin / 60)).padStart(2, '0');
   const m = String(startMin % 60).padStart(2, '0');
   const newStart = localToUTC(dateStr, `${h}:${m}`, tz);
-  saveEvent(eventId, { start: newStart.toISOString(), end: new Date(newStart.getTime() + duration).toISOString() });
+  const data = { start: newStart.toISOString(), end: new Date(newStart.getTime() + duration).toISOString() };
+  if (ev.recurring && ev.occurrenceDate) {
+    // Route to the base event; server handles "single occurrence" scope
+    data.uid = ev.uid;
+    data.recurringScope = 'single';
+    data.occurrenceDate = ev.occurrenceDate;
+  }
+  saveEvent(ev.uid, data);
 }
 
 function handleEventResize(eventId, endMin) {
@@ -384,7 +391,13 @@ function handleEventResize(eventId, endMin) {
   const m = String(endMin % 60).padStart(2, '0');
   const newEnd = localToUTC(dateStr, `${h}:${m}`, tz);
   if (newEnd - start < 15 * 60000) return;
-  saveEvent(eventId, { end: newEnd.toISOString() });
+  const data = { end: newEnd.toISOString() };
+  if (ev.recurring && ev.occurrenceDate) {
+    data.uid = ev.uid;
+    data.recurringScope = 'single';
+    data.occurrenceDate = ev.occurrenceDate;
+  }
+  saveEvent(ev.uid, data);
 }
 
 async function saveEvent(id, data) {

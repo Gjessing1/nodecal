@@ -22,17 +22,19 @@ export function renderAgenda(container, onEventClick, onTaskClick, onTaskComplet
 
   // ── Category filter ──────────────────────────────────────
   let activeCategoryFilter = '';
-  const hiddenEvCats = state.config.hiddenEventCategories || [];
-  const allCats = getAllEventCategories(state.events).filter(c => !hiddenEvCats.includes(c));
 
   const filterBar = document.createElement('div');
   filterBar.className = 'tasks-cat-filter-row agenda-cat-filter';
 
   function buildCatFilter() {
     filterBar.innerHTML = '';
+    const hiddenEvCats = state.config.hiddenEventCategories || [];
+    const visibleEvents = state.events.filter(ev => !state.hiddenCalendars.has(ev.calendarId));
+    const allCats = getAllEventCategories(visibleEvents).filter(c => !hiddenEvCats.includes(c));
     if (!allCats.length) return;
+
     const label = document.createElement('span');
-    label.className = 'tasks-cat-filter-label'; label.textContent = 'Category:';
+    label.className = 'tasks-cat-filter-label'; label.textContent = 'Filter:';
     filterBar.appendChild(label);
 
     const allChip = document.createElement('button');
@@ -69,6 +71,7 @@ export function renderAgenda(container, onEventClick, onTaskClick, onTaskComplet
     const dayEnd = new Date(day.getTime() + DAY_MS);
     const str = localDateStr(day);
     let dayEvents = state.events.filter(ev => {
+      if (state.hiddenCalendars.has(ev.calendarId)) return false;
       if (ev.allDay) return ev.start.slice(0, 10) <= str && ev.end.slice(0, 10) > str;
       return new Date(ev.start) < dayEnd && new Date(ev.end) > day;
     });

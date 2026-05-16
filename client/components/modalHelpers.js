@@ -65,6 +65,7 @@ export function mountLocationUrlSection(wrap, opts) {
 
   function mount(expanded) {
     wrap.innerHTML = '';
+    wrap.classList.toggle('collapsible-expanded', expanded);
     if (!expanded) {
       const locVal = initLoc;
       const urlVal = initUrl;
