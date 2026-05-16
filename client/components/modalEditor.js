@@ -127,23 +127,26 @@ function renderForm(event, defaultDate, explicitTime = false) {
         <input type="checkbox" id="f-allday" ${event?.allDay ? 'checked' : ''}>
       </div>
     </div>
-    <div class="modal-row">
-      <div class="modal-field">
-        <label>Remind me</label>
-        <select id="f-alarm">
-          ${alarmOptionsHtml(event?.alarmMinutes ?? (state.config.alarmDefaultMinutes ?? 0))}
-        </select>
+    <div id="f-rr-toggle" class="collapsible-field-wrap"></div>
+    <div id="f-rr-body">
+      <div class="modal-row">
+        <div class="modal-field">
+          <label>Remind me</label>
+          <select id="f-alarm">
+            ${alarmOptionsHtml(event?.alarmMinutes ?? (state.config.alarmDefaultMinutes ?? 0))}
+          </select>
+        </div>
+        <div class="modal-field">
+          <label>Repeat</label>
+          <div id="f-repeat-preset-target"></div>
+        </div>
       </div>
-      <div class="modal-field">
-        <label>Repeat</label>
-        <div id="f-repeat-preset-target"></div>
+      <div class="modal-field" id="f-alarm-custom-row" style="${(()=>{const v=event?.alarmMinutes??state.config.alarmDefaultMinutes??0;return [0,5,15,60].includes(v)?'display:none':''})()}">
+        <label>Minutes before</label>
+        <input type="number" id="f-alarm-custom" value="${(()=>{const v=event?.alarmMinutes??state.config.alarmDefaultMinutes??0;return [0,5,15,60].includes(v)?'':(v||'')})()}" min="1" max="10080" placeholder="e.g. 45">
       </div>
+      <div id="f-repeat-container" data-rrule="${esc(event?.rrule || '')}"></div>
     </div>
-    <div class="modal-field" id="f-alarm-custom-row" style="${(()=>{const v=event?.alarmMinutes??state.config.alarmDefaultMinutes??0;return [0,5,15,60].includes(v)?'display:none':''})()}">
-      <label>Minutes before</label>
-      <input type="number" id="f-alarm-custom" value="${(()=>{const v=event?.alarmMinutes??state.config.alarmDefaultMinutes??0;return [0,5,15,60].includes(v)?'':(v||'')})()}" min="1" max="10080" placeholder="e.g. 45">
-    </div>
-    <div id="f-repeat-container" data-rrule="${esc(event?.rrule || '')}"></div>
     ${event?.recurring ? `
     <div class="modal-field recurring-scope-field">
       <label>Edit scope</label>
@@ -153,7 +156,7 @@ function renderForm(event, defaultDate, explicitTime = false) {
         <option value="all">All events in series</option>
       </select>
     </div>` : ''}
-    <div id="f-location-url-wrap"></div>
+    <div id="f-location-url-wrap" class="collapsible-field-wrap"></div>
     <div class="modal-field">
       <label>Description</label>
       <textarea id="f-desc" rows="5">${esc(event?.description || '')}</textarea>
@@ -250,18 +253,34 @@ function renderForm(event, defaultDate, explicitTime = false) {
     }
   });
 
-  // ── Location / URL (collapsed when empty) ────────────────────────────────
+  // ── Location / URL (collapsible) ─────────────────────────────────────────
   function mountLocationUrl(expanded) {
     const wrap = sheet.querySelector('#f-location-url-wrap');
     if (!wrap) return;
     wrap.innerHTML = '';
     if (!expanded) {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'add-field-btn';
-      btn.textContent = '+ Location / URL';
-      btn.addEventListener('click', () => mountLocationUrl(true));
-      wrap.appendChild(btn);
+      const locVal = sheet.querySelector('#f-location')?.value || event?.location || '';
+      const urlVal = sheet.querySelector('#f-url')?.value || event?.url || '';
+      if (locVal || urlVal) {
+        // Has values: show inline summary + collapse button
+        const row = document.createElement('div');
+        row.className = 'collapsible-summary-row';
+        const text = document.createElement('span');
+        text.className = 'collapsible-summary-text';
+        text.textContent = [locVal && `📍 ${locVal}`, urlVal && `🔗 ${urlVal}`].filter(Boolean).join('  ');
+        const expandBtn = document.createElement('button');
+        expandBtn.type = 'button'; expandBtn.className = 'add-field-btn';
+        expandBtn.textContent = 'Edit';
+        expandBtn.addEventListener('click', () => mountLocationUrl(true));
+        row.append(text, expandBtn);
+        wrap.appendChild(row);
+      } else {
+        const btn = document.createElement('button');
+        btn.type = 'button'; btn.className = 'add-field-btn';
+        btn.textContent = '+ Location / URL';
+        btn.addEventListener('click', () => mountLocationUrl(true));
+        wrap.appendChild(btn);
+      }
     } else {
       wrap.innerHTML = `
         <div class="modal-row">
@@ -274,6 +293,12 @@ function renderForm(event, defaultDate, explicitTime = false) {
             <input type="url" id="f-url" value="${esc(event?.url || '')}" placeholder="https://…">
           </div>
         </div>`;
+      // Collapse button — only visible when both fields are empty
+      const collapseBtn = document.createElement('button');
+      collapseBtn.type = 'button'; collapseBtn.className = 'add-field-btn';
+      collapseBtn.textContent = '− Remove';
+      collapseBtn.addEventListener('click', () => mountLocationUrl(false));
+      wrap.appendChild(collapseBtn);
       // Wire URL open link
       const urlInput = wrap.querySelector('#f-url');
       if (urlInput) {
@@ -290,10 +315,35 @@ function renderForm(event, defaultDate, explicitTime = false) {
         }
         updateUrlLink();
         urlInput.addEventListener('input', updateUrlLink);
+        // Update collapse button visibility based on field content
+        function updateCollapseBtn() {
+          const hasContent = urlInput.value.trim() || wrap.querySelector('#f-location')?.value.trim();
+          collapseBtn.textContent = hasContent ? '− Clear & collapse' : '− Remove';
+        }
+        urlInput.addEventListener('input', updateCollapseBtn);
+        wrap.querySelector('#f-location')?.addEventListener('input', updateCollapseBtn);
       }
     }
   }
   mountLocationUrl(!!(event?.location || event?.url));
+
+  // ── Reminder / Repeat collapse when unused ────────────────────────────────
+  const _alarmVal = event?.alarmMinutes ?? state.config.alarmDefaultMinutes ?? 0;
+  const _hasRR = !!(_alarmVal > 0 || event?.rrule);
+  const rrToggleEl = sheet.querySelector('#f-rr-toggle');
+  const rrBodyEl   = sheet.querySelector('#f-rr-body');
+  function mountRRToggle(expanded) {
+    rrToggleEl.innerHTML = '';
+    rrBodyEl.style.display = expanded ? '' : 'none';
+    if (!expanded) {
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'add-field-btn';
+      btn.textContent = '+ Reminder / Repeat';
+      btn.addEventListener('click', () => mountRRToggle(true));
+      rrToggleEl.appendChild(btn);
+    }
+  }
+  mountRRToggle(_hasRR);
 
   // Alarm select → show/hide custom minutes row
   const alarmSel = sheet.querySelector('#f-alarm');

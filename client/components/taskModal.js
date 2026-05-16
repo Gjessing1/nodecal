@@ -30,7 +30,7 @@ export function openTaskModal(task, { onSave, onDelete }) {
       <div id="tm-due-wrap"></div>
     </div>
 
-    <div id="tm-location-url-wrap"></div>
+    <div id="tm-location-url-wrap" class="collapsible-field-wrap"></div>
 
     <div class="modal-field">
       <label>Notes</label>
@@ -49,37 +49,40 @@ export function openTaskModal(task, { onSave, onDelete }) {
       </div>
     </div>
 
-    <div class="modal-row">
-      <div class="modal-field">
-        <label>Repeat</label>
-        <div class="rec-mode-toggle">
-          <button type="button" class="rec-mode-btn${!isRecAfterCompletion ? ' active' : ''}" data-mode="fixed">Fixed</button>
-          <button type="button" class="rec-mode-btn${isRecAfterCompletion ? ' active' : ''}" data-mode="after">After done</button>
-        </div>
-        <div id="tm-rec-preset-target" style="${isRecAfterCompletion ? 'display:none' : ''}"></div>
-        <div id="tm-rec-after" style="${isRecAfterCompletion ? '' : 'display:none'}">
-          <div class="rec-after-row">
-            Every
-            <input type="number" id="tm-after-n" class="rec-interval-input" min="1" max="999"
-                   value="${esc(task.recurringInterval?.replace(/[dw]$/,'') || '1')}">
-            <select id="tm-after-unit" class="rec-freq-sel">
-              <option value="d"${/d$/.test(task.recurringInterval||'') ? ' selected':''}>day(s)</option>
-              <option value="w"${/w$/.test(task.recurringInterval||'') ? ' selected':''}>week(s)</option>
-            </select>
-            after completion
+    <div id="tm-rr-toggle" class="collapsible-field-wrap"></div>
+    <div id="tm-rr-body">
+      <div class="modal-row modal-row-start">
+        <div class="modal-field">
+          <label>Repeat</label>
+          <div class="rec-mode-toggle">
+            <button type="button" class="rec-mode-btn${!isRecAfterCompletion ? ' active' : ''}" data-mode="fixed">Fixed</button>
+            <button type="button" class="rec-mode-btn${isRecAfterCompletion ? ' active' : ''}" data-mode="after">After done</button>
+          </div>
+          <div id="tm-rec-preset-target" style="${isRecAfterCompletion ? 'display:none' : ''}"></div>
+          <div id="tm-rec-after" style="${isRecAfterCompletion ? '' : 'display:none'}">
+            <div class="rec-after-row">
+              Every
+              <input type="number" id="tm-after-n" class="rec-interval-input" min="1" max="999"
+                     value="${esc(task.recurringInterval?.replace(/[dw]$/,'') || '1')}">
+              <select id="tm-after-unit" class="rec-freq-sel">
+                <option value="d"${/d$/.test(task.recurringInterval||'') ? ' selected':''}>day(s)</option>
+                <option value="w"${/w$/.test(task.recurringInterval||'') ? ' selected':''}>week(s)</option>
+              </select>
+              after completion
+            </div>
           </div>
         </div>
-      </div>
-      <div class="modal-field">
-        <label>Reminder</label>
-        <select id="tm-reminder">
-          <option value="none"           ${!task.taskReminder || task.taskReminder === 'none' ? 'selected' : ''}>None</option>
-          <option value="on-due"         ${task.taskReminder === 'on-due'          ? 'selected' : ''}>Morning on due</option>
-          <option value="evening-due"    ${task.taskReminder === 'evening-due'     ? 'selected' : ''}>Evening on due</option>
-          <option value="morning-before" ${task.taskReminder === 'morning-before'  ? 'selected' : ''}>Morning before</option>
-          <option value="evening-before" ${task.taskReminder === 'evening-before'  ? 'selected' : ''}>Evening before</option>
-          <option value="custom"         ${task.taskReminder?.startsWith('custom') ? 'selected' : ''}>Custom…</option>
-        </select>
+        <div class="modal-field">
+          <label>Reminder</label>
+          <select id="tm-reminder">
+            <option value="none"           ${!task.taskReminder || task.taskReminder === 'none' ? 'selected' : ''}>None</option>
+            <option value="on-due"         ${task.taskReminder === 'on-due'          ? 'selected' : ''}>Morning on due</option>
+            <option value="evening-due"    ${task.taskReminder === 'evening-due'     ? 'selected' : ''}>Evening on due</option>
+            <option value="morning-before" ${task.taskReminder === 'morning-before'  ? 'selected' : ''}>Morning before</option>
+            <option value="evening-before" ${task.taskReminder === 'evening-before'  ? 'selected' : ''}>Evening before</option>
+            <option value="custom"         ${task.taskReminder?.startsWith('custom') ? 'selected' : ''}>Custom…</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -134,17 +137,33 @@ export function openTaskModal(task, { onSave, onDelete }) {
     dueWrap.appendChild(dueBtn);
   }
 
-  // ── Location / URL (collapsed when empty) ────────────────────────────────
+  // ── Location / URL (collapsible) ─────────────────────────────────────────
   function mountTaskLocationUrl(expanded) {
     const wrap = sheet.querySelector('#tm-location-url-wrap');
     if (!wrap) return;
     wrap.innerHTML = '';
     if (!expanded) {
-      const btn = document.createElement('button');
-      btn.type = 'button'; btn.className = 'add-field-btn';
-      btn.textContent = '+ Location / URL';
-      btn.addEventListener('click', () => mountTaskLocationUrl(true));
-      wrap.appendChild(btn);
+      const locVal = task.location || '';
+      const urlVal = task.url || '';
+      if (locVal || urlVal) {
+        const row = document.createElement('div');
+        row.className = 'collapsible-summary-row';
+        const text = document.createElement('span');
+        text.className = 'collapsible-summary-text';
+        text.textContent = [locVal && `📍 ${locVal}`, urlVal && `🔗 ${urlVal}`].filter(Boolean).join('  ');
+        const expandBtn = document.createElement('button');
+        expandBtn.type = 'button'; expandBtn.className = 'add-field-btn';
+        expandBtn.textContent = 'Edit';
+        expandBtn.addEventListener('click', () => mountTaskLocationUrl(true));
+        row.append(text, expandBtn);
+        wrap.appendChild(row);
+      } else {
+        const btn = document.createElement('button');
+        btn.type = 'button'; btn.className = 'add-field-btn';
+        btn.textContent = '+ Location / URL';
+        btn.addEventListener('click', () => mountTaskLocationUrl(true));
+        wrap.appendChild(btn);
+      }
     } else {
       wrap.innerHTML = `
         <div class="modal-row">
@@ -157,9 +176,39 @@ export function openTaskModal(task, { onSave, onDelete }) {
             <input type="url" id="tm-url" value="${esc(task.url || '')}" placeholder="https://…">
           </div>
         </div>`;
+      const collapseBtn = document.createElement('button');
+      collapseBtn.type = 'button'; collapseBtn.className = 'add-field-btn';
+      collapseBtn.textContent = '− Remove';
+      collapseBtn.addEventListener('click', () => mountTaskLocationUrl(false));
+      wrap.appendChild(collapseBtn);
+      const locInput = wrap.querySelector('#tm-location');
+      const urlInp   = wrap.querySelector('#tm-url');
+      function updateCollapseBtn() {
+        collapseBtn.textContent = (locInput?.value.trim() || urlInp?.value.trim()) ? '− Clear & collapse' : '− Remove';
+      }
+      locInput?.addEventListener('input', updateCollapseBtn);
+      urlInp?.addEventListener('input', updateCollapseBtn);
     }
   }
   mountTaskLocationUrl(!!(task.location || task.url));
+
+  // ── Reminder / Repeat collapse when unused ────────────────────────────────
+  const _hasReminder = !!(task.taskReminder && task.taskReminder !== 'none');
+  const _hasRepeat   = !!(isRecRrule || isRecAfterCompletion);
+  const tmRrToggleEl = sheet.querySelector('#tm-rr-toggle');
+  const tmRrBodyEl   = sheet.querySelector('#tm-rr-body');
+  function mountTmRRToggle(expanded) {
+    tmRrToggleEl.innerHTML = '';
+    tmRrBodyEl.style.display = expanded ? '' : 'none';
+    if (!expanded) {
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'add-field-btn';
+      btn.textContent = '+ Reminder / Repeat';
+      btn.addEventListener('click', () => mountTmRRToggle(true));
+      tmRrToggleEl.appendChild(btn);
+    }
+  }
+  mountTmRRToggle(_hasReminder || _hasRepeat);
 
   // Track categories in modal as mutable array
   const modalCats = [...taskCats];
