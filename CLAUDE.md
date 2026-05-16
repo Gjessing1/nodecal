@@ -513,26 +513,18 @@ No automated tests currently. RRULE edge cases and NLP parsing are the highest-r
 From the Phase 0 round-2 audit, these duplications and bugs remain:
 
 #### 8.1 Bug: 'important' category re-injected on task save
-- [ ] `taskModal.js` save handler re-adds `'important'` to categories even if the user removed
+- [x] `taskModal.js` save handler re-adds `'important'` to categories even if the user removed
   the star during editing. `finalCats` should simply be `[...modalCats]` — 'important' is
   already in the array if the user kept it.
 
-#### 8.2 Extract shared modal helpers (reduce duplication)
-- [ ] **Location/URL collapse** — `modalEditor.js` and `taskModal.js` have near-identical
-  `mountLocationUrl` / `mountTaskLocationUrl` functions (~60 lines each). Extract to a shared
-  `buildLocationUrlSection(wrap, { locId, urlId, initLoc, initUrl })` helper.
-- [ ] **Category chips + autocomplete** — event modal (`modalEditor.js`) and task modal
-  (`taskModal.js`) both implement the same chip render + autocomplete pattern (~80 lines each).
-  Extract to a shared `buildCategoryChipsUI(container, modalCats, allCats, opts)` helper.
-- [ ] **Date picker button** — `modalEditor.js` (3 buttons) and `taskModal.js` (1 button) share
-  identical setup logic. Extract to `buildDatePickerButton(inputEl, wrapEl, onSelect)`.
-- [ ] **Reminder/Repeat collapse** — `modalEditor.js` and `taskModal.js` have identical
-  `mountRRToggle` / `mountTmRRToggle` collapse wrappers. Extract to a shared helper.
+#### 8.2 Extract shared modal helpers (reduce duplication) ✓ COMPLETE
+- [x] **Location/URL collapse** — extracted to `mountLocationUrlSection` in `modalHelpers.js`
+- [x] **Category chips + autocomplete** — extracted to `wireCategoryUI` in `modalHelpers.js`
+- [x] **Date picker button** — extracted to `buildDatePickerButton` in `modalHelpers.js`
+- [x] **Reminder/Repeat collapse** — extracted to `mountCollapsibleToggle` in `modalHelpers.js`
 
-#### 8.3 `month.js` — `dayStr` defined after use in closure
-- [ ] `const dayStr = localDateStr(day)` is defined at line ~172 but referenced in a
-  `click` callback registered at line ~168. Works due to closure timing but is confusing.
-  Move the `dayStr` definition above the first callback that uses it.
+#### 8.3 `month.js` — `dayStr` defined after use in closure ✓ COMPLETE
+- [x] Moved `const dayStr = localDateStr(day)` above the `numWrap` click callback that uses it.
 
 ## Remember
 Update CLAUDE.md roadmap each time you finish a phase to track current progress.
