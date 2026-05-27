@@ -519,6 +519,7 @@ No automated tests currently. RRULE edge cases and NLP parsing are the highest-r
 ## Remember
 Update CLAUDE.md roadmap each time you finish a phase to track current progress.
 Also push and build new docker image when finishing.
+Dont credit Claude when doing commits.
 
 ## Non-Goals
 - Multi-user support

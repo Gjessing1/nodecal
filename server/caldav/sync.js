@@ -85,22 +85,27 @@ async function syncIncremental() {
     const cachedEvents = store.getEventsByCalendar(cal.id);
     const { toFetch, toDelete } = computeSyncDiff(serverEtags, cachedEvents);
 
+    // Fetch updated/new events BEFORE modifying the store so that a concurrent
+    // GET /events request never sees a partially-updated calendar (missing both
+    // the deleted events and the not-yet-added replacements).
+    let fetchedEvents = [];
+    if (toFetch.length > 0) {
+      fetchedEvents = await withRetry(() => fetchEventsByHref(cal.href, toFetch));
+    }
+
+    // Apply deletes and additions atomically (no awaits below this point)
     for (const uid of toDelete) {
       store.removeEventSilent(uid);
       totalChanged++;
     }
-
-    if (toFetch.length > 0) {
-      const fetched = await withRetry(() => fetchEventsByHref(cal.href, toFetch));
-      for (const ev of fetched) {
-        const existing = store.getEvent(ev.uid);
-        if (existing?.localModifiedAt) {
-          syncLog(`server overwrites local edit: uid=${ev.uid} localModifiedAt=${existing.localModifiedAt}`);
-        }
-        syncLog(`fetched remote change: uid=${ev.uid} href=${ev.href}`);
-        store.setEventSilent({ ...ev, calendarId: cal.id, lastSyncedAt: now.toISOString() });
-        totalChanged++;
+    for (const ev of fetchedEvents) {
+      const existing = store.getEvent(ev.uid);
+      if (existing?.localModifiedAt) {
+        syncLog(`server overwrites local edit: uid=${ev.uid} localModifiedAt=${existing.localModifiedAt}`);
       }
+      syncLog(`fetched remote change: uid=${ev.uid} href=${ev.href}`);
+      store.setEventSilent({ ...ev, calendarId: cal.id, lastSyncedAt: now.toISOString() });
+      totalChanged++;
     }
 
     store.setCalendarCtag(cal.id, cal.ctag);
@@ -139,11 +144,9 @@ async function syncTasksIncremental(tasksUrl, sourceName, now) {
   const serverMap = new Map(serverEtags.map(e => [e.href, e.etag]));
   let changed = 0;
 
+  const toDelete = [];
   for (const task of cached) {
-    if (!serverMap.has(task.href)) {
-      store.removeTaskSilent(task.uid);
-      changed++;
-    }
+    if (!serverMap.has(task.href)) toDelete.push(task.uid);
   }
 
   const toFetch = [];
@@ -155,17 +158,27 @@ async function syncTasksIncremental(tasksUrl, sourceName, now) {
     }
   }
 
+  // Fetch updated/new tasks BEFORE modifying the store so that a concurrent
+  // GET /tasks request never sees a partially-updated list (missing both the
+  // deleted tasks and the not-yet-added replacements).
+  let fetched = [];
   if (toFetch.length > 0) {
-    const fetched = await withRetry(() => fetchTasksByHref(tasksUrl, toFetch));
-    for (const task of fetched) {
-      const existing = store.getTask(task.uid);
-      if (existing?.localModifiedAt) {
-        syncLog(`server overwrites local edit (task): uid=${task.uid} localModifiedAt=${existing.localModifiedAt}`);
-      }
-      syncLog(`fetched remote change (task): uid=${task.uid}`);
-      store.setTaskSilent({ ...task, source: tasksUrl, sourceName, lastSyncedAt: now.toISOString() });
-      changed++;
+    fetched = await withRetry(() => fetchTasksByHref(tasksUrl, toFetch));
+  }
+
+  // Apply deletes and additions atomically (no awaits below this point)
+  for (const uid of toDelete) {
+    store.removeTaskSilent(uid);
+    changed++;
+  }
+  for (const task of fetched) {
+    const existing = store.getTask(task.uid);
+    if (existing?.localModifiedAt) {
+      syncLog(`server overwrites local edit (task): uid=${task.uid} localModifiedAt=${existing.localModifiedAt}`);
     }
+    syncLog(`fetched remote change (task): uid=${task.uid}`);
+    store.setTaskSilent({ ...task, source: tasksUrl, sourceName, lastSyncedAt: now.toISOString() });
+    changed++;
   }
 
   return changed;
