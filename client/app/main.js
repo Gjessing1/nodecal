@@ -12,7 +12,7 @@ import { showSnackbar } from '../components/snackbar.js';
 import { initSettingsPanel, openSettings } from '../components/settingsPanel.js';
 import { initInstallPrompt } from './installPrompt.js';
 import { initTheme } from './theme.js';
-import { applyProfile, captureActiveProfile, persistProfiles, activeProfileId, activeProfile, isSingleMode, DUAL_IDS, effectiveEventCalendar } from './profiles.js';
+import { applyProfile, captureActiveProfile, persistProfiles, activeProfileId, activeProfile, isSingleMode, DUAL_IDS, effectiveEventCalendar, effectiveTaskSource } from './profiles.js';
 import { localDateStr, toDateInputValue, localToUTC } from './utils.js';
 
 const viewContainer   = document.getElementById('view-container');
@@ -560,7 +560,8 @@ function handleTaskEdit(task) {
 function handleNewTaskForDay(day) {
   const d = day;
   const due = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  openTaskModal({ due }, { onSave: data => handleTaskAdd(data), onDelete: () => {} });
+  const source = effectiveTaskSource() || undefined;
+  openTaskModal({ due, source }, { onSave: data => handleTaskAdd(data), onDelete: () => {} });
 }
 
 async function saveTask(id, data) {
@@ -937,7 +938,8 @@ async function init() {
 
   fab.addEventListener('click', () => {
     if (state.activeView === 'tasks') {
-      openTaskModal({}, { onSave: data => handleTaskAdd(data), onDelete: () => {} });
+      const source = effectiveTaskSource() || undefined;
+      openTaskModal({ source }, { onSave: data => handleTaskAdd(data), onDelete: () => {} });
       return;
     }
     openNewEventModal(state.selectedDate || new Date(), data => saveEvent(null, data));

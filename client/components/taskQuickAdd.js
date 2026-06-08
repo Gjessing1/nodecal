@@ -265,7 +265,10 @@ function buildQuickAdd(callbacks) {
   newBtn.textContent = '+';
   newBtn.setAttribute('aria-label', 'New task (full form)');
   newBtn.addEventListener('click', () => {
-    openTaskModal({}, { onSave: data => callbacks.onAdd(data), onDelete: () => {} });
+    // Seed the full form with the profile's task source (or the one picked in
+    // the source row) so new tasks — including recurring ones — land there.
+    const source = selectedSource || effectiveTaskSource() || undefined;
+    openTaskModal({ source }, { onSave: data => callbacks.onAdd(data), onDelete: () => {} });
   });
 
   const row = document.createElement('div');

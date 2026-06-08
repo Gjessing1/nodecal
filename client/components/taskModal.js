@@ -201,6 +201,11 @@ export function openTaskModal(task, { onSave, onDelete }) {
       categories:  finalCats,
       status:      completedChecked ? 'COMPLETED' : 'NEEDS-ACTION',
       completed:   completedChecked ? new Date().toISOString() : null,
+      // Carry the source the modal was opened with so new tasks land in the
+      // profile's task source (passed in by the caller) instead of the
+      // server's sources[0] fallback. Harmless for edits — the PUT path keys
+      // off the existing task's source, not this field.
+      source:      task.source || undefined,
       rrule, xRecurringType, xRecurringInterval,
       taskReminder: (() => {
         const v = sheet.querySelector('#tm-reminder')?.value || 'none';
