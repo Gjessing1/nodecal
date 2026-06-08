@@ -87,6 +87,7 @@ function renderForm() {
         <label>Default view</label>
         <select id="s-default">
           ${ALL_VIEWS.map(v => `<option value="${v.id}" ${cfg.defaultView === v.id ? 'selected' : ''}>${v.label}</option>`).join('')}
+          ${cfg.enableTasksView ? `<option value="tasks" ${cfg.defaultView === 'tasks' ? 'selected' : ''}>Tasks</option>` : ''}
         </select>
       </div>
       <div class="modal-field">

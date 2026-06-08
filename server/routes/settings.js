@@ -68,7 +68,11 @@ router.put('/settings', (req, res) => {
     return res.status(400).json({ error: 'Maximum 5 navigation tabs allowed' });
   }
 
-  if (toSave.enabledViews && toSave.defaultView && !toSave.enabledViews.includes(toSave.defaultView)) {
+  // 'tasks' is a valid default when the tasks tab is enabled, even though it
+  // lives outside enabledViews (which only holds calendar views).
+  if (toSave.enabledViews && toSave.defaultView
+      && !toSave.enabledViews.includes(toSave.defaultView)
+      && !(toSave.defaultView === 'tasks' && tasksEnabled)) {
     toSave.defaultView = toSave.enabledViews[0];
   }
 

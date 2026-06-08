@@ -208,7 +208,7 @@ async function loadAll() {
     const def = state.config.defaultView || calViews[0];
     let savedView = null;
     try { savedView = localStorage.getItem('nodecal-active-view'); } catch { /* storage unavailable */ }
-    state.activeView = (savedView && tabs.includes(savedView)) ? savedView : (calViews.includes(def) ? def : calViews[0]);
+    state.activeView = (savedView && tabs.includes(savedView)) ? savedView : (tabs.includes(def) ? def : calViews[0]);
     state._viewInitialized = true;
   }
   return true;

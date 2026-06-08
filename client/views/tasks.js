@@ -106,7 +106,9 @@ export function renderTasks(container, callbacks) {
 
   function buildSourceFilter() {
     sourceFilterRow.innerHTML = '';
-    const sources = state.taskSources;
+    // Only offer sources whose calendar is active in the current profile —
+    // a deactivated calendar (hidden via drawer/profile) hides its tasks too.
+    const sources = (state.taskSources || []).filter(s => !state.hiddenCalendars.has(s.url));
     if (!sources || sources.length < 2) return;
 
     const label = document.createElement('span');
@@ -141,7 +143,8 @@ export function renderTasks(container, callbacks) {
   function buildCatFilter() {
     catFilterRow.innerHTML = '';
     const hidden = state.config.hiddenCategories || [];
-    const allCats = getAllCategories(state.tasks).filter(c => !hidden.includes(c));
+    const sourceVisible = state.tasks.filter(t => !t.source || !state.hiddenCalendars.has(t.source));
+    const allCats = getAllCategories(sourceVisible).filter(c => !hidden.includes(c));
     if (!allCats.length) return;
 
     const label = document.createElement('span');
@@ -196,16 +199,18 @@ function renderList(container, filterState, sortOrder, groupBy, filterCat, filte
   container.innerHTML = '';
 
   const hidden = state.config.hiddenCategories || [];
+  // Tasks from calendars deactivated in the current profile are not surfaced.
+  const visibleTasks = state.tasks.filter(t => !t.source || !state.hiddenCalendars.has(t.source));
   let tasks;
   if (filterState.showDone) {
     // "Done" mode: show ONLY completed tasks, newest completion first
-    tasks = state.tasks.filter(t => t.status === 'COMPLETED');
+    tasks = visibleTasks.filter(t => t.status === 'COMPLETED');
     if (filterState.starredOnly) tasks = tasks.filter(t => t.important); // AND: done AND starred
     if (filterCat) tasks = tasks.filter(t => (t.categories || []).includes(filterCat));
     if (filterSource) tasks = tasks.filter(t => t.source === filterSource);
     tasks = [...tasks].sort((a, b) => (b.completed || '').localeCompare(a.completed || ''));
   } else {
-    tasks = state.tasks.filter(t => t.status !== 'COMPLETED');
+    tasks = visibleTasks.filter(t => t.status !== 'COMPLETED');
     if (filterState.starredOnly) tasks = tasks.filter(t => t.important);
     if (filterCat) tasks = tasks.filter(t => (t.categories || []).includes(filterCat));
     if (filterSource) tasks = tasks.filter(t => t.source === filterSource);
