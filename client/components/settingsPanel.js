@@ -3,6 +3,7 @@ import { esc } from '../app/utils.js';
 import { buildTimePicker } from './timePicker.js';
 import { renderTaskSourcesSection, renderCategoriesSection, renderIcsFeedsSection } from './settingsHelpers.js';
 import { renderProfilesSection } from './profilesSettings.js';
+import { registerProfileTaskSources } from '../app/profiles.js';
 
 const ALL_VIEWS = [
   { id: 'agenda', label: 'Agenda' },
@@ -124,9 +125,6 @@ function renderForm() {
         ${state.calendars.map(c => `<option value="${esc(c.id)}" ${cfg.defaultCalendar === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
       </select>
     </div>
-
-    <div class="modal-section-label">Profiles</div>
-    <div id="s-profiles-section"></div>
 
     <div class="modal-section-label">Subscribed calendars</div>
     <div id="s-ics-feeds-section"></div>
@@ -280,6 +278,9 @@ function renderForm() {
         <input type="number" id="s-weather-days-agenda" value="${cfg.weatherDaysAgenda ?? 1}" min="1" max="9" step="1" style="width:70px">
       </div>
     </div>
+
+    <div class="modal-section-label settings-section-divider">Profiles</div>
+    <div id="s-profiles-section"></div>
 
     <div class="modal-actions">
       <button class="btn btn-primary" id="s-save">Save</button>
@@ -444,6 +445,11 @@ async function handleSave() {
   const weatherDaysMonth     = parseInt(sheet.querySelector('#s-weather-days-month').value) || 4;
   const weatherDaysAgenda    = parseInt(sheet.querySelector('#s-weather-days-agenda').value) || 1;
   const showWeekendBg        = sheet.querySelector('#s-weekend-bg').checked;
+
+  // A profile may point at any calendar; make sure each chosen calendar is a
+  // registered task source so the server syncs it. Mutates state.taskSources,
+  // which is read into the payload below.
+  registerProfileTaskSources();
 
   const payload = {
     enabledViews, defaultView, timeFormat, weekStart,

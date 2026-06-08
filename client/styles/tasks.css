@@ -427,6 +427,14 @@
   padding: var(--space-md) var(--space-md) 0;
 }
 
+/* Stronger break before the per-profile block so it reads as separate from
+   the global settings above it. */
+.settings-section-divider {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-lg);
+  border-top: 2px solid var(--color-border);
+}
+
 /* ── Collapsible categories section in settings ──────────── */
 .settings-collapse-header {
   cursor: pointer;

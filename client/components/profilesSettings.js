@@ -23,6 +23,11 @@ export function renderProfilesSection(sheet, cfg) {
   const profiles = getProfiles();
   section.innerHTML = '';
 
+  const intro = document.createElement('p');
+  intro.style.cssText = 'font-size:var(--font-size-sm);color:var(--color-text-muted);margin:4px 0 0;padding:0 var(--space-md)';
+  intro.textContent = 'Per-profile overrides of the global settings above — calendar visibility, accent, task source and default view.';
+  section.appendChild(intro);
+
   const activeField = document.createElement('div');
   activeField.className = 'modal-field';
   activeField.innerHTML = '<label>Active profile</label>';
@@ -143,37 +148,44 @@ function buildCalendarsField(profile) {
 }
 
 // Per-profile target for new tasks (quick-add "To:") — the calendar collection
-// that stores this profile's tasks. The full list of configured sources is
-// offered; the profile always points at a concrete one.
+// that stores this profile's tasks. Every writable calendar is offered so each
+// profile can point at a different one; the chosen calendar is auto-registered
+// as a task source on save (registerProfileTaskSources) so the server actually
+// syncs tasks from it. cal.id is the collection URL, identical to a task
+// source's `url`.
 function buildTaskSourceField(profile) {
   const field = document.createElement('div');
   field.className = 'modal-field';
   field.innerHTML = '<label>Task source</label>';
-  const sources = state.taskSources || [];
-  if (!sources.length) {
+  const cals = (state.calendars || []).filter(c => !c.readOnly);
+  if (!cals.length) {
     const note = document.createElement('span');
     note.style.cssText = 'font-size:var(--font-size-sm);color:var(--color-text-muted)';
-    note.textContent = 'Add a task source first (Settings → Task sources).';
+    note.textContent = 'Sync first to list calendars.';
     field.appendChild(note);
     return field;
   }
-  // Pre-select the profile's stored source if still valid, else fall back to the
-  // global default, else the first source.
+  // Pre-select the profile's stored source if it still matches a calendar, else
+  // the global default, else the first calendar.
   let current = profile.defaultTaskSource;
-  if (!sources.some(src => src.url === current)) {
-    current = sources.some(src => src.url === state.config.defaultTaskSource)
+  if (!cals.some(c => c.id === current)) {
+    current = cals.some(c => c.id === state.config.defaultTaskSource)
       ? state.config.defaultTaskSource
-      : sources[0].url;
+      : cals[0].id;
   }
   const sel = document.createElement('select');
-  sel.innerHTML = sources.map(src =>
-    `<option value="${esc(src.url)}" ${current === src.url ? 'selected' : ''}>${esc(src.name || src.url)}</option>`
+  sel.innerHTML = cals.map(c =>
+    `<option value="${esc(c.id)}" ${current === c.id ? 'selected' : ''}>${esc(c.name)}</option>`
   ).join('');
   // Persist the resolved value immediately so an untouched dropdown still saves
   // the concrete source it is showing.
   profile.defaultTaskSource = current;
   sel.addEventListener('change', () => { profile.defaultTaskSource = sel.value; });
   field.appendChild(sel);
+  const hint = document.createElement('span');
+  hint.style.cssText = 'font-size:var(--font-size-sm);color:var(--color-text-muted);display:block;margin-top:4px';
+  hint.textContent = 'Each profile can use a different calendar — it is registered as a task source automatically.';
+  field.appendChild(hint);
   return field;
 }
 

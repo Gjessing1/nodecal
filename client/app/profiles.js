@@ -78,6 +78,21 @@ export function effectiveTaskSource() {
   return activeProfile()?.defaultTaskSource || state.config.defaultTaskSource || '';
 }
 
+// Ensure every profile's chosen task source is a registered task source so the
+// server actually syncs tasks from it. A profile can point at any writable
+// calendar; this backfills `state.taskSources` with the matching calendar's
+// name. Call before persisting settings.
+export function registerProfileTaskSources() {
+  const sources = state.taskSources || (state.taskSources = []);
+  const cals = state.calendars || [];
+  for (const id of profileIds()) {
+    const url = getProfiles()[id].defaultTaskSource;
+    if (!url || sources.some(s => s.url === url)) continue;
+    const cal = cals.find(c => c.id === url);
+    sources.push({ url, name: cal ? cal.name : url });
+  }
+}
+
 // Capture the live, user-adjustable view state back into the active profile.
 // Today that is only the calendar visibility set, toggled via the drawer.
 export function captureActiveProfile() {
