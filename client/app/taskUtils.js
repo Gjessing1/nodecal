@@ -14,6 +14,17 @@ export function parseTagsFromTitle(raw) {
 }
 
 /**
+ * Whether a task's source calendar is currently visible (not hidden via the
+ * drawer or active profile). Tasks without a source are always visible.
+ * @param {object} task
+ * @param {Set<string>} hiddenCalendars - source URLs currently hidden
+ * @returns {boolean}
+ */
+export function taskSourceVisible(task, hiddenCalendars) {
+  return !task.source || !hiddenCalendars.has(task.source);
+}
+
+/**
  * Get all unique category names across tasks, excluding 'important'.
  * @param {Array} tasks
  * @returns {string[]} sorted

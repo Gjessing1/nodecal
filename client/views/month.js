@@ -3,6 +3,7 @@ import { initDayDnd, initLongPressCreate, initSwipe } from '../components/dnd.js
 import { localDateStr, getISOWeek, weatherIcon, weatherBadge, toTimeInputValue } from '../app/utils.js';
 import { showMonthYearPicker } from '../components/datePicker.js';
 import { showDayPopup } from './dayPopup.js';
+import { taskSourceVisible } from '../app/taskUtils.js';
 
 /**
  * @param {HTMLElement} container
@@ -182,7 +183,7 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, on
     .sort((a, b) => (a.allDay ? -1 : 1) - (b.allDay ? -1 : 1) || new Date(a.start) - new Date(b.start));
 
   const dayTasks = (state.config.showTasksOnMonth ?? state.config.showTasksOnCalendar)
-    ? state.tasks.filter(t => t.due === dayStr && t.status !== 'COMPLETED')
+    ? state.tasks.filter(t => t.due === dayStr && t.status !== 'COMPLETED' && taskSourceVisible(t, state.hiddenCalendars))
     : [];
 
   const MAX = 2;

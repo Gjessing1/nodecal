@@ -1,5 +1,6 @@
 import { state, calendarById } from '../app/state.js';
 import { localDateStr, weatherBadge } from '../app/utils.js';
+import { taskSourceVisible } from '../app/taskUtils.js';
 
 /**
  * Show the day popup overlay (used by both month and week views).
@@ -27,7 +28,7 @@ export function showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComple
     .sort((a, b) => (a.allDay ? -1 : 1) - (b.allDay ? -1 : 1) || new Date(a.start) - new Date(b.start));
 
   const dayTasks = (state.config.showTasksOnMonth ?? state.config.showTasksOnCalendar)
-    ? state.tasks.filter(t => t.due === dayStr && t.status !== 'COMPLETED')
+    ? state.tasks.filter(t => t.due === dayStr && t.status !== 'COMPLETED' && taskSourceVisible(t, state.hiddenCalendars))
     : [];
 
   const overlay = document.createElement('div');

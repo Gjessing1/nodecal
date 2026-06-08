@@ -1,6 +1,6 @@
 import { state } from '../app/state.js';
 import { buildTaskItem } from '../components/taskItem.js';
-import { parseTagsFromTitle, getAllCategories, visibleCategories, groupTasksByCategory } from '../app/taskUtils.js';
+import { parseTagsFromTitle, getAllCategories, visibleCategories, groupTasksByCategory, taskSourceVisible } from '../app/taskUtils.js';
 import { formatShortDate, localDateStr } from '../app/utils.js';
 import { openTaskModal } from '../components/taskModal.js';
 import { mountTaskQuickAdd, destroyTaskQuickAdd, focusTaskQuickAdd } from '../components/taskQuickAdd.js';
@@ -161,7 +161,7 @@ export function renderTasks(container, callbacks) {
   function buildCatFilter() {
     catFilterRow.innerHTML = '';
     const hidden = state.config.hiddenCategories || [];
-    const sourceVisible = state.tasks.filter(t => !t.source || !state.hiddenCalendars.has(t.source));
+    const sourceVisible = state.tasks.filter(t => taskSourceVisible(t, state.hiddenCalendars));
     const allCats = getAllCategories(sourceVisible).filter(c => !hidden.includes(c));
     if (!allCats.length) return;
 
@@ -219,7 +219,7 @@ function renderList(container, filterState, sortOrder, groupBy, filterCat, filte
 
   const hidden = state.config.hiddenCategories || [];
   // Tasks from calendars deactivated in the current profile are not surfaced.
-  let visibleTasks = state.tasks.filter(t => !t.source || !state.hiddenCalendars.has(t.source));
+  let visibleTasks = state.tasks.filter(t => taskSourceVisible(t, state.hiddenCalendars));
   // Free-text search over the source-visible set: title + description.
   const query = (_persist.query || '').trim().toLowerCase();
   if (query) {

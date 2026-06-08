@@ -8,6 +8,7 @@ import {
 import { initDnd, initSwipe, initLongPressCreate } from '../components/dnd.js';
 import { HOUR_HEIGHT } from '../components/timeGrid.js';
 import { showDayPopup } from './dayPopup.js';
+import { taskSourceVisible } from '../app/taskUtils.js';
 
 let timerId = null;
 let _container = null;
@@ -54,7 +55,7 @@ export function renderWeek(container, callbacks) {
   });
   const showTasksWeek = state.config.showTasksOnWeek ?? state.config.showTasksOnCalendar ?? false;
   const allDayTasks = showTasksWeek
-    ? state.tasks.filter(t => t.status !== 'COMPLETED' && t.due && days.some(d => localDateStr(d) === t.due))
+    ? state.tasks.filter(t => t.status !== 'COMPLETED' && t.due && days.some(d => localDateStr(d) === t.due) && taskSourceVisible(t, state.hiddenCalendars))
     : [];
   if (allDayEvents.length > 0 || allDayTasks.length > 0) {
     container.appendChild(buildAllDayRow(days, allDayEvents, allDayTasks, onEventClick, callbacks.onTaskClick, callbacks.onDayClick, callbacks.onTaskComplete, callbacks.onNewTask, callbacks.onLongPress));

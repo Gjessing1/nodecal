@@ -2,6 +2,7 @@ import { state, calendarById } from '../app/state.js';
 import { formatTime, localDateStr, getISOWeek, weatherBadge } from '../app/utils.js';
 import { initLongPressCreate } from '../components/dnd.js';
 import { getAllEventCategories } from '../app/eventUtils.js';
+import { taskSourceVisible } from '../app/taskUtils.js';
 
 const DAY_MS = 86400000;
 
@@ -79,7 +80,7 @@ export function renderAgenda(container, onEventClick, onTaskClick, onTaskComplet
       dayEvents = dayEvents.filter(ev => (ev.categories || []).includes(activeCategoryFilter));
     }
     const dayTasks = (state.config.showTasksOnAgenda ?? state.config.showTasksOnCalendar)
-      ? state.tasks.filter(t => t.due === str && t.status !== 'COMPLETED')
+      ? state.tasks.filter(t => t.due === str && t.status !== 'COMPLETED' && taskSourceVisible(t, state.hiddenCalendars))
       : [];
 
     const isToday = i === 0;

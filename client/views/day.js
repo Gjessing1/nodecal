@@ -7,6 +7,7 @@ import {
 } from '../components/timeGrid.js';
 import { initDnd, initSwipe, initLongPressCreate } from '../components/dnd.js';
 import { HOUR_HEIGHT } from '../components/timeGrid.js';
+import { taskSourceVisible } from '../app/taskUtils.js';
 
 let timerId = null;
 let _container = null;
@@ -40,7 +41,7 @@ export function renderDay(container, callbacks) {
   });
 
   const dayTasks = (state.config.showTasksOnDay ?? state.config.showTasksOnCalendar)
-    ? state.tasks.filter(t => t.due === dayStr && t.status !== 'COMPLETED')
+    ? state.tasks.filter(t => t.due === dayStr && t.status !== 'COMPLETED' && taskSourceVisible(t, state.hiddenCalendars))
     : [];
 
   container.innerHTML = '';
