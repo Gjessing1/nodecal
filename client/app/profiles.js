@@ -7,20 +7,45 @@ import { state } from './state.js';
 // resolves them per request — all data is synced once and profiles only filter
 // the view. See docs/ROADMAP.md "Personal / Work profile switching".
 
+// Built-in profiles. 'single' is the no-switcher mode; 'personal'/'work' are the
+// two-profile mode that shows the navbar switcher. The active profile id alone
+// decides the mode — no separate flag.
 const DEFAULT_PROFILES = {
+  single:   { name: 'Single',   hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultView: '' },
   personal: { name: 'Personal', hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultView: '' },
   work:     { name: 'Work',     hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultView: '' },
 };
 
+// Display order for the built-ins and the two ids that form the switcher pair.
+export const PROFILE_ORDER = ['single', 'personal', 'work'];
+export const DUAL_IDS = ['personal', 'work'];
+
 export function getProfiles() {
-  const p = state.config.profiles;
-  if (p && typeof p === 'object' && Object.keys(p).length) return p;
-  state.config.profiles = structuredClone(DEFAULT_PROFILES);
-  return state.config.profiles;
+  let p = state.config.profiles;
+  if (!p || typeof p !== 'object' || !Object.keys(p).length) {
+    p = structuredClone(DEFAULT_PROFILES);
+    state.config.profiles = p;
+    return p;
+  }
+  // Backfill any built-in profile missing from older saved settings (e.g.
+  // 'single', added later) so all three modes stay available without dropping
+  // the user's existing customizations.
+  for (const id of PROFILE_ORDER) {
+    if (!p[id]) p[id] = structuredClone(DEFAULT_PROFILES[id]);
+  }
+  return p;
 }
 
+// Built-ins first (in canonical order), then any user-defined extras.
 export function profileIds() {
-  return Object.keys(getProfiles());
+  const all = Object.keys(getProfiles());
+  const extras = all.filter(id => !PROFILE_ORDER.includes(id));
+  return [...PROFILE_ORDER, ...extras];
+}
+
+// Single mode hides the navbar switcher; personal/work show it.
+export function isSingleMode() {
+  return activeProfileId() === 'single';
 }
 
 export function activeProfileId() {

@@ -4,12 +4,14 @@ import { getProfiles, profileIds, activeProfileId, captureActiveProfile } from '
 
 // Accent presets — empty string means "use the theme default" (no override).
 const ACCENTS = ['', '#2563eb', '#b45309', '#15803d', '#7c3aed', '#db2777', '#0891b2'];
-const VIEWS = ['', 'agenda', 'day', 'week', 'month'];
+const BASE_VIEWS = ['', 'agenda', 'day', 'week', 'month'];
 
 // Renders the Profiles editor: an active-profile selector plus one collapsible
-// card per profile (name, accent, visible calendars, default view). The editor
-// mutates the live `state.config.profiles` objects in place; settingsPanel saves
-// them via PUT /settings and main.js re-applies the active profile on close.
+// card per profile (name, accent, visible calendars, task source, default
+// view). 'Single' is the no-switcher mode; 'Personal'/'Work' show the navbar
+// switcher. The editor mutates the live `state.config.profiles` objects in
+// place; settingsPanel saves them via PUT /settings and main.js re-applies the
+// active profile on close.
 export function renderProfilesSection(sheet, cfg) {
   const section = sheet.querySelector('#s-profiles-section');
   if (!section) return;
@@ -31,6 +33,10 @@ export function renderProfilesSection(sheet, cfg) {
   ).join('');
   activeSel.addEventListener('change', () => { state.config.activeProfile = activeSel.value; });
   activeField.appendChild(activeSel);
+  const hint = document.createElement('span');
+  hint.style.cssText = 'font-size:var(--font-size-sm);color:var(--color-text-muted);display:block;margin-top:4px';
+  hint.textContent = 'Single hides the navbar switcher. Personal / Work shows it.';
+  activeField.appendChild(hint);
   section.appendChild(activeField);
 
   for (const id of profileIds()) {
@@ -136,12 +142,13 @@ function buildCalendarsField(profile) {
   return field;
 }
 
-// Per-profile target for new tasks (quick-add "To:"). Empty means "use the
-// global default task source". Only the configured sources are offered.
+// Per-profile target for new tasks (quick-add "To:") — the calendar collection
+// that stores this profile's tasks. The full list of configured sources is
+// offered; the profile always points at a concrete one.
 function buildTaskSourceField(profile) {
   const field = document.createElement('div');
   field.className = 'modal-field';
-  field.innerHTML = '<label>New tasks go to</label>';
+  field.innerHTML = '<label>Task source</label>';
   const sources = state.taskSources || [];
   if (!sources.length) {
     const note = document.createElement('span');
@@ -150,13 +157,21 @@ function buildTaskSourceField(profile) {
     field.appendChild(note);
     return field;
   }
-  const sel = document.createElement('select');
-  const options = ['<option value="">(use global default)</option>'];
-  for (const src of sources) {
-    const selected = (profile.defaultTaskSource || '') === src.url ? 'selected' : '';
-    options.push(`<option value="${esc(src.url)}" ${selected}>${esc(src.name || src.url)}</option>`);
+  // Pre-select the profile's stored source if still valid, else fall back to the
+  // global default, else the first source.
+  let current = profile.defaultTaskSource;
+  if (!sources.some(src => src.url === current)) {
+    current = sources.some(src => src.url === state.config.defaultTaskSource)
+      ? state.config.defaultTaskSource
+      : sources[0].url;
   }
-  sel.innerHTML = options.join('');
+  const sel = document.createElement('select');
+  sel.innerHTML = sources.map(src =>
+    `<option value="${esc(src.url)}" ${current === src.url ? 'selected' : ''}>${esc(src.name || src.url)}</option>`
+  ).join('');
+  // Persist the resolved value immediately so an untouched dropdown still saves
+  // the concrete source it is showing.
+  profile.defaultTaskSource = current;
   sel.addEventListener('change', () => { profile.defaultTaskSource = sel.value; });
   field.appendChild(sel);
   return field;
@@ -166,8 +181,11 @@ function buildDefaultViewField(profile) {
   const field = document.createElement('div');
   field.className = 'modal-field';
   field.innerHTML = '<label>Default view</label>';
+  // 'tasks' is only a valid default when the Tasks tab is enabled.
+  const views = [...BASE_VIEWS];
+  if (state.config.enableTasksView) views.push('tasks');
   const sel = document.createElement('select');
-  sel.innerHTML = VIEWS.map(v =>
+  sel.innerHTML = views.map(v =>
     `<option value="${v}" ${(profile.defaultView || '') === v ? 'selected' : ''}>${v || '(use global)'}</option>`
   ).join('');
   sel.addEventListener('change', () => { profile.defaultView = sel.value; });

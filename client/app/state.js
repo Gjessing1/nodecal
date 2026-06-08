@@ -42,6 +42,7 @@ export const state = {
     activeProfile: 'personal',
     /** @type {Object<string, {name, hiddenCalendars, accentColor, defaultTaskSource, defaultView}>} */
     profiles: {
+      single:   { name: 'Single',   hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultView: '' },
       personal: { name: 'Personal', hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultView: '' },
       work:     { name: 'Work',     hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultView: '' },
     },

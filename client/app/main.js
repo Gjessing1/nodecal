@@ -12,7 +12,7 @@ import { showSnackbar } from '../components/snackbar.js';
 import { initSettingsPanel, openSettings } from '../components/settingsPanel.js';
 import { initInstallPrompt } from './installPrompt.js';
 import { initTheme } from './theme.js';
-import { applyProfile, captureActiveProfile, persistProfiles, profileIds, activeProfileId, activeProfile } from './profiles.js';
+import { applyProfile, captureActiveProfile, persistProfiles, activeProfileId, activeProfile, isSingleMode, DUAL_IDS } from './profiles.js';
 import { localDateStr, toDateInputValue, localToUTC } from './utils.js';
 
 const viewContainer   = document.getElementById('view-container');
@@ -62,18 +62,18 @@ function updateProfileSwitcher() {
   const btn = document.getElementById('profile-switch');
   if (!btn) return;
   const p = activeProfile();
-  if (profileIds().length < 2 || !p) { btn.hidden = true; return; }
+  // Single mode has no second profile to switch to — hide the navbar control.
+  if (isSingleMode() || !p) { btn.hidden = true; return; }
   btn.hidden = false;
   btn.textContent = p.name || activeProfileId();
 }
 
-// One-tap switch: cycle to the next profile, persisting the current profile's
-// live calendar visibility first so drawer toggles aren't lost on switch.
+// One-tap switch: toggle between the Personal/Work pair, persisting the current
+// profile's live calendar visibility first so drawer toggles aren't lost.
 function cycleProfile() {
-  const ids = profileIds();
-  if (ids.length < 2) return;
+  if (isSingleMode()) return;
   captureActiveProfile();
-  const next = ids[(ids.indexOf(activeProfileId()) + 1) % ids.length];
+  const next = DUAL_IDS[(DUAL_IDS.indexOf(activeProfileId()) + 1) % DUAL_IDS.length];
   applyProfile(next);
   persistProfiles();
   updateProfileSwitcher();
