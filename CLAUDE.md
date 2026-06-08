@@ -55,5 +55,5 @@ Read these before working on a feature. This file holds only the rules Claude mu
 ## Remember
 
 - Roadmap lives in [docs/ROADMAP.md](docs/ROADMAP.md). Update it each time you finish a phase to track current progress.
-- Also push and build new docker image when finishing.
+- Comit and push when finished.
 - Don't credit Claude when doing commits.

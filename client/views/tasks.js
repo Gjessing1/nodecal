@@ -14,6 +14,7 @@ const _persist = {
   groupBy: 'date',
   filterCat: '',
   filterSource: '',
+  query: '',
   sortOrder: null,  // null means use state.config.taskSortOrder
 };
 
@@ -98,6 +99,23 @@ export function renderTasks(container, callbacks) {
   rightControls.appendChild(sortSel);
   controls.appendChild(leftFilters);
   controls.appendChild(rightControls);
+
+  // ── Search box ──────────────────────────────────────────────
+  // Searches title + description across the source-visible tasks (i.e. the
+  // calendars currently checked in the drawer). Created once so typing keeps
+  // focus — rerender() never rebuilds this input.
+  const searchRow = document.createElement('div');
+  searchRow.className = 'tasks-search-row';
+  const searchInput = document.createElement('input');
+  searchInput.type = 'search';
+  searchInput.className = 'tasks-search-input';
+  searchInput.placeholder = 'Search tasks…';
+  searchInput.value = _persist.query;
+  searchInput.addEventListener('input', () => {
+    _persist.query = searchInput.value;
+    renderList(list, filterState, sortSel.value, currentGroupBy, currentFilterCat, currentSourceFilter, callbacks);
+  });
+  searchRow.appendChild(searchInput);
 
   // ── Source filter (only when multiple sources) ──────────────
   let currentSourceFilter = _persist.filterSource;
@@ -185,6 +203,7 @@ export function renderTasks(container, callbacks) {
   renderList(list, filterState, sortSel.value, currentGroupBy, currentFilterCat, currentSourceFilter, callbacks);
 
   wrap.appendChild(controls);
+  wrap.appendChild(searchRow);
   wrap.appendChild(sourceFilterRow);
   wrap.appendChild(catFilterRow);
   wrap.appendChild(list);
@@ -200,7 +219,15 @@ function renderList(container, filterState, sortOrder, groupBy, filterCat, filte
 
   const hidden = state.config.hiddenCategories || [];
   // Tasks from calendars deactivated in the current profile are not surfaced.
-  const visibleTasks = state.tasks.filter(t => !t.source || !state.hiddenCalendars.has(t.source));
+  let visibleTasks = state.tasks.filter(t => !t.source || !state.hiddenCalendars.has(t.source));
+  // Free-text search over the source-visible set: title + description.
+  const query = (_persist.query || '').trim().toLowerCase();
+  if (query) {
+    visibleTasks = visibleTasks.filter(t =>
+      (t.title || '').toLowerCase().includes(query) ||
+      (t.description || '').toLowerCase().includes(query)
+    );
+  }
   let tasks;
   if (filterState.showDone) {
     // "Done" mode: show ONLY completed tasks, newest completion first
@@ -320,7 +347,11 @@ function renderGroups(container, groups, callbacks, totalCount, showDue = false)
   if (isEmpty) {
     const empty = document.createElement('p');
     empty.className = 'tasks-empty';
-    empty.textContent = totalCount ? 'All done! ✓' : 'No tasks yet — add one below.';
+    if (_persist.query.trim()) {
+      empty.textContent = 'No search results for your query.';
+    } else {
+      empty.textContent = totalCount ? 'All done! ✓' : 'No tasks yet — add one below.';
+    }
     container.appendChild(empty);
   }
 }

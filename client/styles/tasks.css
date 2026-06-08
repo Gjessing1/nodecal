@@ -279,6 +279,20 @@
   gap: var(--space-sm);
 }
 
+/* ── Search row ──────────────────────────────────────────── */
+.tasks-search-row {
+  padding: var(--space-xs) var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+.tasks-search-input {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: var(--font-size-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
 /* ── Category filter row ─────────────────────────────────── */
 .tasks-cat-filter-row {
   display: flex;
