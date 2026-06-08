@@ -4,6 +4,7 @@ import { buildTimePicker } from './timePicker.js';
 import { buildRecurrenceEditor } from './recurrenceUI.js';
 import { buildDatePickerButton, mountLocationUrlSection, mountCollapsibleToggle, wireCategoryUI } from './modalHelpers.js';
 import { getAllEventCategories } from '../app/eventUtils.js';
+import { effectiveEventCalendar } from '../app/profiles.js';
 
 let overlay, sheet, onSaveCb, onDeleteCb, onDuplicateCb;
 
@@ -189,8 +190,8 @@ function renderForm(event, defaultDate, explicitTime = false) {
   const end = event ? new Date(event.end) : new Date(start.getTime() + durMs);
   // For all-day events, slice the UTC date string directly — never convert through local timezone.
   const allDayDateVal = event?.allDay ? event.start.slice(0, 10) : toDateInputValue(start, tz);
-  // Default calendar: prefer event's calendar, then settings default, then first available
-  const defaultCalId = event?.calendarId || state.config.defaultCalendar || state.calendars[0]?.id;
+  // Default calendar: prefer event's calendar, then the profile/global default, then first available
+  const defaultCalId = event?.calendarId || effectiveEventCalendar() || state.calendars[0]?.id;
 
   sheet.innerHTML = `
     <div class="modal-handle"></div>

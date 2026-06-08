@@ -73,6 +73,7 @@ function buildProfileEditor(id, profile) {
   body.appendChild(buildAccentField(profile));
   body.appendChild(buildCalendarsField(profile));
   body.appendChild(buildTaskSourceField(profile));
+  body.appendChild(buildEventCalendarField(profile));
   body.appendChild(buildDefaultViewField(profile));
 
   wrap.append(header, body);
@@ -186,6 +187,32 @@ function buildTaskSourceField(profile) {
   hint.style.cssText = 'font-size:var(--font-size-sm);color:var(--color-text-muted);display:block;margin-top:4px';
   hint.textContent = 'Each profile can use a different calendar — it is registered as a task source automatically.';
   field.appendChild(hint);
+  return field;
+}
+
+// Per-profile target calendar for new events. Empty value falls back to the
+// global `defaultCalendar` setting via effectiveEventCalendar(). Read-only
+// calendars are excluded since events can't be created in them.
+function buildEventCalendarField(profile) {
+  const field = document.createElement('div');
+  field.className = 'modal-field';
+  field.innerHTML = '<label>Default calendar for new events</label>';
+  const cals = (state.calendars || []).filter(c => !c.readOnly);
+  if (!cals.length) {
+    const note = document.createElement('span');
+    note.style.cssText = 'font-size:var(--font-size-sm);color:var(--color-text-muted)';
+    note.textContent = 'Sync first to list calendars.';
+    field.appendChild(note);
+    return field;
+  }
+  const current = profile.defaultEventCalendar || '';
+  const sel = document.createElement('select');
+  const globalOpt = `<option value="" ${current === '' ? 'selected' : ''}>(use global default)</option>`;
+  sel.innerHTML = globalOpt + cals.map(c =>
+    `<option value="${esc(c.id)}" ${current === c.id ? 'selected' : ''}>${esc(c.name)}</option>`
+  ).join('');
+  sel.addEventListener('change', () => { profile.defaultEventCalendar = sel.value; });
+  field.appendChild(sel);
   return field;
 }
 

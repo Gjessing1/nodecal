@@ -40,11 +40,11 @@ export const state = {
     icsFeeds: [],
     /** @type {string} id of the active profile preset */
     activeProfile: 'personal',
-    /** @type {Object<string, {name, hiddenCalendars, accentColor, defaultTaskSource, defaultView}>} */
+    /** @type {Object<string, {name, hiddenCalendars, accentColor, defaultTaskSource, defaultEventCalendar, defaultView}>} */
     profiles: {
-      single:   { name: 'Single',   hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultView: '' },
-      personal: { name: 'Personal', hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultView: '' },
-      work:     { name: 'Work',     hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultView: '' },
+      single:   { name: 'Single',   hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultEventCalendar: '', defaultView: '' },
+      personal: { name: 'Personal', hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultEventCalendar: '', defaultView: '' },
+      work:     { name: 'Work',     hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultEventCalendar: '', defaultView: '' },
     },
   },
 };

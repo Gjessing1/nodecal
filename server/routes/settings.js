@@ -31,9 +31,9 @@ router.get('/settings', (req, res) => {
     icsFeeds:               [],
     activeProfile:          'personal',
     profiles: {
-      single:   { name: 'Single',   hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultView: '' },
-      personal: { name: 'Personal', hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultView: '' },
-      work:     { name: 'Work',     hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultView: '' },
+      single:   { name: 'Single',   hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultEventCalendar: '', defaultView: '' },
+      personal: { name: 'Personal', hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultEventCalendar: '', defaultView: '' },
+      work:     { name: 'Work',     hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultEventCalendar: '', defaultView: '' },
     },
     ...overrides,
   });

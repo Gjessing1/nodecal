@@ -12,7 +12,7 @@ import { showSnackbar } from '../components/snackbar.js';
 import { initSettingsPanel, openSettings } from '../components/settingsPanel.js';
 import { initInstallPrompt } from './installPrompt.js';
 import { initTheme } from './theme.js';
-import { applyProfile, captureActiveProfile, persistProfiles, activeProfileId, activeProfile, isSingleMode, DUAL_IDS } from './profiles.js';
+import { applyProfile, captureActiveProfile, persistProfiles, activeProfileId, activeProfile, isSingleMode, DUAL_IDS, effectiveEventCalendar } from './profiles.js';
 import { localDateStr, toDateInputValue, localToUTC } from './utils.js';
 
 const viewContainer   = document.getElementById('view-container');
@@ -914,7 +914,7 @@ async function init() {
           start: data.start,
           end: data.end,
           allDay: data.allDay,
-          calendarId: state.config.defaultCalendar || state.calendars[0]?.id,
+          calendarId: effectiveEventCalendar() || state.calendars[0]?.id,
           description: '',
           ...(data.rrule ? { rrule: data.rrule } : {}),
           alarmMinutes: state.config.alarmDefaultMinutes || null,

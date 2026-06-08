@@ -11,9 +11,9 @@ import { state } from './state.js';
 // two-profile mode that shows the navbar switcher. The active profile id alone
 // decides the mode — no separate flag.
 const DEFAULT_PROFILES = {
-  single:   { name: 'Single',   hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultView: '' },
-  personal: { name: 'Personal', hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultView: '' },
-  work:     { name: 'Work',     hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultView: '' },
+  single:   { name: 'Single',   hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultEventCalendar: '', defaultView: '' },
+  personal: { name: 'Personal', hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultEventCalendar: '', defaultView: '' },
+  work:     { name: 'Work',     hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultEventCalendar: '', defaultView: '' },
 };
 
 // Display order for the built-ins and the two ids that form the switcher pair.
@@ -76,6 +76,14 @@ export function applyProfile(id) {
 // global `defaultTaskSource` setting.
 export function effectiveTaskSource() {
   return activeProfile()?.defaultTaskSource || state.config.defaultTaskSource || '';
+}
+
+// Resolve which calendar new events should land in: the active profile's
+// override if set, otherwise the global default. Computed at point of use so
+// switching profiles changes the target without clobbering the global
+// `defaultCalendar` setting.
+export function effectiveEventCalendar() {
+  return activeProfile()?.defaultEventCalendar || state.config.defaultCalendar || '';
 }
 
 // Ensure every profile's chosen task source is a registered task source so the
