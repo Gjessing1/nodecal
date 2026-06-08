@@ -31,6 +31,54 @@ function parseProperty(line) {
   return { name, params, value };
 }
 
+// Microsoft Exchange/Outlook ICS exports label times with Windows timezone
+// names (e.g. "W. Europe Standard Time") instead of IANA zones, which
+// Intl.DateTimeFormat rejects. Map the common ones; anything unknown falls back
+// to the feed's configured timezone so a single odd TZID never breaks a feed.
+const WINDOWS_TZ = {
+  'UTC': 'UTC',
+  'GMT Standard Time': 'Europe/London',
+  'Greenwich Standard Time': 'Atlantic/Reykjavik',
+  'W. Europe Standard Time': 'Europe/Berlin',
+  'Central Europe Standard Time': 'Europe/Budapest',
+  'Central European Standard Time': 'Europe/Warsaw',
+  'Romance Standard Time': 'Europe/Paris',
+  'FLE Standard Time': 'Europe/Helsinki',
+  'E. Europe Standard Time': 'Europe/Chisinau',
+  'Russian Standard Time': 'Europe/Moscow',
+  'W. Central Africa Standard Time': 'Africa/Lagos',
+  'Eastern Standard Time': 'America/New_York',
+  'Central Standard Time': 'America/Chicago',
+  'Mountain Standard Time': 'America/Denver',
+  'Pacific Standard Time': 'America/Los_Angeles',
+  'India Standard Time': 'Asia/Kolkata',
+  'China Standard Time': 'Asia/Shanghai',
+  'Tokyo Standard Time': 'Asia/Tokyo',
+  'AUS Eastern Standard Time': 'Australia/Sydney',
+};
+
+const _tzValidCache = new Map();
+function isValidTimezone(tz) {
+  if (_tzValidCache.has(tz)) return _tzValidCache.get(tz);
+  let ok = true;
+  try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); }
+  catch { ok = false; }
+  _tzValidCache.set(tz, ok);
+  return ok;
+}
+
+// Resolve a (possibly Windows-named or quoted) TZID to a valid IANA zone,
+// degrading gracefully: TZID → Windows map → fallback timezone → UTC.
+function resolveTimezone(tz, fallback) {
+  if (!tz) return isValidTimezone(fallback) ? fallback : 'UTC';
+  const clean = tz.replace(/^"|"$/g, '');
+  if (isValidTimezone(clean)) return clean;
+  const mapped = WINDOWS_TZ[clean];
+  if (mapped && isValidTimezone(mapped)) return mapped;
+  if (isValidTimezone(fallback)) return fallback;
+  return 'UTC';
+}
+
 /**
  * Convert a floating local datetime string ("YYYY-MM-DDTHH:MM:SS") to a UTC Date
  * by computing the offset for `timezone` at that approximate instant.
@@ -63,7 +111,7 @@ function parseIcsDate(value, params = {}, fallbackTz = 'UTC') {
     return { date: new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`), allDay: false };
   }
   // Floating or TZID-local time — convert to UTC using TZID param or fallback timezone
-  const tz = params.TZID || fallbackTz;
+  const tz = resolveTimezone(params.TZID, fallbackTz);
   return { date: floatingToUtc(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`, tz), allDay: false };
 }
 

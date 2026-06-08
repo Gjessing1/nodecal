@@ -1,4 +1,4 @@
-import { state } from '../app/state.js';
+import { state, calendarById } from '../app/state.js';
 import { toDateInputValue, toTimeInputValue, localToUTC, esc } from '../app/utils.js';
 import { buildTimePicker } from './timePicker.js';
 import { buildRecurrenceEditor } from './recurrenceUI.js';
@@ -44,8 +44,114 @@ export function openEditEventModal(event, onSave, onDelete, onDuplicate) {
   overlay.classList.remove('hidden');
 }
 
+/**
+ * Open a read-only view of an event (used for subscribed ICS feed calendars,
+ * which have no CalDAV write path). No editable fields, no Save/Delete.
+ * @param {object} event
+ */
+export function openReadOnlyEventModal(event) {
+  onSaveCb = null;
+  onDeleteCb = null;
+  onDuplicateCb = null;
+  renderReadOnly(event);
+  sheet.scrollTop = 0;
+  overlay.classList.remove('hidden');
+}
+
 export function closeModal() {
   overlay.classList.add('hidden');
+}
+
+function formatEventWhen(event) {
+  const tz = state.config.timezone;
+  const opts = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: tz };
+  if (event.allDay) {
+    const d = new Date(event.start.slice(0, 10) + 'T00:00:00Z');
+    return d.toLocaleDateString('en-US', { ...opts, timeZone: 'UTC' }) + ' · All day';
+  }
+  const start = new Date(event.start);
+  const end = new Date(event.end);
+  const dateStr = start.toLocaleDateString('en-US', opts);
+  const t = d => d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: state.config.timeFormat === '12h', timeZone: tz });
+  return `${dateStr} · ${t(start)} – ${t(end)}`;
+}
+
+function renderReadOnly(event) {
+  const cal = calendarById(event.calendarId);
+  const rows = [];
+  rows.push(`
+    <div class="modal-handle"></div>
+    <div class="modal-field">
+      <div class="modal-title">${esc(event.title || '(No title)')}</div>
+      <div class="readonly-badge">Read-only · ${esc(cal?.name || 'Subscribed calendar')}</div>
+    </div>
+    <div class="readonly-row"><span class="readonly-when">${esc(formatEventWhen(event))}</span></div>`);
+  if (event.location) {
+    rows.push(`<div class="readonly-row"><span class="readonly-label">Location</span> ${esc(event.location)}</div>`);
+  }
+  if (event.url) {
+    rows.push(`<div class="readonly-row"><span class="readonly-label">URL</span> <a href="${esc(event.url)}" target="_blank" rel="noopener">${esc(event.url)}</a></div>`);
+  }
+  if (event.description) {
+    rows.push(`<div class="readonly-row readonly-desc">${esc(event.description)}</div>`);
+  }
+  rows.push(`
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="f-close">Close</button>
+    </div>`);
+  sheet.innerHTML = rows.join('');
+  sheet.querySelector('#f-close').addEventListener('click', closeModal);
+}
+
+/**
+ * Ask which occurrences of a recurring event to delete.
+ * Resolves with 'single' | 'future' | 'all', or null if cancelled.
+ * @returns {Promise<string|null>}
+ */
+function showDeleteScopeDialog() {
+  return new Promise(resolve => {
+    const dlgOverlay = document.createElement('div');
+    dlgOverlay.className = 'modal-overlay delete-scope-overlay';
+
+    const box = document.createElement('div');
+    box.className = 'modal-sheet delete-scope-sheet';
+
+    const title = document.createElement('div');
+    title.className = 'modal-title';
+    title.textContent = 'Delete recurring event';
+
+    const choices = [
+      ['single', 'This event only'],
+      ['future', 'This and following events'],
+      ['all', 'Entire series'],
+    ];
+
+    function finish(value) {
+      dlgOverlay.remove();
+      resolve(value);
+    }
+
+    box.appendChild(title);
+    for (const [value, label] of choices) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-danger delete-scope-btn';
+      btn.textContent = label;
+      btn.addEventListener('click', () => finish(value));
+      box.appendChild(btn);
+    }
+
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'btn btn-ghost delete-scope-btn';
+    cancel.textContent = 'Cancel';
+    cancel.addEventListener('click', () => finish(null));
+    box.appendChild(cancel);
+
+    dlgOverlay.addEventListener('click', e => { if (e.target === dlgOverlay) finish(null); });
+    dlgOverlay.appendChild(box);
+    document.body.appendChild(dlgOverlay);
+  });
 }
 
 function computeDefaultStart(date, tz) {
@@ -161,7 +267,7 @@ function renderForm(event, defaultDate, explicitTime = false) {
       <label>Edit scope</label>
       <select id="f-scope">
         <option value="single">This event only</option>
-        <option value="future">This and following</option>
+        <option value="future" selected>This and following</option>
         <option value="all">All events in series</option>
       </select>
     </div>` : ''}
@@ -337,6 +443,11 @@ function renderForm(event, defaultDate, explicitTime = false) {
       });
       batchToggle.appendChild(toggleBtn);
 
+      const hint = document.createElement('div');
+      hint.className = 'batch-shift-status';
+      hint.textContent = 'Tip: use a negative number to shift events backwards.';
+      batchBody.appendChild(hint);
+
       for (const cat of modalCats) {
         const row = document.createElement('div');
         row.className = 'batch-shift-row';
@@ -345,6 +456,7 @@ function renderForm(event, defaultDate, explicitTime = false) {
 
         const nInput = document.createElement('input');
         nInput.type = 'number'; nInput.min = '-365'; nInput.max = '365';
+        nInput.title = 'Negative shifts backwards, positive shifts forwards';
         nInput.className = 'rec-interval-input'; nInput.value = '7';
         const unitSel = document.createElement('select');
         unitSel.className = 'rec-freq-sel';
@@ -419,10 +531,18 @@ function renderForm(event, defaultDate, explicitTime = false) {
     });
   }
   if (!isNew && onDeleteCb) {
-    sheet.querySelector('#f-delete').addEventListener('click', () => {
-      const scope = sheet.querySelector('#f-scope')?.value || null;
-      closeModal();
-      onDeleteCb(event, scope);
+    sheet.querySelector('#f-delete').addEventListener('click', async () => {
+      if (event?.recurring) {
+        // Recurring: ask explicitly which occurrences to remove
+        const scope = await showDeleteScopeDialog();
+        if (!scope) return; // cancelled
+        closeModal();
+        onDeleteCb(event, scope);
+      } else {
+        if (!confirm('Delete this event?')) return;
+        closeModal();
+        onDeleteCb(event, null);
+      }
     });
     const dupBtn = sheet.querySelector('#f-duplicate');
     if (dupBtn) {

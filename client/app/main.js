@@ -1,4 +1,4 @@
-import { state, setCalendars, setEvents, setTasks, setTaskSources, setWeather, setConfig } from './state.js';
+import { state, setCalendars, setEvents, setTasks, setTaskSources, setWeather, setConfig, calendarById } from './state.js';
 import { renderAgenda } from '../views/agenda.js';
 import { renderDay, destroyDay } from '../views/day.js';
 import { renderWeek, destroyWeek } from '../views/week.js';
@@ -6,11 +6,13 @@ import { renderMonth } from '../views/month.js';
 import { renderTasks } from '../views/tasks.js';
 import { openTaskModal } from '../components/taskModal.js';
 import { destroyTaskQuickAdd, focusTaskQuickAdd } from '../components/taskQuickAdd.js';
-import { initModal, openNewEventModal, openEditEventModal } from '../components/modalEditor.js';
+import { initModal, openNewEventModal, openEditEventModal, openReadOnlyEventModal } from '../components/modalEditor.js';
 import { initCalendarDrawer, openDrawer } from '../components/calendarDrawer.js';
+import { showSnackbar } from '../components/snackbar.js';
 import { initSettingsPanel, openSettings } from '../components/settingsPanel.js';
 import { initInstallPrompt } from './installPrompt.js';
 import { initTheme } from './theme.js';
+import { applyProfile, captureActiveProfile, persistProfiles, profileIds, activeProfileId, activeProfile } from './profiles.js';
 import { localDateStr, toDateInputValue, localToUTC } from './utils.js';
 
 const viewContainer   = document.getElementById('view-container');
@@ -52,6 +54,31 @@ function buildNav() {
     btn.addEventListener('click', () => switchView(viewId));
     bottomNav.appendChild(btn);
   }
+}
+
+// ── Profile switcher ──────────────────────────────────────
+
+function updateProfileSwitcher() {
+  const btn = document.getElementById('profile-switch');
+  if (!btn) return;
+  const p = activeProfile();
+  if (profileIds().length < 2 || !p) { btn.hidden = true; return; }
+  btn.hidden = false;
+  btn.textContent = p.name || activeProfileId();
+}
+
+// One-tap switch: cycle to the next profile, persisting the current profile's
+// live calendar visibility first so drawer toggles aren't lost on switch.
+function cycleProfile() {
+  const ids = profileIds();
+  if (ids.length < 2) return;
+  captureActiveProfile();
+  const next = ids[(ids.indexOf(activeProfileId()) + 1) % ids.length];
+  applyProfile(next);
+  persistProfiles();
+  updateProfileSwitcher();
+  buildNav();
+  render();
 }
 
 const _viewHistory = [];
@@ -167,6 +194,9 @@ async function loadAll() {
   ]);
   const settings = await settingsRes.json();
   setConfig(settings);
+  // Apply the active profile preset (calendar visibility, accent, defaults) onto
+  // live state before the first render.
+  applyProfile(activeProfileId());
   setCalendars(await calRes.json());
   setEvents(await evRes.json());
   if (tasksRes.ok) setTasks(await tasksRes.json());
@@ -175,7 +205,7 @@ async function loadAll() {
   if (!state._viewInitialized) {
     const calViews = settings.enabledViews || ['agenda'];
     const tabs = [...calViews, ...(settings.enableTasksView ? ['tasks'] : [])];
-    const def = settings.defaultView || calViews[0];
+    const def = state.config.defaultView || calViews[0];
     let savedView = null;
     try { savedView = localStorage.getItem('nodecal-active-view'); } catch { /* storage unavailable */ }
     state.activeView = (savedView && tabs.includes(savedView)) ? savedView : (calViews.includes(def) ? def : calViews[0]);
@@ -189,6 +219,11 @@ async function loadEvents() {
   const events = await res.json();
   setEvents(events);
   scheduleNotifications(events);
+}
+
+async function loadCalendars() {
+  const res = await fetch('/calendars');
+  if (res.ok) setCalendars(await res.json());
 }
 
 // ── Notifications ─────────────────────────────────────────
@@ -329,7 +364,7 @@ async function handleSync() {
     const res = await fetch('/sync', { method: 'POST' });
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
-    await Promise.all([loadEvents(), loadTasks()]);
+    await Promise.all([loadCalendars(), loadEvents(), loadTasks()]);
     render();
   } catch (err) {
     syncError.textContent = 'Sync failed: ' + err.message;
@@ -342,6 +377,11 @@ async function handleSync() {
 // ── Event CRUD ────────────────────────────────────────────
 
 function handleEventClick(event) {
+  // Subscribed (ICS) calendars are read-only — show a non-editable view.
+  if (calendarById(event.calendarId)?.readOnly) {
+    openReadOnlyEventModal(event);
+    return;
+  }
   openEditEventModal(event, data => saveEvent(event.id, data), (ev, scope) => deleteEvent(ev, scope), handleDuplicateEvent);
 }
 
@@ -365,6 +405,7 @@ function handleDuplicateEvent(event) {
 function handleEventMove(eventId, day, startMin) {
   const ev = state.events.find(e => e.id === eventId);
   if (!ev) return;
+  if (calendarById(ev.calendarId)?.readOnly) return; // subscribed calendars can't be edited
   const tz = state.config.timezone;
   const duration = new Date(ev.end) - new Date(ev.start);
   const dateStr = localDateStr(day);
@@ -384,6 +425,7 @@ function handleEventMove(eventId, day, startMin) {
 function handleEventResize(eventId, endMin) {
   const ev = state.events.find(e => e.id === eventId);
   if (!ev) return;
+  if (calendarById(ev.calendarId)?.readOnly) return; // subscribed calendars can't be edited
   const tz = state.config.timezone;
   const start = new Date(ev.start);
   const dateStr = toDateInputValue(start, tz);
@@ -425,9 +467,24 @@ async function deleteEvent(ev, scope) {
     if (!res.ok && res.status !== 204) throw new Error('Delete failed');
     await loadEvents();
     render();
+    // Undo only for clean non-recurring deletes — recurring scoped deletes
+    // (EXDATE / capped UNTIL) can't be reversed by simply re-creating.
+    if (!ev.rrule && !ev.recurring) {
+      showSnackbar('Event deleted', { actionLabel: 'Undo', onAction: () => undoEventDelete(ev) });
+    } else {
+      showSnackbar('Event deleted');
+    }
   } catch (err) {
     alert('Delete failed: ' + err.message);
   }
+}
+
+function undoEventDelete(ev) {
+  saveEvent(null, {
+    calendarId: ev.calendarId, title: ev.title, start: ev.start, end: ev.end,
+    allDay: ev.allDay, description: ev.description, location: ev.location,
+    url: ev.url, rrule: ev.rrule, alarmMinutes: ev.alarmMinutes, categories: ev.categories,
+  });
 }
 
 // ── Task CRUD ─────────────────────────────────────────────
@@ -630,9 +687,18 @@ async function handleTaskDelete(task) {
     if (!res.ok && res.status !== 204) throw new Error('Delete failed');
     await loadTasks();
     render();
+    showSnackbar('Task deleted', { actionLabel: 'Undo', onAction: () => undoTaskDelete(task) });
   } catch (err) {
     alert('Delete failed: ' + err.message);
   }
+}
+
+function undoTaskDelete(task) {
+  handleTaskAdd({
+    title: task.title, due: task.due, categories: task.categories,
+    source: task.source, rrule: task.rrule, xRecurringType: task.xRecurringType,
+    xRecurringInterval: task.xRecurringInterval, description: task.description,
+  });
 }
 
 // ── Login ─────────────────────────────────────────────────
@@ -660,7 +726,7 @@ function initLogin() {
       overlay.classList.add('hidden');
       state._viewInitialized = false;
       const loaded = await loadAll();
-      if (loaded) { buildNav(); render(); }
+      if (loaded) { buildNav(); updateProfileSwitcher(); render(); }
     } catch {
       errEl.classList.remove('hidden');
     }
@@ -722,12 +788,25 @@ async function init() {
   initTheme();
   initLogin();
   initModal();
-  initCalendarDrawer(render);
+  // Calendar visibility belongs to the active profile — capture + persist it
+  // whenever the drawer toggles a calendar, so it survives reloads and switches.
+  initCalendarDrawer(() => {
+    captureActiveProfile();
+    persistProfiles();
+    render();
+  });
   initSettingsPanel(() => {
+    // Re-apply the (possibly edited) active profile so renamed/recoloured/
+    // calendar-scope changes take effect immediately.
+    applyProfile(activeProfileId());
+    updateProfileSwitcher();
     buildNav();
     render();
     // Reload weather if location was changed
     loadWeather().then(() => render()).catch(() => {});
+    // Re-sync so ICS feed / source changes are fetched and the calendar list
+    // (incl. read-only feed pseudo-calendars) refreshes.
+    handleSync().catch(() => {});
   });
   initInstallPrompt();
   initBackButton();
@@ -757,6 +836,7 @@ async function init() {
   syncBtn.addEventListener('click', handleSync);
   calBtn.addEventListener('click', openDrawer);
   settingsBtn.addEventListener('click', openSettings);
+  document.getElementById('profile-switch').addEventListener('click', cycleProfile);
 
   // Search
   document.getElementById('search-btn').addEventListener('click', () => {
@@ -870,6 +950,7 @@ async function init() {
     const loaded = await loadAll();
     if (!loaded) return;
     buildNav();
+    updateProfileSwitcher();
     // Load weather before first render if coordinates are already saved
     if (state.config.weatherLat && state.config.weatherLon) await loadWeather();
     render();

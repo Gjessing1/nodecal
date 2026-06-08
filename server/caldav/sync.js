@@ -2,6 +2,7 @@ const {
   listCalendars, listEventEtags, fetchEventsByHref,
   getEffectiveTasksSources, listTaskEtags, fetchTasksByHref,
 } = require('./client');
+const { getIcsFeeds, fetchFeed } = require('../ics/feed');
 const store = require('../cache/store');
 const config = require('../config');
 
@@ -70,7 +71,12 @@ async function syncIncremental() {
   const to   = new Date(now.getTime() + RANGE_FUTURE_DAYS * 86400000);
 
   const calendars = await withRetry(() => listCalendars());
-  store.setCalendars(calendars);
+
+  // Append read-only ICS feed pseudo-calendars so GET /calendars and the
+  // drawer list them alongside real CalDAV calendars.
+  const feeds = getIcsFeeds();
+  const feedCals = feeds.map(f => ({ id: f.id, href: null, name: f.name || f.id, color: f.color, readOnly: true }));
+  store.setCalendars([...calendars, ...feedCals]);
 
   let totalChanged = 0;
 
@@ -117,15 +123,27 @@ async function syncIncremental() {
     tasksChanged += await syncTasksIncremental(src.url, src.name, now);
   }
 
-  if (totalChanged + tasksChanged > 0) store.flushToDisk();
+  let feedsChanged = 0;
+  const feedErrors = [];
+  for (const feed of feeds) {
+    try {
+      feedsChanged += await syncIcsFeed(feed, now);
+    } catch (err) {
+      // Keep the last cached feed events; surface a non-blocking error.
+      console.error(`ICS feed "${feed.name || feed.id}" sync failed:`, err.message);
+      feedErrors.push(`${feed.name || feed.id}: ${err.message}`);
+    }
+  }
+
+  if (totalChanged + tasksChanged + feedsChanged > 0) store.flushToDisk();
 
   const result = {
-    calendars: calendars.length,
+    calendars: calendars.length + feedCals.length,
     events: store.getEventCount(),
     tasks: store.getTaskCount(),
-    changed: totalChanged + tasksChanged,
+    changed: totalChanged + tasksChanged + feedsChanged,
   };
-  store.setSyncState({ lastSync: now.toISOString(), error: null });
+  store.setSyncState({ lastSync: now.toISOString(), error: feedErrors.length ? feedErrors.join('; ') : null });
   console.log(`Sync: ${result.calendars} cals, ${result.events} events, ${result.tasks} tasks, ${result.changed} changed`);
   return result;
 }
@@ -184,4 +202,41 @@ async function syncTasksIncremental(tasksUrl, sourceName, now) {
   return changed;
 }
 
-module.exports = { syncIncremental, syncTasksIncremental, computeSyncDiff, withRetry };
+/**
+ * Sync a single read-only ICS feed. A feed is a whole-document export with no
+ * per-event etags, so the feed's events are replaced wholesale: fetch + parse
+ * first (network), then atomically remove the feed's old events and insert the
+ * fresh ones — mirroring the "fetch before mutate" atomicity rule used above.
+ *
+ * @param {{id, name, url, color}} feed
+ * @param {Date} now
+ * @returns {Promise<number>} number of changes
+ */
+async function syncIcsFeed(feed, now) {
+  // Fetch BEFORE mutating the store so a concurrent GET /events never sees an
+  // emptied feed (old events removed, new ones not yet inserted).
+  const fetched = await withRetry(() => fetchFeed(feed));
+
+  // Skip the (whole-document) replace when nothing changed, so background syncs
+  // don't churn the store or re-flush events.json every tick.
+  const existing = store.getEventsByCalendar(feed.id);
+  if (feedSignature(existing) === feedSignature(fetched)) return 0;
+
+  // Apply removal + insertion atomically (no awaits below this point).
+  for (const ev of existing) store.removeEventSilent(ev.uid);
+  for (const ev of fetched) {
+    store.setEventSilent({ ...ev, lastSyncedAt: now.toISOString() });
+  }
+  syncLog(`ics feed ${feed.id}: replaced ${existing.length} with ${fetched.length} events`);
+  return existing.length + fetched.length;
+}
+
+/** Order-independent content signature for a feed's events (change detection). */
+function feedSignature(events) {
+  return events
+    .map(e => `${e.uid}|${e.start}|${e.end}|${e.allDay}|${e.title}|${e.rrule || ''}|${e.location || ''}|${e.description || ''}`)
+    .sort()
+    .join('\n');
+}
+
+module.exports = { syncIncremental, syncTasksIncremental, syncIcsFeed, computeSyncDiff, withRetry };

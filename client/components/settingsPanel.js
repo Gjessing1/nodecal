@@ -1,7 +1,8 @@
 import { state, setConfig, setTaskSources } from '../app/state.js';
 import { esc } from '../app/utils.js';
 import { buildTimePicker } from './timePicker.js';
-import { renderTaskSourcesSection, renderCategoriesSection } from './settingsHelpers.js';
+import { renderTaskSourcesSection, renderCategoriesSection, renderIcsFeedsSection } from './settingsHelpers.js';
+import { renderProfilesSection } from './profilesSettings.js';
 
 const ALL_VIEWS = [
   { id: 'agenda', label: 'Agenda' },
@@ -122,6 +123,12 @@ function renderForm() {
         ${state.calendars.map(c => `<option value="${esc(c.id)}" ${cfg.defaultCalendar === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
       </select>
     </div>
+
+    <div class="modal-section-label">Profiles</div>
+    <div id="s-profiles-section"></div>
+
+    <div class="modal-section-label">Subscribed calendars</div>
+    <div id="s-ics-feeds-section"></div>
 
     <div class="modal-section-label">Notifications</div>
 
@@ -344,6 +351,8 @@ function renderForm() {
 
   // ── Dynamic sections ───────────────────────────────────────────────────────
   renderTaskSourcesSection(sheet, cfg);
+  renderProfilesSection(sheet, cfg);
+  renderIcsFeedsSection(sheet, cfg);
   renderCategoriesSection(sheet, cfg);
 
   // ── Weather detect ────────────────────────────────────────────────────────
@@ -443,6 +452,9 @@ async function handleSave() {
     hiddenEventCategories: state.config.hiddenEventCategories || [],
     taskSources: state.taskSources || [],
     defaultTaskSource: state.config.defaultTaskSource || '',
+    icsFeeds: (state.config.icsFeeds || []).filter(f => f.id && (f.url || '').trim()),
+    profiles: state.config.profiles,
+    activeProfile: state.config.activeProfile,
     enableNotifications, alarmDefaultMinutes, taskReminderDefault, taskReminderMorningTime, taskReminderEveningTime,
     agendaDays, syncIntervalMinutes, defaultEventTime, defaultEventDuration, showWeekNumbers,
     showWeekNumbersDay, showWeekNumbersMonth, showWeekNumbersAgenda,

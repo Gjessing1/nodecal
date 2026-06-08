@@ -117,6 +117,84 @@ export function renderTaskSourcesSection(sheet, cfg) {
   state.taskSources = [...sources];
 }
 
+// ── Subscribed calendars (ICS feeds) ─────────────────────────────────────────
+
+const ICS_PALETTE = ['#4a90d9', '#7ed321', '#d0021b', '#f5a623', '#50e3c2', '#9b59b6', '#e74c3c', '#2ecc71'];
+
+export function renderIcsFeedsSection(sheet, cfg) {
+  const section = sheet.querySelector('#s-ics-feeds-section');
+  if (!section) return;
+  const feeds = [...(state.config.icsFeeds || [])];
+  state.config.icsFeeds = feeds; // keep state pointing at the working array
+
+  section.innerHTML = '';
+
+  const header = document.createElement('div');
+  header.className = 'modal-field';
+  header.innerHTML = '<label>Subscribed calendars (ICS) <span style="font-weight:normal;font-size:11px;color:var(--color-text-muted)">(read-only external .ics URLs)</span></label>';
+  section.appendChild(header);
+
+  const addRow = (feed, idx) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:6px;align-items:center;margin-bottom:8px';
+
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.value = feed.color || ICS_PALETTE[idx % ICS_PALETTE.length];
+    colorInput.style.cssText = 'flex:0 0 auto;width:34px;height:34px;padding:2px;border:none;background:none';
+    colorInput.title = 'Calendar colour';
+    colorInput.addEventListener('input', () => { feeds[idx].color = colorInput.value; });
+
+    const fields = document.createElement('div');
+    fields.style.cssText = 'flex:1;display:flex;flex-direction:column;gap:4px';
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.placeholder = 'Name (e.g. Work)';
+    nameInput.value = feed.name || '';
+    nameInput.addEventListener('input', () => { feeds[idx].name = nameInput.value; });
+
+    const urlInput = document.createElement('input');
+    urlInput.type = 'url';
+    urlInput.placeholder = 'https://…/calendar.ics';
+    urlInput.value = feed.url || '';
+    urlInput.addEventListener('input', () => { feeds[idx].url = urlInput.value.trim(); });
+
+    fields.append(nameInput, urlInput);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn btn-ghost';
+    removeBtn.style.cssText = 'padding:4px 8px;font-size:var(--font-size-sm);color:var(--color-danger);flex-shrink:0';
+    removeBtn.textContent = '×';
+    removeBtn.addEventListener('click', () => {
+      feeds.splice(idx, 1);
+      state.config.icsFeeds = [...feeds];
+      renderIcsFeedsSection(sheet, cfg);
+    });
+
+    row.append(colorInput, fields, removeBtn);
+    section.appendChild(row);
+  };
+
+  feeds.forEach((feed, i) => addRow(feed, i));
+
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'btn btn-ghost';
+  addBtn.style.cssText = 'font-size:var(--font-size-sm);padding:4px 12px;margin-bottom:var(--space-md)';
+  addBtn.textContent = '+ Add subscribed calendar';
+  addBtn.addEventListener('click', () => {
+    const id = 'ics:' + (crypto.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
+    feeds.push({ id, name: '', url: '', color: ICS_PALETTE[feeds.length % ICS_PALETTE.length] });
+    state.config.icsFeeds = [...feeds];
+    renderIcsFeedsSection(sheet, cfg);
+  });
+  section.appendChild(addBtn);
+
+  state.config.icsFeeds = [...feeds];
+}
+
 // ── Categories ───────────────────────────────────────────────────────────────
 
 export function renderCategoriesSection(sheet, cfg) {

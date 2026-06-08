@@ -36,6 +36,15 @@ export const state = {
     weatherLat: '',
     weatherLon: '',
     weatherDays: 6,
+    /** @type {Array<{id, name, url, color}>} read-only ICS subscription feeds */
+    icsFeeds: [],
+    /** @type {string} id of the active profile preset */
+    activeProfile: 'personal',
+    /** @type {Object<string, {name, hiddenCalendars, accentColor, defaultTaskSource, defaultView}>} */
+    profiles: {
+      personal: { name: 'Personal', hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultView: '' },
+      work:     { name: 'Work',     hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultView: '' },
+    },
   },
 };
 

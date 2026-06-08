@@ -104,6 +104,31 @@ input, textarea, select {
 }
 .app-header .sync-btn:hover { background: var(--color-surface); }
 .app-header .sync-btn.syncing { animation: spin 1s linear infinite; }
+.profile-pill {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  line-height: 1.4;
+  max-width: 92px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.profile-accent-sw {
+  width: 38px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--color-border);
+  font-size: 10px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+.profile-accent-sw.active { border-color: var(--color-text); }
 
 #view-container { flex: 1; overflow-y: auto; padding-bottom: var(--space-xl); min-height: 0; }
 
@@ -304,6 +329,11 @@ input, textarea, select {
   #settings-overlay .modal-sheet { max-width: 600px; }
   .modal-handle { display: none; }
 }
+/* Delete-scope chooser stacks above the edit modal */
+.delete-scope-overlay { z-index: 400; }
+.delete-scope-sheet { display: flex; flex-direction: column; gap: var(--space-sm); }
+.delete-scope-btn { width: 100%; flex: none; }
+
 .modal-handle { width: 40px; height: 4px; background: var(--color-border); border-radius: 2px; margin: 0 auto var(--space-md); }
 .modal-title { font-size: var(--font-size-lg); font-weight: 600; margin-bottom: var(--space-md); }
 .modal-field { display: flex; flex-direction: column; gap: var(--space-xs); margin-bottom: var(--space-md); }
@@ -320,6 +350,12 @@ input, textarea, select {
 /* Fix 7.1: columns independent height — Repeat can grow without shifting Reminder */
 .modal-row-start { align-items: flex-start; }
 .modal-actions { display: flex; gap: var(--space-sm); padding-top: var(--space-sm); }
+/* Read-only event view (subscribed ICS calendars) */
+.readonly-badge { font-size: var(--font-size-sm); color: var(--color-text-muted); margin-top: calc(-1 * var(--space-sm)); }
+.readonly-row { margin-bottom: var(--space-sm); font-size: var(--font-size-md); color: var(--color-text); line-height: 1.45; }
+.readonly-when { font-weight: 600; }
+.readonly-label { font-size: var(--font-size-sm); color: var(--color-text-muted); font-weight: 500; margin-right: var(--space-xs); }
+.readonly-desc { white-space: pre-wrap; color: var(--color-text-muted); }
 /* Collapsible field wrappers — consistent vertical spacing */
 .collapsible-field-wrap { margin-bottom: var(--space-xs); }
 .modal-collapsibles-row {
@@ -867,3 +903,41 @@ mark.nlp-match {
   .nav-btn { font-size: 11px; }
   .nav-icon { font-size: 16px; }
 }
+
+/* ── Snackbar ─────────────────────────────────────────────
+   Sits just above the bottom nav. Slides up on show. */
+.snackbar {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--nav-height) + var(--space-md) + env(safe-area-inset-bottom));
+  transform: translate(-50%, 16px);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  max-width: calc(100vw - 2 * var(--space-md));
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-text);
+  color: var(--color-bg);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  font-size: var(--font-size-sm);
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.snackbar-visible { opacity: 1; transform: translate(-50%, 0); }
+.snackbar-msg { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.snackbar-action {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: var(--space-xs) var(--space-sm);
+  margin: calc(-1 * var(--space-xs)) calc(-1 * var(--space-sm)) calc(-1 * var(--space-xs)) 0;
+  color: var(--color-accent-light);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+.snackbar-action:active { opacity: 0.7; }

@@ -117,8 +117,12 @@ function buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick, o
   const firstOfMonth = new Date(year, month, 1);
   const dow = firstOfMonth.getDay(); // 0=Sun
   const startOffset = dow === 0 ? 6 : dow - 1;
+  // Build each day from calendar fields (not millisecond arithmetic). Adding
+  // 86400000ms across a DST fall-back (e.g. last Sunday of October) lands on
+  // 23:00 of the same day, which re-anchors to a duplicate date. The Date
+  // constructor rolls the day field over correctly regardless of DST.
   const start = new Date(year, month, 1 - startOffset);
-  const end = new Date(start.getTime() + 42 * 86400000);
+  const end = new Date(year, month, 1 - startOffset + 42);
 
   const monthEvents = state.events.filter(ev => {
     if (state.hiddenCalendars.has(ev.calendarId)) return false;
@@ -126,9 +130,7 @@ function buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick, o
   });
 
   for (let i = 0; i < 42; i++) {
-    const raw = new Date(start.getTime() + i * 86400000);
-    // Re-anchor to local midnight so DST transitions don't produce 01:00 cells
-    const day = new Date(raw.getFullYear(), raw.getMonth(), raw.getDate());
+    const day = new Date(year, month, 1 - startOffset + i);
     // Insert week number cell at start of each week row
     if (showWN && i % 7 === 0) {
       const wn = document.createElement('div');

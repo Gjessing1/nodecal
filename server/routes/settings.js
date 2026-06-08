@@ -28,6 +28,12 @@ router.get('/settings', (req, res) => {
     tasksCalDAVUrl:      config.caldav.tasksUrl || '',
     hiddenCategories:       [],
     hiddenEventCategories:  [],
+    icsFeeds:               [],
+    activeProfile:          'personal',
+    profiles: {
+      personal: { name: 'Personal', hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultView: '' },
+      work:     { name: 'Work',     hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultView: '' },
+    },
     ...overrides,
   });
 });
@@ -44,6 +50,7 @@ router.put('/settings', (req, res) => {
     'showWeekNumbersDay', 'showWeekNumbersMonth', 'showWeekNumbersAgenda',
     'enableNotifications', 'alarmDefaultMinutes', 'taskReminderDefault', 'taskReminderMorningTime', 'taskReminderEveningTime',
     'syncIntervalMinutes', 'syncHistoryDays', 'syncFutureDays', 'agendaDays',
+    'icsFeeds', 'profiles', 'activeProfile',
   ];
   const toSave = {};
   for (const k of allowed) {

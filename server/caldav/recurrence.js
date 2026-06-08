@@ -104,9 +104,9 @@ function computeNextDue(task, completionDate) {
   }
   if (task.rrule && task.due) {
     const dueDate = new Date(task.due + 'T00:00:00Z');
-    const dtstart = task.due.replace(/-/g, ''); // YYYYMMDD
+    const dtstart = task.due.replace(/-/g, '') + 'T000000Z'; // YYYYMMDDTHHMMSSZ (UTC midnight)
     try {
-      const rule = rrulestr(`DTSTART;VALUE=DATE:${dtstart}\nRRULE:${task.rrule}`);
+      const rule = rrulestr(`DTSTART:${dtstart}\nRRULE:${task.rrule}`);
       return rule.after(dueDate, false) || null; // strict: after current due
     } catch {
       return null;
