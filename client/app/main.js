@@ -528,7 +528,7 @@ async function handleTaskStar(task) {
   }
 }
 
-async function handleTaskAdd({ title, due, categories, source, rrule, xRecurringType, xRecurringInterval, description }) {
+async function handleTaskAdd({ title, due, categories, source, rrule, xRecurringType, xRecurringInterval, description, taskReminder }) {
   try {
     const body = { title, due };
     if (categories?.length) body.categories = categories;
@@ -537,6 +537,7 @@ async function handleTaskAdd({ title, due, categories, source, rrule, xRecurring
     if (xRecurringType) body.xRecurringType = xRecurringType;
     if (xRecurringInterval) body.xRecurringInterval = xRecurringInterval;
     if (description) body.description = description;
+    if (taskReminder && taskReminder !== 'none') body.taskReminder = taskReminder;
     const res = await fetch('/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
