@@ -61,6 +61,7 @@ function buildProfileEditor(id, profile) {
   body.appendChild(buildNameField(profile, id, title));
   body.appendChild(buildAccentField(profile));
   body.appendChild(buildCalendarsField(profile));
+  body.appendChild(buildTaskSourceField(profile));
   body.appendChild(buildDefaultViewField(profile));
 
   wrap.append(header, body);
@@ -132,6 +133,32 @@ function buildCalendarsField(profile) {
     label.append(cb, span);
     field.appendChild(label);
   }
+  return field;
+}
+
+// Per-profile target for new tasks (quick-add "To:"). Empty means "use the
+// global default task source". Only the configured sources are offered.
+function buildTaskSourceField(profile) {
+  const field = document.createElement('div');
+  field.className = 'modal-field';
+  field.innerHTML = '<label>New tasks go to</label>';
+  const sources = state.taskSources || [];
+  if (!sources.length) {
+    const note = document.createElement('span');
+    note.style.cssText = 'font-size:var(--font-size-sm);color:var(--color-text-muted)';
+    note.textContent = 'Add a task source first (Settings → Task sources).';
+    field.appendChild(note);
+    return field;
+  }
+  const sel = document.createElement('select');
+  const options = ['<option value="">(use global default)</option>'];
+  for (const src of sources) {
+    const selected = (profile.defaultTaskSource || '') === src.url ? 'selected' : '';
+    options.push(`<option value="${esc(src.url)}" ${selected}>${esc(src.name || src.url)}</option>`);
+  }
+  sel.innerHTML = options.join('');
+  sel.addEventListener('change', () => { profile.defaultTaskSource = sel.value; });
+  field.appendChild(sel);
   return field;
 }
 

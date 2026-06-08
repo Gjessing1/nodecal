@@ -362,6 +362,7 @@ async function handleSync() {
   syncError.classList.add('hidden');
   try {
     const res = await fetch('/sync', { method: 'POST' });
+    if (res.status === 401) { showLogin(); return; }
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
     await Promise.all([loadCalendars(), loadEvents(), loadTasks()]);

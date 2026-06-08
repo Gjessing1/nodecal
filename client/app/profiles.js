@@ -41,9 +41,16 @@ export function applyProfile(id) {
   if (!p) return;
   state.config.activeProfile = id;
   state.hiddenCalendars = new Set(p.hiddenCalendars || []);
-  if (p.defaultTaskSource) state.config.defaultTaskSource = p.defaultTaskSource;
   if (p.defaultView) state.config.defaultView = p.defaultView;
   applyAccent(p.accentColor);
+}
+
+// Resolve which task source new tasks should land in: the active profile's
+// override if set, otherwise the global default. Computed at point of use so
+// switching profiles changes the quick-add target without clobbering the
+// global `defaultTaskSource` setting.
+export function effectiveTaskSource() {
+  return activeProfile()?.defaultTaskSource || state.config.defaultTaskSource || '';
 }
 
 // Capture the live, user-adjustable view state back into the active profile.

@@ -1,6 +1,7 @@
 import { state } from '../app/state.js';
 import { getAllCategories, parseTagsFromTitle } from '../app/taskUtils.js';
 import { localDateStr } from '../app/utils.js';
+import { effectiveTaskSource } from '../app/profiles.js';
 import { openTaskModal } from './taskModal.js';
 
 let _quickAddEl = null;
@@ -177,8 +178,10 @@ function buildQuickAdd(callbacks) {
   dates.appendChild(pickBtn);
   dates.appendChild(datePicker);
 
-  // Source selector (only shown when multiple sources configured)
-  let selectedSource = null;
+  // Source selector (only shown when multiple sources configured). Pre-select
+  // the active profile's task source so switching profiles changes where new
+  // tasks land.
+  let selectedSource = effectiveTaskSource() || null;
   const sourceRow = document.createElement('div');
   sourceRow.className = 'tasks-quickadd-dates';
   sourceRow.style.display = 'none';
