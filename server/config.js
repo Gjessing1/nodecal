@@ -23,6 +23,10 @@ module.exports = {
     timeFormat: process.env.TIME_FORMAT || '24h',
     weekStart: process.env.WEEK_START || 'monday',
     appPassword: process.env.APP_PASSWORD || null,
+    // Skip Nodecal's own password gate — trust an upstream SSO/reverse proxy
+    // that already authenticates every request. Leaves APP_PASSWORD in place
+    // but never prompts for it.
+    bypassAuth: process.env.BYPASS_AUTH === 'true',
     debugSync: process.env.DEBUG_SYNC === 'true',
   },
 };

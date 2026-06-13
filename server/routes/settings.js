@@ -21,7 +21,7 @@ router.get('/settings', (req, res) => {
     weekStart:           config.app.weekStart,
     timezone:            config.app.timezone,
     enabledViews:        ALL_VIEWS,
-    authEnabled:         !!config.app.appPassword,
+    authEnabled:         !!config.app.appPassword && !config.app.bypassAuth,
     enableTasksView:     false,
     showTasksOnCalendar: false,
     taskSortOrder:       'due',

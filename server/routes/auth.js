@@ -5,7 +5,7 @@ const { addActiveToken, removeActiveToken, generateToken, saveTokens, setCookie,
 const router = Router();
 
 router.post('/login', (req, res) => {
-  if (!config.app.appPassword) return res.json({ ok: true });
+  if (!config.app.appPassword || config.app.bypassAuth) return res.json({ ok: true });
   const { password } = req.body;
   if (!password || password !== config.app.appPassword) {
     return res.status(401).json({ error: 'Wrong password' });

@@ -8,6 +8,13 @@ const MAX_AGE_SECS = 180 * 24 * 60 * 60; // 180 days
 
 let activeTokens = new Set();
 
+// The password gate is active only when a password is configured AND it hasn't
+// been bypassed. BYPASS_AUTH=true is for deployments fronted by an SSO/reverse
+// proxy that already authenticates every request.
+function authActive() {
+  return !!config.app.appPassword && !config.app.bypassAuth;
+}
+
 // Load the persisted token set into memory, replacing the current set. The file
 // is always the source of truth: every login/logout writes it after mutating
 // memory, so it is never staler than memory. Re-reading on a cache miss lets a
@@ -21,7 +28,7 @@ function reloadTokensFromDisk() {
   } catch { /* no saved session */ }
 }
 
-if (config.app.appPassword) reloadTokensFromDisk();
+if (authActive()) reloadTokensFromDisk();
 
 function addActiveToken(token) {
   activeTokens.add(token);
@@ -62,7 +69,7 @@ function clearCookie(res) {
 }
 
 function isAuthenticated(req) {
-  if (!config.app.appPassword) return true;
+  if (!authActive()) return true;
   const cookies = parseCookies(req.headers.cookie);
   const token = cookies[COOKIE_NAME];
   if (!token) return false;
@@ -73,7 +80,7 @@ function isAuthenticated(req) {
 }
 
 function authMiddleware(req, res, next) {
-  if (!config.app.appPassword) return next();
+  if (!authActive()) return next();
   if (req.path === '/login' || req.path === '/logout') return next();
   if (!isAuthenticated(req)) return res.status(401).json({ error: 'Unauthorized' });
   next();
