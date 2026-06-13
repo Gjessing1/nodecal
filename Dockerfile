@@ -1,7 +1,8 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --omit=dev
+# --no-audit/--no-fund drop network round-trips that add nothing to a CI build
+RUN npm ci --omit=dev --no-audit --no-fund
 
 FROM node:20-alpine
 WORKDIR /app
@@ -12,6 +13,11 @@ RUN addgroup -S nodecal && adduser -S nodecal -G nodecal
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+# Quality gate folded into the build: a red test run fails `docker build`, so a
+# broken commit can never produce a pushed image. Tests use Node's built-in
+# runner and the prod deps only — no devDependencies needed.
+RUN npm test
 
 RUN mkdir -p /config /cache
 

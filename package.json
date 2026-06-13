@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server/app.js",
     "dev": "node --watch server/app.js",
-    "test": "node --test test/**/*.test.js"
+    "test": "node --test"
   },
   "dependencies": {
     "chrono-node": "^2.7.0",

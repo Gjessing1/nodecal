@@ -17,6 +17,8 @@ name: docker
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
   workflow_dispatch:
 
 env:
