@@ -68,7 +68,7 @@ export function buildEventBlock(ev, color, onClick, timezone = 'UTC') {
   const start = new Date(ev.start);
   const end = new Date(ev.end);
   const top = timeToTop(start, timezone);
-  const rawHeight = ((end - start) / 60000) * (HOUR_HEIGHT / 60);
+  const rawHeight = ((end.getTime() - start.getTime()) / 60000) * (HOUR_HEIGHT / 60);
   const height = Math.max(rawHeight, 24);
 
   const block = document.createElement('div');

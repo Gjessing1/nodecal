@@ -75,7 +75,7 @@ function getEventsInRange(from, to) {
   for (const ev of events.values()) {
     if (new Date(ev.start) < to && new Date(ev.end) > from) result.push(ev);
   }
-  return result.sort((a, b) => new Date(a.start) - new Date(b.start));
+  return result.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
 }
 
 function getNonRecurringInRange(from, to) {

@@ -12,7 +12,7 @@ const { formatIcsDate } = require('./parser');
  */
 function expandRecurring(event, from, to) {
   const baseStart = new Date(event.start);
-  const duration = new Date(event.end) - baseStart;
+  const duration = new Date(event.end).getTime() - baseStart.getTime();
   const dtstart = formatIcsDate(baseStart, false); // YYYYMMDDTHHMMSSZ
 
   let source;

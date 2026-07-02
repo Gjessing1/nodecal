@@ -9,10 +9,10 @@ const DAY_MS = 86400000;
 /**
  * Render the agenda view into the given container element.
  * @param {HTMLElement} container
- * @param {function(event): void} onEventClick
- * @param {function(task): void} [onTaskClick]
- * @param {function(task): void} [onTaskComplete]
- * @param {function(Date): void} [onLongPress] - long-press on a day opens new event for that date
+ * @param {(event: any) => void} onEventClick
+ * @param {(task: any) => void} [onTaskClick]
+ * @param {(task: any) => void} [onTaskComplete]
+ * @param {(d: Date) => void} [onLongPress] - long-press on a day opens new event for that date
  */
 export function renderAgenda(container, onEventClick, onTaskClick, onTaskComplete, onLongPress) {
   container.innerHTML = '';

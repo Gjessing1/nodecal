@@ -7,14 +7,14 @@ import { taskSourceVisible } from '../app/taskUtils.js';
 
 /**
  * @param {HTMLElement} container
- * @param {function(event): void} onEventClick
- * @param {function(Date): void} onDayClick
- * @param {function(id, day, startMin): void} onEventMove
- * @param {function(): void} [onTasksClick] - called when "N tasks" pill is clicked
- * @param {function(Date): void} [onLongPress] - called with the day Date on long-press
- * @param {function(task): void} [onTaskComplete] - toggle task completion from popup
- * @param {function(task): void} [onTaskClick] - open task for editing from popup
- * @param {function(Date): void} [onNewTask] - open new task modal for a given day
+ * @param {(event: any) => void} onEventClick
+ * @param {(d: Date) => void} onDayClick
+ * @param {(id: string, day: Date, startMin: number) => void} onEventMove
+ * @param {() => void} [onTasksClick] - called when "N tasks" pill is clicked
+ * @param {(d: Date) => void} [onLongPress] - called with the day Date on long-press
+ * @param {(task: any) => void} [onTaskComplete] - toggle task completion from popup
+ * @param {(task: any) => void} [onTaskClick] - open task for editing from popup
+ * @param {(d: Date) => void} [onNewTask] - open new task modal for a given day
  */
 export function renderMonth(
   container,
@@ -350,7 +350,9 @@ function buildDayCell(
       return new Date(ev.start) < dayEnd && new Date(ev.end) > dayStart;
     })
     .sort(
-      (a, b) => (a.allDay ? -1 : 1) - (b.allDay ? -1 : 1) || new Date(a.start) - new Date(b.start),
+      (a, b) =>
+        (a.allDay ? -1 : 1) - (b.allDay ? -1 : 1) ||
+        new Date(a.start).getTime() - new Date(b.start).getTime(),
     );
 
   const dayTasks =

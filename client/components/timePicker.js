@@ -292,7 +292,7 @@ export function buildTimePicker(id, date, timezone, onChange) {
   }
 
   // Programmatic update — called by NLP feedback
-  wrap.updateTime = (val) => {
+  /** @type {any} */ (wrap).updateTime = (val) => {
     const [h, m] = val.split(':').map(Number);
     if (!isNaN(h)) hour = ((h % 24) + 24) % 24;
     if (!isNaN(m)) minute = (Math.round(m / 5) * 5) % 60;

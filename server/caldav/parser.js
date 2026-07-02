@@ -105,7 +105,7 @@ function floatingToUtc(dateStr, timezone) {
   const shownAsUtc = new Date(
     `${parts.year}-${parts.month}-${parts.day}T${h}:${parts.minute}:${parts.second}Z`,
   );
-  return new Date(asUtc.getTime() + (asUtc - shownAsUtc));
+  return new Date(asUtc.getTime() + (asUtc.getTime() - shownAsUtc.getTime()));
 }
 
 function parseIcsDate(value, params = {}, fallbackTz = 'UTC') {

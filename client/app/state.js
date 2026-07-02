@@ -1,13 +1,63 @@
+/**
+ * Canonical client-side data shapes. The server sends these over /events,
+ * /calendars, /tasks, /task-sources; a future TypeScript port lifts these
+ * typedefs verbatim (maily convergence).
+ *
+ * @typedef {Object} Calendar
+ * @property {string} id
+ * @property {string} name
+ * @property {string} color
+ * @property {boolean} [readOnly] - true for subscribed ICS feed pseudo-calendars
+ *
+ * @typedef {Object} CalEvent
+ * @property {string} id - unique per expanded occurrence
+ * @property {string} [uid] - iCalendar UID (shared by all occurrences of a series)
+ * @property {string} title
+ * @property {string} start - ISO UTC ("T00:00:00Z" midnight for all-day)
+ * @property {string} end - ISO UTC
+ * @property {boolean} [allDay]
+ * @property {string} calendarId
+ * @property {string} [description]
+ * @property {string} [location]
+ * @property {string} [url]
+ * @property {string} [rrule]
+ * @property {boolean} [recurring] - true on expanded occurrences of a series
+ * @property {string} [occurrenceDate] - ISO date of this occurrence within its series
+ * @property {number|null} [alarmMinutes]
+ * @property {string[]} [categories]
+ *
+ * @typedef {Object} Task
+ * @property {string} id
+ * @property {string} [uid]
+ * @property {string} title
+ * @property {string|null} [due] - date-only string YYYY-MM-DD
+ * @property {string} [status] - "NEEDS-ACTION" | "COMPLETED"
+ * @property {string|null} [completed]
+ * @property {string[]} [categories]
+ * @property {string} [source] - task-source CalDAV URL
+ * @property {string} [description]
+ * @property {string} [rrule]
+ * @property {string} [xRecurringType] - custom after-completion recurrence
+ * @property {number} [xRecurringInterval]
+ * @property {string} [taskReminder] - "none" | "on-due" | "evening-before" | …
+ * @property {boolean} [important]
+ *
+ * @typedef {Object} TaskSource
+ * @property {string} url
+ * @property {string} name
+ * @property {string} [color]
+ */
+
 export const state = {
-  /** @type {Array<{id, name, color}>} */
+  /** @type {Calendar[]} */
   calendars: [],
-  /** @type {Array<{id, title, start, end, allDay, calendarId}>} */
+  /** @type {CalEvent[]} */
   events: [],
-  /** @type {Array} */
+  /** @type {Task[]} */
   tasks: [],
-  /** @type {Array<{url: string, name: string}>} */
+  /** @type {TaskSource[]} */
   taskSources: [],
-  /** @type {{ current: {temp,symbol,emoji}|null, daily: object }|null} */
+  /** @type {{ current: {temp: number, symbol: string, emoji: string}|null, daily: Record<string, any> }|null} */
   weather: null,
   /** @type {'agenda'|'day'|'week'|'month'|'tasks'} */
   activeView: 'agenda',
@@ -15,7 +65,11 @@ export const state = {
   selectedDate: new Date(),
   /** @type {Set<string>} - calendarIds currently hidden */
   hiddenCalendars: new Set(),
-  /** @type {object} */
+  /**
+   * Settings blob merged from server /settings. Loosely typed on purpose —
+   * tightening it into a full typedef is future maily-convergence work.
+   * @type {Record<string, any>}
+   */
   config: {
     timeFormat: '24h',
     weekStart: 'monday',

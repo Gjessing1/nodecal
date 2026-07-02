@@ -35,7 +35,9 @@ export function showDayPopup(
       return new Date(ev.start) < dayEnd && new Date(ev.end) > dayStart;
     })
     .sort(
-      (a, b) => (a.allDay ? -1 : 1) - (b.allDay ? -1 : 1) || new Date(a.start) - new Date(b.start),
+      (a, b) =>
+        (a.allDay ? -1 : 1) - (b.allDay ? -1 : 1) ||
+        new Date(a.start).getTime() - new Date(b.start).getTime(),
     );
 
   const dayTasks =

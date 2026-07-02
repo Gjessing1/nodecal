@@ -253,7 +253,7 @@ function buildDayHeaders(days, today, callbacks) {
     cell.innerHTML = `<span class="wdh-name">${day.toLocaleDateString('en-US', { weekday: 'short' })}</span><span class="wdh-date">${day.getDate()}</span>${wx ? `<span class="wdh-weather">${wx}</span>` : ''}`;
     // Tapping the date number opens the day popup
     if (callbacks) {
-      const dateSpan = cell.querySelector('.wdh-date');
+      const dateSpan = /** @type {HTMLElement|null} */ (cell.querySelector('.wdh-date'));
       if (dateSpan) {
         dateSpan.style.cursor = 'pointer';
         dateSpan.addEventListener('click', (e) => {

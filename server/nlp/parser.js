@@ -64,6 +64,7 @@ function chronoEndToUtc(result, timezone, _startUtc, _hasTime) {
   return new Date(naive.getTime() + (naive.getTime() - shownAsUtc.getTime()));
 }
 
+/** @type {Array<[RegExp, string]>} */
 const RECURRENCE = [
   [/every\s+day\b|daily\b/i, 'FREQ=DAILY'],
   [/every\s+week\b|weekly\b/i, 'FREQ=WEEKLY'],
@@ -159,6 +160,7 @@ function normalizeTimeRanges(text) {
 }
 
 // Norwegian date words → English
+/** @type {Array<[RegExp, string | ((...groups: string[]) => string)]>} */
 const NO_TO_EN_EVENT = [
   // "om N dager/uker/måneder/år" → "in N days/weeks/months/years"
   [/\bom\s+(\d+)\s+dag(?:er)?\b/gi, (_, n) => `in ${n} day${n === '1' ? '' : 's'}`],
@@ -255,7 +257,7 @@ function buildNormMap(text) {
  * @param {string} text
  * @param {Date} [refDate]
  * @param {string} [timezone] - IANA timezone name, e.g. 'Europe/Oslo'
- * @returns {{ parsed, title, start, end, allDay, parsedText, rrule }}
+ * @returns {{ parsed: boolean, title?: string, start?: string, end?: string|null, allDay?: boolean, parsedText?: string|null, rrule?: string|null }}
  */
 function parse(text, refDate = new Date(), timezone = 'UTC') {
   const trimmed = text.trim();
@@ -280,7 +282,7 @@ function parse(text, refDate = new Date(), timezone = 'UTC') {
   normalized = normalizeOrdinalDate(normalized);
   normalized = normalizeTimeBeforeDate(normalized);
 
-  const results = chrono.parse(normalized, refDate, { forwardDate: true, timezone });
+  const results = chrono.parse(normalized, refDate, { forwardDate: true });
 
   if (!results.length) {
     const baseTitle = normMap.normalized.trim() || trimmed;

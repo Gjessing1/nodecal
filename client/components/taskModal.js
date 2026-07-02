@@ -9,6 +9,17 @@ import {
   wireCategoryUI,
 } from './modalHelpers.js';
 
+// Modal fields are inputs/selects; querySelector returns bare Element — cast
+// once here instead of at every read/write site.
+/**
+ * @param {ParentNode} root
+ * @param {string} sel
+ * @returns {HTMLInputElement}
+ */
+function field(root, sel) {
+  return /** @type {HTMLInputElement} */ (root.querySelector(sel));
+}
+
 export function openTaskModal(task, { onSave, onDelete }) {
   const overlay = document.getElementById('modal-overlay');
   const sheet = overlay.querySelector('.modal-sheet');
@@ -152,13 +163,13 @@ export function openTaskModal(task, { onSave, onDelete }) {
   );
 
   // ── Recurrence mode toggle + editor ──────────────────────────────────────
-  const fixedContainer = sheet.querySelector('#tm-rec-fixed');
-  const afterContainer = sheet.querySelector('#tm-rec-after');
-  const presetTarget = sheet.querySelector('#tm-rec-preset-target');
+  const fixedContainer = /** @type {HTMLElement} */ (sheet.querySelector('#tm-rec-fixed'));
+  const afterContainer = /** @type {HTMLElement} */ (sheet.querySelector('#tm-rec-after'));
+  const presetTarget = /** @type {HTMLElement} */ (sheet.querySelector('#tm-rec-preset-target'));
   let recMode = isRecAfterCompletion ? 'after' : 'fixed';
 
   if (fixedContainer && presetTarget) {
-    const dueEl = sheet.querySelector('#tm-due');
+    const dueEl = field(sheet, '#tm-due');
     const dueDate = dueEl?.value ? new Date(dueEl.value + 'T00:00:00') : new Date();
     // presetContainer receives the preset select; returned root is the sub-UI
     const recSubRoot = buildRecurrenceEditor(
@@ -172,25 +183,27 @@ export function openTaskModal(task, { onSave, onDelete }) {
     fixedContainer.appendChild(recSubRoot);
   }
 
-  sheet.querySelectorAll('.rec-mode-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      recMode = btn.dataset.mode;
-      sheet
-        .querySelectorAll('.rec-mode-btn')
-        .forEach((b) => b.classList.toggle('active', b.dataset.mode === recMode));
-      if (presetTarget) presetTarget.style.display = recMode === 'fixed' ? '' : 'none';
-      if (fixedContainer) fixedContainer.style.display = recMode === 'fixed' ? '' : 'none';
-      if (afterContainer) afterContainer.style.display = recMode === 'after' ? '' : 'none';
-    });
-  });
+  /** @type {NodeListOf<HTMLElement>} */ (sheet.querySelectorAll('.rec-mode-btn')).forEach(
+    (btn) => {
+      btn.addEventListener('click', () => {
+        recMode = btn.dataset.mode;
+        /** @type {NodeListOf<HTMLElement>} */ (sheet.querySelectorAll('.rec-mode-btn')).forEach(
+          (b) => b.classList.toggle('active', b.dataset.mode === recMode),
+        );
+        if (presetTarget) presetTarget.style.display = recMode === 'fixed' ? '' : 'none';
+        if (fixedContainer) fixedContainer.style.display = recMode === 'fixed' ? '' : 'none';
+        if (afterContainer) afterContainer.style.display = recMode === 'after' ? '' : 'none';
+      });
+    },
+  );
 
   sheet.querySelector('#tm-reminder').addEventListener('change', (e) => {
-    sheet.querySelector('#tm-reminder-custom-row').style.display =
-      e.target.value === 'custom' ? '' : 'none';
+    /** @type {HTMLElement} */ (sheet.querySelector('#tm-reminder-custom-row')).style.display =
+      /** @type {HTMLSelectElement} */ (e.target).value === 'custom' ? '' : 'none';
   });
 
   sheet.querySelector('#tm-save').addEventListener('click', () => {
-    const title = sheet.querySelector('#tm-title').value.trim();
+    const title = field(sheet, '#tm-title').value.trim();
     if (!title) {
       alert('Title is required');
       return;
@@ -200,24 +213,24 @@ export function openTaskModal(task, { onSave, onDelete }) {
       xRecurringType = null,
       xRecurringInterval = null;
     if (recMode === 'after') {
-      const n = parseInt(sheet.querySelector('#tm-after-n')?.value) || 1;
-      const unit = sheet.querySelector('#tm-after-unit')?.value || 'd';
+      const n = parseInt(field(sheet, '#tm-after-n')?.value) || 1;
+      const unit = field(sheet, '#tm-after-unit')?.value || 'd';
       xRecurringType = 'after-completion';
       xRecurringInterval = `${n}${unit}`;
     } else {
-      const fixedCont = sheet.querySelector('#tm-rec-fixed');
+      const fixedCont = /** @type {HTMLElement} */ (sheet.querySelector('#tm-rec-fixed'));
       rrule = fixedCont ? fixedCont.dataset.rrule || null : null;
     }
 
-    const completedChecked = sheet.querySelector('#tm-completed').checked;
+    const completedChecked = field(sheet, '#tm-completed').checked;
     const finalCats = catCtrl.getCategories();
 
     onSave({
       title,
-      due: sheet.querySelector('#tm-due').value || null,
-      location: sheet.querySelector('#tm-location-url-wrap #tm-location')?.value.trim() || '',
-      url: sheet.querySelector('#tm-location-url-wrap #tm-url')?.value.trim() || '',
-      description: sheet.querySelector('#tm-desc').value.trim(),
+      due: field(sheet, '#tm-due').value || null,
+      location: field(sheet, '#tm-location-url-wrap #tm-location')?.value.trim() || '',
+      url: field(sheet, '#tm-location-url-wrap #tm-url')?.value.trim() || '',
+      description: field(sheet, '#tm-desc').value.trim(),
       categories: finalCats,
       status: completedChecked ? 'COMPLETED' : 'NEEDS-ACTION',
       completed: completedChecked ? new Date().toISOString() : null,
@@ -230,9 +243,9 @@ export function openTaskModal(task, { onSave, onDelete }) {
       xRecurringType,
       xRecurringInterval,
       taskReminder: (() => {
-        const v = sheet.querySelector('#tm-reminder')?.value || 'none';
+        const v = field(sheet, '#tm-reminder')?.value || 'none';
         if (v === 'custom') {
-          const h = parseInt(sheet.querySelector('#tm-reminder-custom-hours')?.value || '0');
+          const h = parseInt(field(sheet, '#tm-reminder-custom-hours')?.value || '0');
           return h > 0 ? `custom-${h}h` : 'none';
         }
         return v;

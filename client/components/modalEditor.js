@@ -24,7 +24,7 @@ export function initModal() {
 /**
  * Open the modal for creating a new event.
  * @param {Date} defaultDate
- * @param {function(data): void} onSave
+ * @param {(data: any) => void} onSave
  * @param {{ explicitTime?: boolean }} [opts] - explicitTime: use defaultDate time as-is, skip default-time logic
  */
 export function openNewEventModal(defaultDate, onSave, { explicitTime = false } = {}) {
@@ -39,9 +39,9 @@ export function openNewEventModal(defaultDate, onSave, { explicitTime = false } 
 /**
  * Open the modal for editing an existing event.
  * @param {object} event
- * @param {function(data): void} onSave
- * @param {function(event, scope): void} onDelete
- * @param {function(event): void} [onDuplicate]
+ * @param {(data: any) => void} onSave
+ * @param {(event: any, scope?: string) => void} onDelete
+ * @param {(event: any) => void} [onDuplicate]
  */
 export function openEditEventModal(event, onSave, onDelete, onDuplicate) {
   onSaveCb = onSave;
@@ -72,7 +72,13 @@ export function closeModal() {
 
 function formatEventWhen(event) {
   const tz = state.config.timezone;
-  const opts = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: tz };
+  const opts = /** @type {Intl.DateTimeFormatOptions} */ ({
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: tz,
+  });
   if (event.allDay) {
     const d = new Date(event.start.slice(0, 10) + 'T00:00:00Z');
     return d.toLocaleDateString('en-US', { ...opts, timeZone: 'UTC' }) + ' · All day';

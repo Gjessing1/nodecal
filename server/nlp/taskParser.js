@@ -50,6 +50,7 @@ const NO_TO_EN = [
 ];
 
 // Standard task recurrence (RRULE)
+/** @type {Array<[RegExp, (n?: string) => string]>} */
 const RRULE_TASK = [
   [/every\s+(\d+)\s+days?\b/i, (n) => `FREQ=DAILY;INTERVAL=${n}`],
   [/every\s+(\d+)\s+weeks?\b/i, (n) => `FREQ=WEEKLY;INTERVAL=${n}`],
@@ -158,7 +159,9 @@ function detectRrule(text) {
  * Supports English and Norwegian.
  * Returns: { parsed, title, due, rrule, xRecurringType, xRecurringInterval }
  */
-function parseTask(text, refDate = new Date(), timezone = 'UTC') {
+// _timezone kept for signature compatibility (routes pass it); task due dates are
+// date-only strings, so unlike events no timezone conversion is applied.
+function parseTask(text, refDate = new Date(), _timezone = 'UTC') {
   const trimmed = text.trim();
   if (!trimmed) return { parsed: false };
 
@@ -202,7 +205,7 @@ function parseTask(text, refDate = new Date(), timezone = 'UTC') {
   }
 
   // 3. Parse due date from the remaining translated text
-  const results = chrono.parse(forParsing, refDate, { forwardDate: true, timezone });
+  const results = chrono.parse(forParsing, refDate, { forwardDate: true });
   let due = null;
   let titleParts;
 

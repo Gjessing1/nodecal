@@ -15,12 +15,14 @@ import { getOccurrences, buildMiniCal } from './recurrencePreview.js';
  * Build the full recurrence editor UI.
  * @param {Date} startDate - event/task start date (used to derive presets)
  * @param {string|null} currentRrule - existing RRULE string or null
- * @param {function(string|null): void} onChange - called with new RRULE or null
- * @param {{ hideWeekdays?: boolean }} [opts]
- * @returns {HTMLElement}
+ * @param {(rrule: string|null) => void} onChange - called with new RRULE or null
+ * @param {{ hideWeekdays?: boolean, presetContainer?: HTMLElement }} [opts] - presetContainer: mount the preset row elsewhere (split layout)
+ * @returns {HTMLElement & { onStartDateChange?: (d: Date) => void }}
  */
 export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = {}) {
-  const root = document.createElement('div');
+  const root = /** @type {HTMLDivElement & { onStartDateChange?: (d: Date) => void }} */ (
+    document.createElement('div')
+  );
   root.className = 'rec-editor';
 
   // ── State ───────────────────────────────────────────────────────────────────
@@ -70,7 +72,10 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
   function buildRrule() {
     if (rawMode) return rawTouched ? rawRrule || null : isComplex ? currentRrule : null;
     if (preset === 'none') return null;
-    const c = { freq: 'daily', interval: 1 };
+    const c = /** @type {import('./rruleParser.js').RecurrenceConfig} */ ({
+      freq: 'daily',
+      interval: 1,
+    });
     if (preset === 'daily') {
       c.freq = 'daily';
       c.interval = 1;
@@ -152,7 +157,7 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
       iInput.min = '1';
       iInput.max = '99';
       iInput.className = 'rec-interval-input rec-interval-inline';
-      iInput.value = weeklyInterval;
+      iInput.value = String(weeklyInterval);
       iInput.addEventListener('input', () => {
         weeklyInterval = Math.max(1, parseInt(iInput.value) || 1);
         notify();
@@ -167,7 +172,7 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
       iInput.min = '1';
       iInput.max = '99';
       iInput.className = 'rec-interval-input';
-      iInput.value = customInterval;
+      iInput.value = String(customInterval);
       iInput.addEventListener('input', () => {
         customInterval = Math.max(1, parseInt(iInput.value) || 1);
         notify();
@@ -344,7 +349,7 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
         cInput.min = '1';
         cInput.max = '999';
         cInput.className = 'rec-interval-input';
-        cInput.value = endCount;
+        cInput.value = String(endCount);
         cInput.addEventListener('input', () => {
           endCount = Math.max(1, parseInt(cInput.value) || 1);
           notify();

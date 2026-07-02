@@ -14,17 +14,18 @@ function snap(minutes) {
  * @param {HTMLElement} gridEl  - .day-grid or .week-grid
  * @param {HTMLElement} scrollEl - .grid-scroll (parent of gridEl)
  * @param {object} opts
- * @param {function(clientX: number, gridRect: DOMRect): Date} opts.getDayFromX
- * @param {function(id: string, day: Date, startMin: number): void} opts.onMove
- * @param {function(id: string, endMin: number): void} opts.onResize
+ * @param {(clientX: number, gridRect: DOMRect) => Date} opts.getDayFromX
+ * @param {(id: string, day: Date, startMin: number) => void} opts.onMove
+ * @param {(id: string, endMin: number) => void} opts.onResize
  */
 export function initDnd(gridEl, scrollEl, opts) {
   gridEl.addEventListener('pointerdown', (e) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
 
-    const isResize = !!e.target.closest('.resize-handle');
-    const block = (isResize ? e.target.closest('.resize-handle') : e.target).closest(
-      '.event-block',
+    const target = /** @type {HTMLElement} */ (e.target);
+    const isResize = !!target.closest('.resize-handle');
+    const block = /** @type {HTMLElement} */ (
+      (isResize ? target.closest('.resize-handle') : target).closest('.event-block')
     );
     if (!block) return;
 
@@ -41,7 +42,7 @@ export function initDnd(gridEl, scrollEl, opts) {
     function activate() {
       active = true;
       block.style.opacity = '0.3';
-      ghost = block.cloneNode(true);
+      ghost = /** @type {HTMLElement} */ (block.cloneNode(true));
       ghost.style.cssText =
         `position:fixed;width:${blockRect.width}px;height:${blockRect.height}px;` +
         `left:${blockRect.left}px;top:${isResize ? blockRect.top : e.clientY - grabOffsetY}px;` +
@@ -117,7 +118,9 @@ export function initDayDnd(containerEl, { chipSelector, daySelector, onMove }) {
   containerEl.addEventListener('pointerdown', (e) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
 
-    const chip = e.target.closest(chipSelector);
+    const chip = /** @type {HTMLElement} */ (
+      /** @type {HTMLElement} */ (e.target).closest(chipSelector)
+    );
     if (!chip) return;
 
     e.preventDefault();
@@ -134,7 +137,7 @@ export function initDayDnd(containerEl, { chipSelector, daySelector, onMove }) {
     function activate() {
       active = true;
       chip.style.opacity = '0.3';
-      ghost = chip.cloneNode(true);
+      ghost = /** @type {HTMLElement} */ (chip.cloneNode(true));
       ghost.style.cssText =
         `position:fixed;width:${chipRect.width}px;height:${chipRect.height}px;` +
         `left:${chipRect.left}px;top:${chipRect.top}px;` +
@@ -214,7 +217,7 @@ export function initLongPressCreate(el, { onLongPress, skipSelector }) {
 
   el.addEventListener('pointerdown', (e) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
-    if (skipSelector && e.target.closest(skipSelector)) return;
+    if (skipSelector && /** @type {HTMLElement} */ (e.target).closest(skipSelector)) return;
     startX = e.clientX;
     startY = e.clientY;
     timer = setTimeout(() => {

@@ -95,7 +95,7 @@ export function showDatePicker(currentDate, onSelect) {
 
     for (let d = 1; d <= daysInMonth; d++) {
       const btn = document.createElement('button');
-      btn.textContent = d;
+      btn.textContent = String(d);
       btn.className = 'mini-cal-cell';
       const cell = new Date(viewYear, viewMonth, d);
       if (cell.toDateString() === today.toDateString()) btn.classList.add('today');
@@ -119,7 +119,7 @@ export function showDatePicker(currentDate, onSelect) {
  * Show a month/year picker overlay.
  * @param {number} currentYear
  * @param {number} currentMonth - 0-based
- * @param {function(year: number, month: number): void} onSelect
+ * @param {(year: number, month: number) => void} onSelect
  */
 export function showMonthYearPicker(currentYear, currentMonth, onSelect) {
   document.getElementById('month-year-picker-overlay')?.remove();
@@ -166,7 +166,7 @@ export function showMonthYearPicker(currentYear, currentMonth, onSelect) {
     });
 
     const yearLabel = document.createElement('span');
-    yearLabel.textContent = viewYear;
+    yearLabel.textContent = String(viewYear);
     yearLabel.style.fontWeight = '600';
 
     const next = document.createElement('button');

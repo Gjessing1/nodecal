@@ -7,7 +7,10 @@ let deferredPrompt = null;
  */
 export function initInstallPrompt() {
   // Already installed — nothing to do
-  if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone)
+  if (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    /** @type {any} */ (window.navigator).standalone
+  )
     return;
 
   const banner = document.getElementById('install-banner');

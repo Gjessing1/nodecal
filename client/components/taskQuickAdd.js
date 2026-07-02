@@ -198,7 +198,10 @@ function buildQuickAdd(callbacks) {
     }
   });
   pickBtn.addEventListener('mousedown', (e) => e.preventDefault());
-  pickBtn.addEventListener('click', () => datePicker.showPicker?.() || datePicker.click());
+  pickBtn.addEventListener('click', () => {
+    if (datePicker.showPicker) datePicker.showPicker();
+    else datePicker.click();
+  });
 
   function updateActive() {
     todayBtn.classList.toggle('active', selectedDue === today);

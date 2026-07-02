@@ -21,7 +21,7 @@ router.get('/events', (req, res) => {
       result.push(toApiShape(occ));
     }
   }
-  result.sort((a, b) => new Date(a.start) - new Date(b.start));
+  result.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
   res.json(result);
 });
 
@@ -278,7 +278,7 @@ router.post('/events/batch-shift', async (req, res) => {
     for (const ev of matching) {
       try {
         const evStart = new Date(ev.start);
-        const durMs = new Date(ev.end) - evStart;
+        const durMs = new Date(ev.end).getTime() - evStart.getTime();
 
         // ── "Shift all" mode (no anchor) ────────────────────
         if (!anchor) {

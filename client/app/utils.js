@@ -117,7 +117,9 @@ function weatherForDate(dateStr, weather, maxDays = 6) {
   if (!weather?.daily?.[dateStr]) return null;
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  const diffDays = (new Date(dateStr + 'T00:00:00') - new Date(todayStr + 'T00:00:00')) / 86400000;
+  const diffDays =
+    (new Date(dateStr + 'T00:00:00').getTime() - new Date(todayStr + 'T00:00:00').getTime()) /
+    86400000;
   if (diffDays < 0 || diffDays >= maxDays) return null;
   return weather.daily[dateStr];
 }
@@ -157,7 +159,7 @@ export function getISOWeek(date) {
   const day = d.getUTCDay() || 7; // Mon=1 .. Sun=7
   d.setUTCDate(d.getUTCDate() + 4 - day); // Thursday of this ISO week
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
 }
 
 /**

@@ -48,9 +48,11 @@ const calBtn = document.getElementById('cal-btn');
 const settingsBtn = document.getElementById('settings-btn');
 const bottomNav = document.getElementById('bottom-nav');
 const calQuickAdd = document.getElementById('cal-quickadd');
-const calQuickAddInput = document.getElementById('cal-quickadd-input');
+const calQuickAddInput = /** @type {HTMLInputElement} */ (
+  document.getElementById('cal-quickadd-input')
+);
 const searchOverlay = document.getElementById('search-overlay');
-const searchInput = document.getElementById('search-input');
+const searchInput = /** @type {HTMLInputElement} */ (document.getElementById('search-input'));
 const searchResults = document.getElementById('search-results');
 
 const VIEW_META = {
@@ -528,7 +530,7 @@ function handleEventMove(eventId, day, startMin) {
   if (!ev) return;
   if (calendarById(ev.calendarId)?.readOnly) return; // subscribed calendars can't be edited
   const tz = state.config.timezone;
-  const duration = new Date(ev.end) - new Date(ev.start);
+  const duration = new Date(ev.end).getTime() - new Date(ev.start).getTime();
   const dateStr = localDateStr(day);
   const h = String(Math.floor(startMin / 60)).padStart(2, '0');
   const m = String(startMin % 60).padStart(2, '0');
@@ -556,7 +558,7 @@ function handleEventResize(eventId, endMin) {
   const h = String(Math.floor(endMin / 60)).padStart(2, '0');
   const m = String(endMin % 60).padStart(2, '0');
   const newEnd = localToUTC(dateStr, `${h}:${m}`, tz);
-  if (newEnd - start < 15 * 60000) return;
+  if (newEnd.getTime() - start.getTime() < 15 * 60000) return;
   const data = { end: newEnd.toISOString() };
   if (ev.recurring && ev.occurrenceDate) {
     data.uid = ev.uid;
@@ -663,6 +665,9 @@ async function handleTaskStar(task) {
   }
 }
 
+/**
+ * @param {Partial<import('./state.js').Task>} draft - new-task fields; only title is required
+ */
 async function handleTaskAdd({
   title,
   due,
@@ -749,6 +754,7 @@ function runSearch(query) {
   searchResults.innerHTML = '';
   if (q.length < 2) return;
 
+  /** @type {Array<{type: 'event', item: import('./state.js').CalEvent} | {type: 'task', item: import('./state.js').Task}>} */
   const matches = [];
 
   for (const ev of state.events) {
@@ -871,7 +877,8 @@ function initLogin() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     errEl.classList.add('hidden');
-    const password = document.getElementById('login-password').value;
+    const password = /** @type {HTMLInputElement} */ (document.getElementById('login-password'))
+      .value;
     try {
       const res = await fetch('/login', {
         method: 'POST',
@@ -1129,7 +1136,7 @@ async function init() {
         const d = state.selectedDate || new Date();
         openNewEventModal(d, (eventData) => saveEvent(null, eventData));
         setTimeout(() => {
-          document.getElementById('f-title').value = text;
+          /** @type {HTMLInputElement} */ (document.getElementById('f-title')).value = text;
         }, 50);
       }
     } catch {

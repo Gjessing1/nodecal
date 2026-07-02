@@ -12,7 +12,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
-RUN npm run format:check && npm run lint && npm test
+RUN npm run format:check && npm run lint && npm run typecheck && npm test
 
 FROM node:20-alpine
 WORKDIR /app

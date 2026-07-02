@@ -105,8 +105,8 @@ export function mountLocationUrlSection(wrap, opts) {
       hdr.style.marginBottom = 'var(--space-xs)';
       hdr.addEventListener('click', () => {
         // Persist current input values as initLoc/initUrl before collapsing
-        const locEl = wrap.querySelector(`#${locId}`);
-        const urlEl = wrap.querySelector(`#${urlId}`);
+        const locEl = /** @type {HTMLInputElement|null} */ (wrap.querySelector(`#${locId}`));
+        const urlEl = /** @type {HTMLInputElement|null} */ (wrap.querySelector(`#${urlId}`));
         initLoc = locEl?.value.trim() ?? initLoc;
         initUrl = urlEl?.value.trim() ?? initUrl;
         mount(false);
@@ -127,7 +127,7 @@ export function mountLocationUrlSection(wrap, opts) {
         </div>`;
       wrap.appendChild(inputRow);
 
-      const urlInput = wrap.querySelector(`#${urlId}`);
+      const urlInput = /** @type {HTMLInputElement|null} */ (wrap.querySelector(`#${urlId}`));
 
       if (showUrlLink && urlInput) {
         function updateUrlLink() {
@@ -157,7 +157,7 @@ export function mountLocationUrlSection(wrap, opts) {
  *
  * @param {HTMLElement} toggleEl - container for the header button
  * @param {HTMLElement} bodyEl   - the section to show/hide
- * @param {{ label: string, hasContent: boolean }} opts
+ * @param {{ label?: string, hasContent?: boolean, onToggle?: (expanded: boolean) => void }} [opts]
  */
 export function mountCollapsibleToggle(toggleEl, bodyEl, { label, hasContent, onToggle } = {}) {
   if (!toggleEl || !bodyEl) return;

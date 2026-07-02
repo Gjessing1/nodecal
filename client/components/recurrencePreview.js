@@ -3,7 +3,8 @@ import { state } from '../app/state.js';
 async function loadRRule() {
   // rrule's ESM build uses bare specifiers that browsers can't resolve — load the UMD
   // bundle as a script instead, which sets window.rrule
-  if (window.rrule) return window.rrule;
+  const w = /** @type {any} */ (window);
+  if (w.rrule) return w.rrule;
   await new Promise((resolve, reject) => {
     const s = document.createElement('script');
     s.src = '/rrule/rrule.js';
@@ -11,7 +12,7 @@ async function loadRRule() {
     s.onerror = reject;
     document.head.appendChild(s);
   });
-  return window.rrule || null;
+  return /** @type {any} */ (window).rrule || null;
 }
 
 /**
@@ -102,7 +103,7 @@ export function buildMiniCal(occurrences) {
       const key = `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const cell = document.createElement('div');
       cell.className = 'rec-cal-cell' + (occSet.has(key) ? ' rec-cal-occ' : '');
-      cell.textContent = day;
+      cell.textContent = String(day);
       grid.appendChild(cell);
     }
     wrap.appendChild(grid);

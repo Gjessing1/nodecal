@@ -33,7 +33,7 @@ describe('expandRecurring', () => {
     assert.equal(occ.length, 4);
     // Each occurrence is 1 hour long (same as base)
     for (const o of occ) {
-      assert.equal(new Date(o.end) - new Date(o.start), 3600000);
+      assert.equal(new Date(o.end).getTime() - new Date(o.start).getTime(), 3600000);
     }
   });
 
