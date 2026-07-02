@@ -11,6 +11,7 @@ import { initCalendarDrawer, openDrawer } from '../components/calendarDrawer.js'
 import { showSnackbar } from '../components/snackbar.js';
 import { initSettingsPanel, openSettings } from '../components/settingsPanel.js';
 import { initInstallPrompt } from './installPrompt.js';
+import { initSwUpdate } from './swUpdate.js';
 import { initTheme } from './theme.js';
 import { applyProfile, captureActiveProfile, persistProfiles, activeProfileId, activeProfile, isSingleMode, DUAL_IDS, effectiveEventCalendar, effectiveTaskSource } from './profiles.js';
 import { localDateStr, toDateInputValue, localToUTC } from './utils.js';
@@ -318,6 +319,20 @@ async function showPwaNotification(title, options) {
     } catch { /* fall through to legacy path */ }
   }
   new Notification(title, options);
+}
+
+// Refetch events + tasks when the app comes back to life. Phone PWAs suspend
+// timers while backgrounded, so without this a resumed app shows data from
+// whenever it was last open — stale the moment another device made an edit.
+let _lastWakeRefresh = Date.now();
+async function refreshOnWake() {
+  if (!state._viewInitialized) return; // still loading or on the login screen
+  if (Date.now() - _lastWakeRefresh < 30 * 1000) return;
+  _lastWakeRefresh = Date.now();
+  try {
+    await Promise.all([loadEvents(), loadTasks()]);
+    render();
+  } catch { /* offline — the banner handles it */ }
 }
 
 async function loadTasks() {
@@ -812,6 +827,7 @@ async function init() {
     handleSync().catch(() => {});
   });
   initInstallPrompt();
+  initSwUpdate();
   initBackButton();
 
   window.addEventListener('offline', () => {
@@ -820,6 +836,10 @@ async function init() {
   });
   window.addEventListener('online', () => {
     syncError.classList.add('hidden');
+    refreshOnWake();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refreshOnWake();
   });
 
   // PWA viewport fix: Android Chrome sometimes launches with wrong dimensions.

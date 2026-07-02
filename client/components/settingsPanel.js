@@ -286,7 +286,17 @@ function renderForm() {
       <button class="btn btn-primary" id="s-save">Save</button>
       <button class="btn btn-ghost" id="s-cancel">Cancel</button>
     </div>
+    <div id="s-about" style="margin-top:var(--space-md);font-size:var(--font-size-sm);color:var(--color-text-muted);text-align:center"></div>
   `;
+
+  // Running build id — lets you verify a deploy actually reached this device.
+  fetch('/health')
+    .then(res => res.json())
+    .then(h => {
+      const about = sheet.querySelector('#s-about');
+      if (about) about.textContent = `Nodecal ${h.version || ''} · build ${h.build || 'unknown'}`.replace('  ', ' ');
+    })
+    .catch(() => { /* offline — leave the footer empty */ });
 
   // ── Time pickers (replace native <input type="time">) ──────────────────────
   sheet.querySelector('#s-morning-pick-wrap').appendChild(

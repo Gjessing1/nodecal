@@ -22,9 +22,7 @@
       var t = localStorage.getItem('nc-theme');
       if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t;
     })();
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/service-worker.js');
-    }
+    // Service worker registration lives in client/app/swUpdate.js
   </script>
 </head>
 <body>
