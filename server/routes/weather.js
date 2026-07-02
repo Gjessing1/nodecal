@@ -13,58 +13,58 @@ const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 // Unknown codes return '' (show nothing rather than a wrong icon).
 const SYMBOL_EMOJI = {
   // Clear / fair / cloudy
-  clearsky:                          '☀️',
-  fair:                              '🌤️',
-  partlycloudy:                      '⛅',
-  cloudy:                            '☁️',
-  fog:                               '🌫️',
+  clearsky: '☀️',
+  fair: '🌤️',
+  partlycloudy: '⛅',
+  cloudy: '☁️',
+  fog: '🌫️',
   // Light rain
-  lightrain:                         '🌦️',
-  lightrainshowers:                  '🌦️',
-  lightrainandthunder:               '⛈️',
-  lightrainshowersandthunder:        '⛈️',
+  lightrain: '🌦️',
+  lightrainshowers: '🌦️',
+  lightrainandthunder: '⛈️',
+  lightrainshowersandthunder: '⛈️',
   // Rain
-  rain:                              '🌧️',
-  rainshowers:                       '🌧️',
-  rainandthunder:                    '⛈️',
-  rainshowersandthunder:             '⛈️',
+  rain: '🌧️',
+  rainshowers: '🌧️',
+  rainandthunder: '⛈️',
+  rainshowersandthunder: '⛈️',
   // Heavy rain
-  heavyrain:                         '🌧️',
-  heavyrainshowers:                  '🌧️',
-  heavyrainandthunder:               '⛈️',
-  heavyrainshowersandthunder:        '⛈️',
+  heavyrain: '🌧️',
+  heavyrainshowers: '🌧️',
+  heavyrainandthunder: '⛈️',
+  heavyrainshowersandthunder: '⛈️',
   // Light sleet
-  lightsleet:                        '🌧️',
-  lightsleetshowers:                 '🌧️',
-  lightsleetandthunder:              '⛈️',
-  lightsleetshowersandthunder:       '⛈️', // correct spelling (future API version)
-  lightssleetshowersandthunder:      '⛈️', // current API typo (extra 's' after 'light')
+  lightsleet: '🌧️',
+  lightsleetshowers: '🌧️',
+  lightsleetandthunder: '⛈️',
+  lightsleetshowersandthunder: '⛈️', // correct spelling (future API version)
+  lightssleetshowersandthunder: '⛈️', // current API typo (extra 's' after 'light')
   // Sleet
-  sleet:                             '🌧️',
-  sleetshowers:                      '🌧️',
-  sleetandthunder:                   '⛈️',
-  sleetshowersandthunder:            '⛈️',
+  sleet: '🌧️',
+  sleetshowers: '🌧️',
+  sleetandthunder: '⛈️',
+  sleetshowersandthunder: '⛈️',
   // Heavy sleet
-  heavysleet:                        '🌧️',
-  heavysleetshowers:                 '🌧️',
-  heavysleetandthunder:              '⛈️',
-  heavysleetshowersandthunder:       '⛈️',
+  heavysleet: '🌧️',
+  heavysleetshowers: '🌧️',
+  heavysleetandthunder: '⛈️',
+  heavysleetshowersandthunder: '⛈️',
   // Light snow
-  lightsnow:                         '🌨️',
-  lightsnowshowers:                  '🌨️',
-  lightsnowandthunder:               '⛈️',
-  lightsnowshowersandthunder:        '⛈️', // correct spelling (future API version)
-  lightssnowshowersandthunder:       '⛈️', // current API typo (extra 's' after 'light')
+  lightsnow: '🌨️',
+  lightsnowshowers: '🌨️',
+  lightsnowandthunder: '⛈️',
+  lightsnowshowersandthunder: '⛈️', // correct spelling (future API version)
+  lightssnowshowersandthunder: '⛈️', // current API typo (extra 's' after 'light')
   // Snow
-  snow:                              '❄️',
-  snowshowers:                       '🌨️',
-  snowandthunder:                    '⛈️',
-  snowshowersandthunder:             '⛈️',
+  snow: '❄️',
+  snowshowers: '🌨️',
+  snowandthunder: '⛈️',
+  snowshowersandthunder: '⛈️',
   // Heavy snow
-  heavysnow:                         '❄️',
-  heavysnowshowers:                  '❄️',
-  heavysnowandthunder:               '⛈️',
-  heavysnowshowersandthunder:        '⛈️',
+  heavysnow: '❄️',
+  heavysnowshowers: '❄️',
+  heavysnowandthunder: '⛈️',
+  heavysnowshowersandthunder: '⛈️',
 };
 
 function symbolToEmoji(code) {
@@ -80,15 +80,25 @@ function fetchFromMet(lat, lon) {
       path: `/weatherapi/locationforecast/2.0/compact?lat=${lat}&lon=${lon}`,
       headers: { 'User-Agent': 'Nodecal/1.0 github.com/Gjessing1/nodecal' },
     };
-    https.get(opts, res => {
-      if (res.statusCode !== 200) { reject(new Error(`met.no: ${res.statusCode}`)); return; }
-      let body = '';
-      res.on('data', c => { body += c; });
-      res.on('end', () => {
-        try { resolve(JSON.parse(body)); }
-        catch (e) { reject(e); }
-      });
-    }).on('error', reject);
+    https
+      .get(opts, (res) => {
+        if (res.statusCode !== 200) {
+          reject(new Error(`met.no: ${res.statusCode}`));
+          return;
+        }
+        let body = '';
+        res.on('data', (c) => {
+          body += c;
+        });
+        res.on('end', () => {
+          try {
+            resolve(JSON.parse(body));
+          } catch (e) {
+            reject(e);
+          }
+        });
+      })
+      .on('error', reject);
   });
 }
 
@@ -103,11 +113,13 @@ function parseWeather(json) {
 
   // current: nearest timeslot to now
   const current = (() => {
-    const slot = series.find(s => new Date(s.time) >= now) || series[0];
+    const slot = series.find((s) => new Date(s.time) >= now) || series[0];
     if (!slot) return null;
     const temp = Math.round(slot.data.instant.details.air_temperature);
-    const symbol = slot.data.next_1_hours?.summary?.symbol_code
-                || slot.data.next_6_hours?.summary?.symbol_code || '';
+    const symbol =
+      slot.data.next_1_hours?.summary?.symbol_code ||
+      slot.data.next_6_hours?.summary?.symbol_code ||
+      '';
     return { temp, symbol, emoji: symbolToEmoji(symbol) };
   })();
 
@@ -123,7 +135,8 @@ function parseWeather(json) {
     if (!dailyMap[dateStr]) dailyMap[dateStr] = { temps: [], symbols: [] };
     dailyMap[dateStr].temps.push(temp);
     const sym = symbol6 || symbol1;
-    if (sym && hour >= 9 && hour <= 15) dailyMap[dateStr].symbols.push(sym); // daytime symbol preference
+    if (sym && hour >= 9 && hour <= 15)
+      dailyMap[dateStr].symbols.push(sym); // daytime symbol preference
     else if (sym) dailyMap[dateStr].symbols.push(sym);
   }
 

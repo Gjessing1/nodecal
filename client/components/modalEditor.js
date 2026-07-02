@@ -2,7 +2,12 @@ import { state, calendarById } from '../app/state.js';
 import { toDateInputValue, toTimeInputValue, localToUTC, esc } from '../app/utils.js';
 import { buildTimePicker } from './timePicker.js';
 import { buildRecurrenceEditor } from './recurrenceUI.js';
-import { buildDatePickerButton, mountLocationUrlSection, mountCollapsibleToggle, wireCategoryUI } from './modalHelpers.js';
+import {
+  buildDatePickerButton,
+  mountLocationUrlSection,
+  mountCollapsibleToggle,
+  wireCategoryUI,
+} from './modalHelpers.js';
 import { getAllEventCategories } from '../app/eventUtils.js';
 import { effectiveEventCalendar } from '../app/profiles.js';
 
@@ -11,7 +16,9 @@ let overlay, sheet, onSaveCb, onDeleteCb, onDuplicateCb;
 export function initModal() {
   overlay = document.getElementById('modal-overlay');
   sheet = overlay.querySelector('.modal-sheet');
-  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeModal();
+  });
 }
 
 /**
@@ -73,7 +80,13 @@ function formatEventWhen(event) {
   const start = new Date(event.start);
   const end = new Date(event.end);
   const dateStr = start.toLocaleDateString('en-US', opts);
-  const t = d => d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: state.config.timeFormat === '12h', timeZone: tz });
+  const t = (d) =>
+    d.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: state.config.timeFormat === '12h',
+      timeZone: tz,
+    });
   return `${dateStr} · ${t(start)} – ${t(end)}`;
 }
 
@@ -88,10 +101,14 @@ function renderReadOnly(event) {
     </div>
     <div class="readonly-row"><span class="readonly-when">${esc(formatEventWhen(event))}</span></div>`);
   if (event.location) {
-    rows.push(`<div class="readonly-row"><span class="readonly-label">Location</span> ${esc(event.location)}</div>`);
+    rows.push(
+      `<div class="readonly-row"><span class="readonly-label">Location</span> ${esc(event.location)}</div>`,
+    );
   }
   if (event.url) {
-    rows.push(`<div class="readonly-row"><span class="readonly-label">URL</span> <a href="${esc(event.url)}" target="_blank" rel="noopener">${esc(event.url)}</a></div>`);
+    rows.push(
+      `<div class="readonly-row"><span class="readonly-label">URL</span> <a href="${esc(event.url)}" target="_blank" rel="noopener">${esc(event.url)}</a></div>`,
+    );
   }
   if (event.description) {
     rows.push(`<div class="readonly-row readonly-desc">${esc(event.description)}</div>`);
@@ -110,7 +127,7 @@ function renderReadOnly(event) {
  * @returns {Promise<string|null>}
  */
 function showDeleteScopeDialog() {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const dlgOverlay = document.createElement('div');
     dlgOverlay.className = 'modal-overlay delete-scope-overlay';
 
@@ -149,7 +166,9 @@ function showDeleteScopeDialog() {
     cancel.addEventListener('click', () => finish(null));
     box.appendChild(cancel);
 
-    dlgOverlay.addEventListener('click', e => { if (e.target === dlgOverlay) finish(null); });
+    dlgOverlay.addEventListener('click', (e) => {
+      if (e.target === dlgOverlay) finish(null);
+    });
     dlgOverlay.appendChild(box);
     document.body.appendChild(dlgOverlay);
   });
@@ -157,7 +176,7 @@ function showDeleteScopeDialog() {
 
 function computeDefaultStart(date, tz) {
   const todayStr = toDateInputValue(new Date(), tz);
-  const dateStr  = toDateInputValue(date, tz);
+  const dateStr = toDateInputValue(date, tz);
   if (dateStr === todayStr) {
     const rounded = Math.ceil(Date.now() / (15 * 60000)) * (15 * 60000);
     return new Date(rounded);
@@ -166,13 +185,21 @@ function computeDefaultStart(date, tz) {
   return localToUTC(dateStr, t, tz);
 }
 
-const ALARM_PRESETS = [[0,'None'],[5,'5 min before'],[15,'15 min before'],[60,'1 hour before']];
+const ALARM_PRESETS = [
+  [0, 'None'],
+  [5, '5 min before'],
+  [15, '15 min before'],
+  [60, '1 hour before'],
+];
 function alarmOptionsHtml(currentMinutes) {
   const known = ALARM_PRESETS.map(([v]) => v);
   const isCustom = currentMinutes != null && currentMinutes > 0 && !known.includes(currentMinutes);
-  return ALARM_PRESETS.map(([v, l]) =>
-    `<option value="${v}"${(currentMinutes ?? 0) === v ? ' selected' : ''}>${esc(l)}</option>`
-  ).join('') + `<option value="-1"${isCustom ? ' selected' : ''}>Custom…</option>`;
+  return (
+    ALARM_PRESETS.map(
+      ([v, l]) =>
+        `<option value="${v}"${(currentMinutes ?? 0) === v ? ' selected' : ''}>${esc(l)}</option>`,
+    ).join('') + `<option value="-1"${isCustom ? ' selected' : ''}>Custom…</option>`
+  );
 }
 
 let _nlpReqId = 0;
@@ -186,7 +213,11 @@ function renderForm(event, defaultDate, explicitTime = false) {
   const isNew = !event;
   const tz = state.config.timezone;
   const durMs = (state.config.defaultEventDuration || 60) * 60000;
-  const start = event ? new Date(event.start) : (explicitTime && defaultDate ? defaultDate : computeDefaultStart(defaultDate || new Date(), tz));
+  const start = event
+    ? new Date(event.start)
+    : explicitTime && defaultDate
+      ? defaultDate
+      : computeDefaultStart(defaultDate || new Date(), tz);
   const end = event ? new Date(event.end) : new Date(start.getTime() + durMs);
   // For all-day events, slice the UTC date string directly — never convert through local timezone.
   const allDayDateVal = event?.allDay ? event.start.slice(0, 10) : toDateInputValue(start, tz);
@@ -231,7 +262,7 @@ function renderForm(event, defaultDate, explicitTime = false) {
       <div class="modal-field modal-cal-field">
         <label>Calendar</label>
         <select id="f-calendar">
-          ${state.calendars.map(c => `<option value="${esc(c.id)}" ${defaultCalId === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
+          ${state.calendars.map((c) => `<option value="${esc(c.id)}" ${defaultCalId === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
         </select>
       </div>
       <div class="modal-allday-toggle">
@@ -249,7 +280,7 @@ function renderForm(event, defaultDate, explicitTime = false) {
         <div class="modal-field">
           <label>Remind me</label>
           <select id="f-alarm">
-            ${alarmOptionsHtml(event?.alarmMinutes ?? (state.config.alarmDefaultMinutes ?? 0))}
+            ${alarmOptionsHtml(event?.alarmMinutes ?? state.config.alarmDefaultMinutes ?? 0)}
           </select>
         </div>
         <div class="modal-field">
@@ -257,13 +288,21 @@ function renderForm(event, defaultDate, explicitTime = false) {
           <div id="f-repeat-preset-target"></div>
         </div>
       </div>
-      <div class="modal-field" id="f-alarm-custom-row" style="${(()=>{const v=event?.alarmMinutes??state.config.alarmDefaultMinutes??0;return [0,5,15,60].includes(v)?'display:none':''})()}">
+      <div class="modal-field" id="f-alarm-custom-row" style="${(() => {
+        const v = event?.alarmMinutes ?? state.config.alarmDefaultMinutes ?? 0;
+        return [0, 5, 15, 60].includes(v) ? 'display:none' : '';
+      })()}">
         <label>Minutes before</label>
-        <input type="number" id="f-alarm-custom" value="${(()=>{const v=event?.alarmMinutes??state.config.alarmDefaultMinutes??0;return [0,5,15,60].includes(v)?'':(v||'')})()}" min="1" max="10080" placeholder="e.g. 45">
+        <input type="number" id="f-alarm-custom" value="${(() => {
+          const v = event?.alarmMinutes ?? state.config.alarmDefaultMinutes ?? 0;
+          return [0, 5, 15, 60].includes(v) ? '' : v || '';
+        })()}" min="1" max="10080" placeholder="e.g. 45">
       </div>
       <div id="f-repeat-container" data-rrule="${esc(event?.rrule || '')}"></div>
     </div>
-    ${event?.recurring ? `
+    ${
+      event?.recurring
+        ? `
     <div class="modal-field recurring-scope-field">
       <label>Edit scope</label>
       <select id="f-scope">
@@ -271,7 +310,9 @@ function renderForm(event, defaultDate, explicitTime = false) {
         <option value="future" selected>This and following</option>
         <option value="all">All events in series</option>
       </select>
-    </div>` : ''}
+    </div>`
+        : ''
+    }
     <div id="f-categories-section"></div>
     <div class="modal-field">
       <label>Description</label>
@@ -289,19 +330,25 @@ function renderForm(event, defaultDate, explicitTime = false) {
   const endWrap = sheet.querySelector('#f-end-time-wrap');
 
   // ── Date picker buttons ──────────────────────────────────────────────────────
-  buildDatePickerButton(sheet.querySelector('#f-date'),       sheet.querySelector('#f-date-wrap'));
-  buildDatePickerButton(sheet.querySelector('#f-start-date'), sheet.querySelector('#f-start-date-wrap'));
-  buildDatePickerButton(sheet.querySelector('#f-end-date'),   sheet.querySelector('#f-end-date-wrap'));
+  buildDatePickerButton(sheet.querySelector('#f-date'), sheet.querySelector('#f-date-wrap'));
+  buildDatePickerButton(
+    sheet.querySelector('#f-start-date'),
+    sheet.querySelector('#f-start-date-wrap'),
+  );
+  buildDatePickerButton(
+    sheet.querySelector('#f-end-date'),
+    sheet.querySelector('#f-end-date-wrap'),
+  );
 
   // ── Helper: shift end time by same delta when start changes ──────────────────
   function shiftEnd(prevStartVal, newStartVal) {
     const [ph, pm] = prevStartVal.split(':').map(Number);
     const [nh, nm] = newStartVal.split(':').map(Number);
-    const deltaMin = (nh * 60 + nm) - (ph * 60 + pm);
+    const deltaMin = nh * 60 + nm - (ph * 60 + pm);
     const endEl = sheet.querySelector('#f-end-time');
     if (!endEl) return;
     const [eh, em] = endEl.value.split(':').map(Number);
-    const newEndMin = Math.max(0, Math.min(1439, (eh * 60 + em) + deltaMin));
+    const newEndMin = Math.max(0, Math.min(1439, eh * 60 + em + deltaMin));
     const newEndVal = `${String(Math.floor(newEndMin / 60)).padStart(2, '0')}:${String(newEndMin % 60).padStart(2, '0')}`;
     endEl.value = newEndVal;
     sheet.querySelector('#f-end-time-wrap .tp-wrap')?.updateTime?.(newEndVal);
@@ -309,13 +356,15 @@ function renderForm(event, defaultDate, explicitTime = false) {
 
   // ── Time pickers (dial, all platforms) ───────────────────────────────────────
   let prevStartVal = toTimeInputValue(start, tz);
-  startWrap.appendChild(buildTimePicker('f-start-time', start, tz, newVal => {
-    shiftEnd(prevStartVal, newVal);
-    prevStartVal = newVal;
-  }));
+  startWrap.appendChild(
+    buildTimePicker('f-start-time', start, tz, (newVal) => {
+      shiftEnd(prevStartVal, newVal);
+      prevStartVal = newVal;
+    }),
+  );
   endWrap.appendChild(buildTimePicker('f-end-time', end, tz));
 
-  sheet.querySelector('#f-allday').addEventListener('change', e => {
+  sheet.querySelector('#f-allday').addEventListener('change', (e) => {
     const checked = e.target.checked;
     sheet.querySelector('#allday-date-row').style.display = checked ? '' : 'none';
     sheet.querySelector('#time-row').style.display = checked ? 'none' : '';
@@ -338,18 +387,19 @@ function renderForm(event, defaultDate, explicitTime = false) {
 
   // ── Location / URL (collapsible) ─────────────────────────────────────────
   mountLocationUrlSection(sheet.querySelector('#f-location-url-wrap'), {
-    locId: 'f-location', urlId: 'f-url',
-    initLoc: event?.location || '', initUrl: event?.url || '',
+    locId: 'f-location',
+    urlId: 'f-url',
+    initLoc: event?.location || '',
+    initUrl: event?.url || '',
     showUrlLink: true,
   });
 
   // ── Reminder / Repeat collapse when unused ────────────────────────────────
   const _alarmVal = event?.alarmMinutes ?? state.config.alarmDefaultMinutes ?? 0;
-  mountCollapsibleToggle(
-    sheet.querySelector('#f-rr-toggle'),
-    sheet.querySelector('#f-rr-body'),
-    { label: '+ Reminder / Repeat', hasContent: !!(_alarmVal > 0 || event?.rrule) }
-  );
+  mountCollapsibleToggle(sheet.querySelector('#f-rr-toggle'), sheet.querySelector('#f-rr-body'), {
+    label: '+ Reminder / Repeat',
+    hasContent: !!(_alarmVal > 0 || event?.rrule),
+  });
 
   // Alarm select → show/hide custom minutes row
   const alarmSel = sheet.querySelector('#f-alarm');
@@ -367,8 +417,10 @@ function renderForm(event, defaultDate, explicitTime = false) {
     recEditor = buildRecurrenceEditor(
       start,
       event?.rrule || null,
-      (newRrule) => { recContainer.dataset.rrule = newRrule || ''; },
-      { presetContainer: sheet.querySelector('#f-repeat-preset-target') }
+      (newRrule) => {
+        recContainer.dataset.rrule = newRrule || '';
+      },
+      { presetContainer: sheet.querySelector('#f-repeat-preset-target') },
     );
     recContainer.appendChild(recEditor);
   }
@@ -394,7 +446,7 @@ function renderForm(event, defaultDate, explicitTime = false) {
   if (catSection) {
     const modalCats = [...(event?.categories || [])];
     const hiddenEvCats = state.config.hiddenEventCategories || [];
-    const allCats   = getAllEventCategories(state.events).filter(c => !hiddenEvCats.includes(c));
+    const allCats = getAllEventCategories(state.events).filter((c) => !hiddenEvCats.includes(c));
 
     // Toggle header + collapsible body (catSection is already in modal-collapsibles-row)
     const catToggleEl = document.createElement('div');
@@ -406,14 +458,19 @@ function renderForm(event, defaultDate, explicitTime = false) {
       onToggle: (expanded) => catSection.classList.toggle('collapsible-expanded', expanded),
     });
 
-    const chipsEl  = document.createElement('div');
+    const chipsEl = document.createElement('div');
     chipsEl.className = 'tm-cats-chips-inline';
     const catInput = document.createElement('input');
-    catInput.type = 'text'; catInput.placeholder = 'Add category…'; catInput.autocomplete = 'off';
-    const addBtn   = document.createElement('button');
-    addBtn.type = 'button'; addBtn.className = 'btn btn-ghost tm-cat-add-btn'; addBtn.textContent = '+';
+    catInput.type = 'text';
+    catInput.placeholder = 'Add category…';
+    catInput.autocomplete = 'off';
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'btn btn-ghost tm-cat-add-btn';
+    addBtn.textContent = '+';
     const autoList = document.createElement('ul');
-    autoList.className = 'tasks-autocomplete tm-cat-autocomplete'; autoList.style.display = 'none';
+    autoList.className = 'tasks-autocomplete tm-cat-autocomplete';
+    autoList.style.display = 'none';
 
     const inputWrap = document.createElement('div');
     inputWrap.className = 'tm-cats-combined';
@@ -421,7 +478,7 @@ function renderForm(event, defaultDate, explicitTime = false) {
     catBodyEl.appendChild(inputWrap);
 
     const catCtrl = wireCategoryUI(chipsEl, catInput, addBtn, autoList, modalCats, allCats, {
-      onAdd:    () => refreshBatchShift(),
+      onAdd: () => refreshBatchShift(),
       onRemove: () => refreshBatchShift(),
     });
 
@@ -432,15 +489,18 @@ function renderForm(event, defaultDate, explicitTime = false) {
     batchBody.className = 'hidden';
 
     function refreshBatchShift() {
-      batchToggle.innerHTML = ''; batchBody.innerHTML = '';
+      batchToggle.innerHTML = '';
+      batchBody.innerHTML = '';
       if (!modalCats.length) return;
       const toggleBtn = document.createElement('button');
-      toggleBtn.type = 'button'; toggleBtn.className = 'add-field-btn';
+      toggleBtn.type = 'button';
+      toggleBtn.className = 'add-field-btn';
       toggleBtn.textContent = '+ Batch shift';
       let open = false;
       toggleBtn.addEventListener('click', () => {
-        open = !open; batchBody.classList.toggle('hidden', !open);
-          toggleBtn.textContent = open ? '− Batch shift' : '+ Batch shift';
+        open = !open;
+        batchBody.classList.toggle('hidden', !open);
+        toggleBtn.textContent = open ? '− Batch shift' : '+ Batch shift';
       });
       batchToggle.appendChild(toggleBtn);
 
@@ -453,22 +513,34 @@ function renderForm(event, defaultDate, explicitTime = false) {
         const row = document.createElement('div');
         row.className = 'batch-shift-row';
         const catLabel = document.createElement('span');
-        catLabel.className = 'task-cat-chip'; catLabel.textContent = cat;
+        catLabel.className = 'task-cat-chip';
+        catLabel.textContent = cat;
 
         const nInput = document.createElement('input');
-        nInput.type = 'number'; nInput.min = '-365'; nInput.max = '365';
+        nInput.type = 'number';
+        nInput.min = '-365';
+        nInput.max = '365';
         nInput.title = 'Negative shifts backwards, positive shifts forwards';
-        nInput.className = 'rec-interval-input'; nInput.value = '7';
+        nInput.className = 'rec-interval-input';
+        nInput.value = '7';
         const unitSel = document.createElement('select');
         unitSel.className = 'rec-freq-sel';
-        for (const [v, l] of [['1','day(s)'],['7','week(s)']]) {
-          const o = document.createElement('option'); o.value = v; o.textContent = l; unitSel.appendChild(o);
+        for (const [v, l] of [
+          ['1', 'day(s)'],
+          ['7', 'week(s)'],
+        ]) {
+          const o = document.createElement('option');
+          o.value = v;
+          o.textContent = l;
+          unitSel.appendChild(o);
         }
         const futureBtn = document.createElement('button');
-        futureBtn.type = 'button'; futureBtn.className = 'btn btn-primary batch-shift-apply';
+        futureBtn.type = 'button';
+        futureBtn.className = 'btn btn-primary batch-shift-apply';
         futureBtn.textContent = 'Shift this and future events';
         const allBtn = document.createElement('button');
-        allBtn.type = 'button'; allBtn.className = 'btn btn-ghost batch-shift-apply';
+        allBtn.type = 'button';
+        allBtn.className = 'btn btn-ghost batch-shift-apply';
         allBtn.textContent = 'Shift all';
         const status = document.createElement('span');
         status.className = 'batch-shift-status';
@@ -477,7 +549,9 @@ function renderForm(event, defaultDate, explicitTime = false) {
           const n = parseInt(nInput.value) || 7;
           const multiplier = parseInt(unitSel.value) || 1;
           const shiftDays = n * multiplier;
-          futureBtn.disabled = true; allBtn.disabled = true; status.textContent = '…';
+          futureBtn.disabled = true;
+          allBtn.disabled = true;
+          status.textContent = '…';
           try {
             const body = { category: cat, shiftDays };
             if (withAnchor) {
@@ -485,7 +559,8 @@ function renderForm(event, defaultDate, explicitTime = false) {
               if (anchorDate) body.anchorDate = anchorDate;
             }
             const r = await fetch('/events/batch-shift', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(body),
             });
             const data = await r.json();
@@ -500,7 +575,8 @@ function renderForm(event, defaultDate, explicitTime = false) {
           } catch (err) {
             status.textContent = '✗ ' + err.message;
           } finally {
-            futureBtn.disabled = false; allBtn.disabled = false;
+            futureBtn.disabled = false;
+            allBtn.disabled = false;
           }
         }
         futureBtn.addEventListener('click', () => doShift(true));
@@ -558,17 +634,21 @@ function renderForm(event, defaultDate, explicitTime = false) {
 
 function handleSave(event) {
   const rawTitle = sheet.querySelector('#f-title').value.trim();
-  if (!rawTitle) { sheet.querySelector('#f-title').focus(); return; }
+  if (!rawTitle) {
+    sheet.querySelector('#f-title').focus();
+    return;
+  }
   // If the user hasn't changed the input since NLP parsed it, use the stripped title
-  const title = (sheet.dataset.nlpRaw && rawTitle === sheet.dataset.nlpRaw && sheet.dataset.nlpTitle)
-    ? sheet.dataset.nlpTitle
-    : rawTitle;
+  const title =
+    sheet.dataset.nlpRaw && rawTitle === sheet.dataset.nlpRaw && sheet.dataset.nlpTitle
+      ? sheet.dataset.nlpTitle
+      : rawTitle;
 
   const allDay = sheet.querySelector('#f-allday').checked;
   const calendarId = sheet.querySelector('#f-calendar').value;
   const description = sheet.querySelector('#f-desc').value.trim();
   const location = sheet.querySelector('#f-location-url-wrap #f-location')?.value.trim() || '';
-  const url      = sheet.querySelector('#f-location-url-wrap #f-url')?.value.trim() || '';
+  const url = sheet.querySelector('#f-location-url-wrap #f-url')?.value.trim() || '';
 
   let startDt, endDt;
   if (allDay) {
@@ -589,19 +669,34 @@ function handleSave(event) {
   }
 
   // Determine rrule: editor takes precedence over NLP detection
-  const recCont   = sheet.querySelector('#f-repeat-container');
-  const editorRrule = recCont ? (recCont.dataset.rrule || null) : undefined;
-  const nlpRrule  = !event ? (sheet.dataset.nlpRrule || null) : null;
+  const recCont = sheet.querySelector('#f-repeat-container');
+  const editorRrule = recCont ? recCont.dataset.rrule || null : undefined;
+  const nlpRrule = !event ? sheet.dataset.nlpRrule || null : null;
   const rrule = editorRrule !== undefined ? editorRrule : nlpRrule;
 
-  const alarmSelVal  = sheet.querySelector('#f-alarm')?.value || '0';
-  const alarmMinutes = alarmSelVal === '-1'
-    ? (parseInt(sheet.querySelector('#f-alarm-custom')?.value || '0') || null)
-    : (parseInt(alarmSelVal) > 0 ? parseInt(alarmSelVal) : null);
+  const alarmSelVal = sheet.querySelector('#f-alarm')?.value || '0';
+  const alarmMinutes =
+    alarmSelVal === '-1'
+      ? parseInt(sheet.querySelector('#f-alarm-custom')?.value || '0') || null
+      : parseInt(alarmSelVal) > 0
+        ? parseInt(alarmSelVal)
+        : null;
 
-  const categories = sheet.querySelector('#f-categories-section')?._getCategories?.() || (event?.categories || []);
-  const data = { title, start: startDt.toISOString(), end: endDt.toISOString(), allDay, calendarId, description, location, url,
-    rrule: rrule || null, alarmMinutes, categories };
+  const categories =
+    sheet.querySelector('#f-categories-section')?._getCategories?.() || event?.categories || [];
+  const data = {
+    title,
+    start: startDt.toISOString(),
+    end: endDt.toISOString(),
+    allDay,
+    calendarId,
+    description,
+    location,
+    url,
+    rrule: rrule || null,
+    alarmMinutes,
+    categories,
+  };
   if (event?.recurring) {
     data.recurringScope = sheet.querySelector('#f-scope')?.value || 'single';
     data.uid = event.uid;
@@ -614,7 +709,10 @@ function handleSave(event) {
 
 async function applyNlp(text) {
   const fb = sheet.querySelector('#nlp-fb');
-  if (!fb || !text.trim()) { if (fb) fb.classList.add('hidden'); return; }
+  if (!fb || !text.trim()) {
+    if (fb) fb.classList.add('hidden');
+    return;
+  }
   const reqId = ++_nlpReqId;
   try {
     const res = await fetch('/nlp/parse', {
@@ -624,21 +722,31 @@ async function applyNlp(text) {
     });
     if (reqId !== _nlpReqId) return; // stale — a newer request is in flight
     const data = await res.json();
-    if (!data.parsed) { fb.classList.add('hidden'); sheet.dataset.nlpRaw = ''; return; }
+    if (!data.parsed) {
+      fb.classList.add('hidden');
+      sheet.dataset.nlpRaw = '';
+      return;
+    }
 
     // Update date/time fields only — title field is the input, don't overwrite it
     sheet.dataset.nlpTitle = data.title;
-    sheet.dataset.nlpRaw   = text;
+    sheet.dataset.nlpRaw = text;
     const start = new Date(data.start);
     const end = new Date(data.end);
     const tz = state.config.timezone;
     if (!data.allDay) {
       const sdEl = sheet.querySelector('#f-start-date');
       const edEl = sheet.querySelector('#f-end-date');
-      if (sdEl) { sdEl.value = toDateInputValue(start, tz); sdEl.dispatchEvent(new Event('change')); }
-      if (edEl) { edEl.value = toDateInputValue(end, tz);   edEl.dispatchEvent(new Event('change')); }
+      if (sdEl) {
+        sdEl.value = toDateInputValue(start, tz);
+        sdEl.dispatchEvent(new Event('change'));
+      }
+      if (edEl) {
+        edEl.value = toDateInputValue(end, tz);
+        edEl.dispatchEvent(new Event('change'));
+      }
       const startTimeVal = toTimeInputValue(start, tz);
-      const endTimeVal   = toTimeInputValue(end, tz);
+      const endTimeVal = toTimeInputValue(end, tz);
       // Update hidden inputs
       const stEl = sheet.querySelector('#f-start-time');
       const etEl = sheet.querySelector('#f-end-time');
@@ -652,15 +760,25 @@ async function applyNlp(text) {
       sheet.querySelector('#time-row').style.display = '';
     } else {
       const fdEl = sheet.querySelector('#f-date');
-      if (fdEl) { fdEl.value = toDateInputValue(start); fdEl.dispatchEvent(new Event('change')); }
+      if (fdEl) {
+        fdEl.value = toDateInputValue(start);
+        fdEl.dispatchEvent(new Event('change'));
+      }
       sheet.querySelector('#f-allday').checked = true;
       sheet.querySelector('#allday-date-row').style.display = '';
       sheet.querySelector('#time-row').style.display = 'none';
     }
 
     // Show feedback with the recognized text highlighted inline
-    const dateStr = start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: tz });
-    const timeStr = data.allDay ? 'All day' : `${toTimeInputValue(start, tz)} – ${toTimeInputValue(end, tz)}`;
+    const dateStr = start.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      timeZone: tz,
+    });
+    const timeStr = data.allDay
+      ? 'All day'
+      : `${toTimeInputValue(start, tz)} – ${toTimeInputValue(end, tz)}`;
     const rruleTag = data.rrule ? ' · Repeats' : '';
     fb.innerHTML = '';
     // If parsedText is available, show "recognized: <blue span>" before the summary
@@ -669,10 +787,10 @@ async function applyNlp(text) {
       const idx = rawInput.toLowerCase().indexOf(data.parsedText.toLowerCase());
       if (idx !== -1) {
         const before = document.createTextNode(rawInput.slice(0, idx));
-        const match  = document.createElement('mark');
+        const match = document.createElement('mark');
         match.className = 'nlp-match';
         match.textContent = rawInput.slice(idx, idx + data.parsedText.length);
-        const after  = document.createTextNode(rawInput.slice(idx + data.parsedText.length));
+        const after = document.createTextNode(rawInput.slice(idx + data.parsedText.length));
         const inputPreview = document.createElement('div');
         inputPreview.className = 'nlp-input-preview';
         inputPreview.appendChild(before);

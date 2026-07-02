@@ -8,20 +8,21 @@ import { getAllEventCategories } from '../app/eventUtils.js';
 export function renderTaskSourcesSection(sheet, cfg) {
   const section = sheet.querySelector('#s-task-sources-section');
   const sources = [...(state.taskSources || [])];
-  const defUrl  = cfg.defaultTaskSource || sources[0]?.url || '';
+  const defUrl = cfg.defaultTaskSource || sources[0]?.url || '';
 
   section.innerHTML = '';
 
   const headerLabel = document.createElement('div');
   headerLabel.className = 'modal-field';
-  headerLabel.innerHTML = '<label>Task sources <span style="font-weight:normal;font-size:11px;color:var(--color-text-muted)">(select which calendar collection stores tasks)</span></label>';
+  headerLabel.innerHTML =
+    '<label>Task sources <span style="font-weight:normal;font-size:11px;color:var(--color-text-muted)">(select which calendar collection stores tasks)</span></label>';
   section.appendChild(headerLabel);
 
-  const calOptions = state.calendars.map(c => ({ value: c.id, label: c.name }));
+  const calOptions = state.calendars.map((c) => ({ value: c.id, label: c.name }));
   const CUSTOM = '__custom__';
 
   const addRow = (src, idx) => {
-    const isCustom = !calOptions.find(o => o.value === src.url);
+    const isCustom = !calOptions.find((o) => o.value === src.url);
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;gap:6px;align-items:flex-start;margin-bottom:8px';
 
@@ -32,13 +33,19 @@ export function renderTaskSourcesSection(sheet, cfg) {
     radio.checked = !!src.url && (src.url === defUrl || (!defUrl && idx === 0));
     radio.title = 'Default source for new tasks';
     radio.style.marginTop = '10px';
-    radio.addEventListener('change', () => { state.config.defaultTaskSource = src.url; });
+    radio.addEventListener('change', () => {
+      state.config.defaultTaskSource = src.url;
+    });
 
     const sel = document.createElement('select');
     sel.style.flex = '1';
-    sel.innerHTML = calOptions.map(o =>
-      `<option value="${esc(o.value)}" ${src.url === o.value ? 'selected' : ''}>${esc(o.label)}</option>`
-    ).join('') + `<option value="${CUSTOM}" ${isCustom ? 'selected' : ''}>Custom URL…</option>`;
+    sel.innerHTML =
+      calOptions
+        .map(
+          (o) =>
+            `<option value="${esc(o.value)}" ${src.url === o.value ? 'selected' : ''}>${esc(o.label)}</option>`,
+        )
+        .join('') + `<option value="${CUSTOM}" ${isCustom ? 'selected' : ''}>Custom URL…</option>`;
 
     const customInput = document.createElement('input');
     customInput.type = 'url';
@@ -60,7 +67,7 @@ export function renderTaskSourcesSection(sheet, cfg) {
       } else {
         customInput.style.display = 'none';
         sources[idx].url = val;
-        sources[idx].name = calOptions.find(o => o.value === val)?.label || '';
+        sources[idx].name = calOptions.find((o) => o.value === val)?.label || '';
         radio.value = val;
         if (radio.checked) state.config.defaultTaskSource = val;
       }
@@ -72,18 +79,22 @@ export function renderTaskSourcesSection(sheet, cfg) {
     });
 
     if (!isCustom && !src.name) {
-      sources[idx].name = calOptions.find(o => o.value === src.url)?.label || src.url;
+      sources[idx].name = calOptions.find((o) => o.value === src.url)?.label || src.url;
     }
 
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
     removeBtn.className = 'btn btn-ghost';
-    removeBtn.style.cssText = 'padding:4px 8px;font-size:var(--font-size-sm);color:var(--color-danger);flex-shrink:0;margin-top:2px';
+    removeBtn.style.cssText =
+      'padding:4px 8px;font-size:var(--font-size-sm);color:var(--color-danger);flex-shrink:0;margin-top:2px';
     removeBtn.textContent = '×';
     removeBtn.addEventListener('click', () => {
       sources.splice(idx, 1);
       state.taskSources = [...sources];
-      renderTaskSourcesSection(sheet, { ...cfg, defaultTaskSource: state.config.defaultTaskSource });
+      renderTaskSourcesSection(sheet, {
+        ...cfg,
+        defaultTaskSource: state.config.defaultTaskSource,
+      });
     });
 
     row.appendChild(radio);
@@ -104,7 +115,8 @@ export function renderTaskSourcesSection(sheet, cfg) {
   const addBtn = document.createElement('button');
   addBtn.type = 'button';
   addBtn.className = 'btn btn-ghost';
-  addBtn.style.cssText = 'font-size:var(--font-size-sm);padding:4px 12px;margin-bottom:var(--space-md)';
+  addBtn.style.cssText =
+    'font-size:var(--font-size-sm);padding:4px 12px;margin-bottom:var(--space-md)';
   addBtn.textContent = '+ Add task source';
   addBtn.addEventListener('click', () => {
     const firstCal = calOptions[0];
@@ -119,7 +131,16 @@ export function renderTaskSourcesSection(sheet, cfg) {
 
 // ── Subscribed calendars (ICS feeds) ─────────────────────────────────────────
 
-const ICS_PALETTE = ['#4a90d9', '#7ed321', '#d0021b', '#f5a623', '#50e3c2', '#9b59b6', '#e74c3c', '#2ecc71'];
+const ICS_PALETTE = [
+  '#4a90d9',
+  '#7ed321',
+  '#d0021b',
+  '#f5a623',
+  '#50e3c2',
+  '#9b59b6',
+  '#e74c3c',
+  '#2ecc71',
+];
 
 export function renderIcsFeedsSection(sheet, cfg) {
   const section = sheet.querySelector('#s-ics-feeds-section');
@@ -131,7 +152,8 @@ export function renderIcsFeedsSection(sheet, cfg) {
 
   const header = document.createElement('div');
   header.className = 'modal-field';
-  header.innerHTML = '<label>Subscribed calendars (ICS) <span style="font-weight:normal;font-size:11px;color:var(--color-text-muted)">(read-only external .ics URLs)</span></label>';
+  header.innerHTML =
+    '<label>Subscribed calendars (ICS) <span style="font-weight:normal;font-size:11px;color:var(--color-text-muted)">(read-only external .ics URLs)</span></label>';
   section.appendChild(header);
 
   const addRow = (feed, idx) => {
@@ -141,9 +163,12 @@ export function renderIcsFeedsSection(sheet, cfg) {
     const colorInput = document.createElement('input');
     colorInput.type = 'color';
     colorInput.value = feed.color || ICS_PALETTE[idx % ICS_PALETTE.length];
-    colorInput.style.cssText = 'flex:0 0 auto;width:34px;height:34px;padding:2px;border:none;background:none';
+    colorInput.style.cssText =
+      'flex:0 0 auto;width:34px;height:34px;padding:2px;border:none;background:none';
     colorInput.title = 'Calendar colour';
-    colorInput.addEventListener('input', () => { feeds[idx].color = colorInput.value; });
+    colorInput.addEventListener('input', () => {
+      feeds[idx].color = colorInput.value;
+    });
 
     const fields = document.createElement('div');
     fields.style.cssText = 'flex:1;display:flex;flex-direction:column;gap:4px';
@@ -152,20 +177,25 @@ export function renderIcsFeedsSection(sheet, cfg) {
     nameInput.type = 'text';
     nameInput.placeholder = 'Name (e.g. Work)';
     nameInput.value = feed.name || '';
-    nameInput.addEventListener('input', () => { feeds[idx].name = nameInput.value; });
+    nameInput.addEventListener('input', () => {
+      feeds[idx].name = nameInput.value;
+    });
 
     const urlInput = document.createElement('input');
     urlInput.type = 'url';
     urlInput.placeholder = 'https://…/calendar.ics';
     urlInput.value = feed.url || '';
-    urlInput.addEventListener('input', () => { feeds[idx].url = urlInput.value.trim(); });
+    urlInput.addEventListener('input', () => {
+      feeds[idx].url = urlInput.value.trim();
+    });
 
     fields.append(nameInput, urlInput);
 
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
     removeBtn.className = 'btn btn-ghost';
-    removeBtn.style.cssText = 'padding:4px 8px;font-size:var(--font-size-sm);color:var(--color-danger);flex-shrink:0';
+    removeBtn.style.cssText =
+      'padding:4px 8px;font-size:var(--font-size-sm);color:var(--color-danger);flex-shrink:0';
     removeBtn.textContent = '×';
     removeBtn.addEventListener('click', () => {
       feeds.splice(idx, 1);
@@ -182,10 +212,13 @@ export function renderIcsFeedsSection(sheet, cfg) {
   const addBtn = document.createElement('button');
   addBtn.type = 'button';
   addBtn.className = 'btn btn-ghost';
-  addBtn.style.cssText = 'font-size:var(--font-size-sm);padding:4px 12px;margin-bottom:var(--space-md)';
+  addBtn.style.cssText =
+    'font-size:var(--font-size-sm);padding:4px 12px;margin-bottom:var(--space-md)';
   addBtn.textContent = '+ Add subscribed calendar';
   addBtn.addEventListener('click', () => {
-    const id = 'ics:' + (crypto.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
+    const id =
+      'ics:' +
+      (crypto.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
     feeds.push({ id, name: '', url: '', color: ICS_PALETTE[feeds.length % ICS_PALETTE.length] });
     state.config.icsFeeds = [...feeds];
     renderIcsFeedsSection(sheet, cfg);
@@ -198,18 +231,25 @@ export function renderIcsFeedsSection(sheet, cfg) {
 // ── Categories ───────────────────────────────────────────────────────────────
 
 export function renderCategoriesSection(sheet, cfg) {
-  const taskCats  = getAllCategories(state.tasks);
-  const evCats    = getAllEventCategories(state.events);
-  const section   = sheet.querySelector('#s-categories-section');
+  const taskCats = getAllCategories(state.tasks);
+  const evCats = getAllEventCategories(state.events);
+  const section = sheet.querySelector('#s-categories-section');
 
-  if (!taskCats.length && !evCats.length) { section.innerHTML = ''; return; }
+  if (!taskCats.length && !evCats.length) {
+    section.innerHTML = '';
+    return;
+  }
 
   section.innerHTML = '';
   if (taskCats.length) {
-    section.appendChild(buildCollapsibleCatSection(sheet, 'Task categories', taskCats, 'hiddenCategories', cfg));
+    section.appendChild(
+      buildCollapsibleCatSection(sheet, 'Task categories', taskCats, 'hiddenCategories', cfg),
+    );
   }
   if (evCats.length) {
-    section.appendChild(buildCollapsibleCatSection(sheet, 'Event categories', evCats, 'hiddenEventCategories', cfg));
+    section.appendChild(
+      buildCollapsibleCatSection(sheet, 'Event categories', evCats, 'hiddenEventCategories', cfg),
+    );
   }
 }
 
@@ -238,7 +278,8 @@ function buildCollapsibleCatSection(sheet, title, cats, configKey, cfg) {
 
   for (const cat of cats) {
     const row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:4px 0';
+    row.style.cssText =
+      'display:flex;align-items:center;justify-content:space-between;padding:4px 0';
 
     const name = document.createElement('span');
     name.className = 'task-cat-chip';
@@ -254,7 +295,7 @@ function buildCollapsibleCatSection(sheet, title, cats, configKey, cfg) {
 
     btn.addEventListener('click', async () => {
       const current = state.config[configKey] || [];
-      const next = isHidden ? current.filter(c => c !== cat) : [...current, cat];
+      const next = isHidden ? current.filter((c) => c !== cat) : [...current, cat];
       try {
         const res = await fetch('/settings', {
           method: 'PUT',

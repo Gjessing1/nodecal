@@ -1,11 +1,8 @@
 import { state } from '../app/state.js';
 import { buildTaskItem } from '../components/taskItem.js';
-import { parseTagsFromTitle, getAllCategories, visibleCategories, groupTasksByCategory, taskSourceVisible } from '../app/taskUtils.js';
+import { getAllCategories, groupTasksByCategory, taskSourceVisible } from '../app/taskUtils.js';
 import { formatShortDate, localDateStr } from '../app/utils.js';
-import { openTaskModal } from '../components/taskModal.js';
-import { mountTaskQuickAdd, destroyTaskQuickAdd, focusTaskQuickAdd } from '../components/taskQuickAdd.js';
-
-let _callbacks = null;
+import { mountTaskQuickAdd } from '../components/taskQuickAdd.js';
 
 // Persist filter state across renders so toggling a task doesn't reset UI state
 const _persist = {
@@ -15,7 +12,7 @@ const _persist = {
   filterCat: '',
   filterSource: '',
   query: '',
-  sortOrder: null,  // null means use state.config.taskSortOrder
+  sortOrder: null, // null means use state.config.taskSortOrder
 };
 
 /**
@@ -24,14 +21,13 @@ const _persist = {
  * @param {object} callbacks - { onComplete, onStar, onAdd, onEdit, onDelete }
  */
 export function renderTasks(container, callbacks) {
-  _callbacks = callbacks;
   container.innerHTML = '';
 
   const wrap = document.createElement('div');
   wrap.className = 'tasks-view';
 
   const filterState = { showDone: _persist.showDone, starredOnly: _persist.starredOnly };
-  let currentGroupBy   = _persist.groupBy;
+  let currentGroupBy = _persist.groupBy;
   let currentFilterCat = _persist.filterCat;
 
   // ── Controls row ───────────────────────────────────────────
@@ -93,7 +89,10 @@ export function renderTasks(container, callbacks) {
   `;
   groupSel.value = _persist.groupBy;
   sortSel.value = _persist.sortOrder || state.config.taskSortOrder || 'due';
-  sortSel.addEventListener('change', () => { _persist.sortOrder = sortSel.value; rerender(); });
+  sortSel.addEventListener('change', () => {
+    _persist.sortOrder = sortSel.value;
+    rerender();
+  });
 
   rightControls.appendChild(groupSel);
   rightControls.appendChild(sortSel);
@@ -113,7 +112,15 @@ export function renderTasks(container, callbacks) {
   searchInput.value = _persist.query;
   searchInput.addEventListener('input', () => {
     _persist.query = searchInput.value;
-    renderList(list, filterState, sortSel.value, currentGroupBy, currentFilterCat, currentSourceFilter, callbacks);
+    renderList(
+      list,
+      filterState,
+      sortSel.value,
+      currentGroupBy,
+      currentFilterCat,
+      currentSourceFilter,
+      callbacks,
+    );
   });
   searchRow.appendChild(searchInput);
 
@@ -126,7 +133,7 @@ export function renderTasks(container, callbacks) {
     sourceFilterRow.innerHTML = '';
     // Only offer sources whose calendar is active in the current profile —
     // a deactivated calendar (hidden via drawer/profile) hides its tasks too.
-    const sources = (state.taskSources || []).filter(s => !state.hiddenCalendars.has(s.url));
+    const sources = (state.taskSources || []).filter((s) => !state.hiddenCalendars.has(s.url));
     if (!sources || sources.length < 2) return;
 
     const label = document.createElement('span');
@@ -137,7 +144,11 @@ export function renderTasks(container, callbacks) {
     const allChip = document.createElement('button');
     allChip.className = 'tasks-cat-chip-filter' + (!currentSourceFilter ? ' active' : '');
     allChip.textContent = 'All';
-    allChip.addEventListener('click', () => { currentSourceFilter = _persist.filterSource = ''; buildSourceFilter(); rerender(); });
+    allChip.addEventListener('click', () => {
+      currentSourceFilter = _persist.filterSource = '';
+      buildSourceFilter();
+      rerender();
+    });
     sourceFilterRow.appendChild(allChip);
 
     for (const src of sources) {
@@ -145,7 +156,8 @@ export function renderTasks(container, callbacks) {
       chip.className = 'tasks-cat-chip-filter' + (currentSourceFilter === src.url ? ' active' : '');
       chip.textContent = src.name || src.url;
       chip.addEventListener('click', () => {
-        currentSourceFilter = _persist.filterSource = (currentSourceFilter === src.url ? '' : src.url);
+        currentSourceFilter = _persist.filterSource =
+          currentSourceFilter === src.url ? '' : src.url;
         buildSourceFilter();
         rerender();
       });
@@ -161,8 +173,8 @@ export function renderTasks(container, callbacks) {
   function buildCatFilter() {
     catFilterRow.innerHTML = '';
     const hidden = state.config.hiddenCategories || [];
-    const sourceVisible = state.tasks.filter(t => taskSourceVisible(t, state.hiddenCalendars));
-    const allCats = getAllCategories(sourceVisible).filter(c => !hidden.includes(c));
+    const sourceVisible = state.tasks.filter((t) => taskSourceVisible(t, state.hiddenCalendars));
+    const allCats = getAllCategories(sourceVisible).filter((c) => !hidden.includes(c));
     if (!allCats.length) return;
 
     const label = document.createElement('span');
@@ -173,7 +185,11 @@ export function renderTasks(container, callbacks) {
     const allChip = document.createElement('button');
     allChip.className = 'tasks-cat-chip-filter' + (!currentFilterCat ? ' active' : '');
     allChip.textContent = 'All';
-    allChip.addEventListener('click', () => { currentFilterCat = _persist.filterCat = ''; buildCatFilter(); rerender(); });
+    allChip.addEventListener('click', () => {
+      currentFilterCat = _persist.filterCat = '';
+      buildCatFilter();
+      rerender();
+    });
     catFilterRow.appendChild(allChip);
 
     for (const cat of allCats) {
@@ -181,7 +197,7 @@ export function renderTasks(container, callbacks) {
       chip.className = 'tasks-cat-chip-filter' + (currentFilterCat === cat ? ' active' : '');
       chip.textContent = cat;
       chip.addEventListener('click', () => {
-        currentFilterCat = _persist.filterCat = (currentFilterCat === cat ? '' : cat);
+        currentFilterCat = _persist.filterCat = currentFilterCat === cat ? '' : cat;
         buildCatFilter();
         rerender();
       });
@@ -197,10 +213,26 @@ export function renderTasks(container, callbacks) {
   function rerender() {
     buildSourceFilter();
     buildCatFilter();
-    renderList(list, filterState, sortSel.value, currentGroupBy, currentFilterCat, currentSourceFilter, callbacks);
+    renderList(
+      list,
+      filterState,
+      sortSel.value,
+      currentGroupBy,
+      currentFilterCat,
+      currentSourceFilter,
+      callbacks,
+    );
   }
 
-  renderList(list, filterState, sortSel.value, currentGroupBy, currentFilterCat, currentSourceFilter, callbacks);
+  renderList(
+    list,
+    filterState,
+    sortSel.value,
+    currentGroupBy,
+    currentFilterCat,
+    currentSourceFilter,
+    callbacks,
+  );
 
   wrap.appendChild(controls);
   wrap.appendChild(searchRow);
@@ -214,33 +246,42 @@ export function renderTasks(container, callbacks) {
 
 // ── List rendering ─────────────────────────────────────────
 
-function renderList(container, filterState, sortOrder, groupBy, filterCat, filterSource, callbacks) {
+function renderList(
+  container,
+  filterState,
+  sortOrder,
+  groupBy,
+  filterCat,
+  filterSource,
+  callbacks,
+) {
   container.innerHTML = '';
 
   const hidden = state.config.hiddenCategories || [];
   // Tasks from calendars deactivated in the current profile are not surfaced.
-  let visibleTasks = state.tasks.filter(t => taskSourceVisible(t, state.hiddenCalendars));
+  let visibleTasks = state.tasks.filter((t) => taskSourceVisible(t, state.hiddenCalendars));
   // Free-text search over the source-visible set: title + description.
   const query = (_persist.query || '').trim().toLowerCase();
   if (query) {
-    visibleTasks = visibleTasks.filter(t =>
-      (t.title || '').toLowerCase().includes(query) ||
-      (t.description || '').toLowerCase().includes(query)
+    visibleTasks = visibleTasks.filter(
+      (t) =>
+        (t.title || '').toLowerCase().includes(query) ||
+        (t.description || '').toLowerCase().includes(query),
     );
   }
   let tasks;
   if (filterState.showDone) {
     // "Done" mode: show ONLY completed tasks, newest completion first
-    tasks = visibleTasks.filter(t => t.status === 'COMPLETED');
-    if (filterState.starredOnly) tasks = tasks.filter(t => t.important); // AND: done AND starred
-    if (filterCat) tasks = tasks.filter(t => (t.categories || []).includes(filterCat));
-    if (filterSource) tasks = tasks.filter(t => t.source === filterSource);
+    tasks = visibleTasks.filter((t) => t.status === 'COMPLETED');
+    if (filterState.starredOnly) tasks = tasks.filter((t) => t.important); // AND: done AND starred
+    if (filterCat) tasks = tasks.filter((t) => (t.categories || []).includes(filterCat));
+    if (filterSource) tasks = tasks.filter((t) => t.source === filterSource);
     tasks = [...tasks].sort((a, b) => (b.completed || '').localeCompare(a.completed || ''));
   } else {
-    tasks = visibleTasks.filter(t => t.status !== 'COMPLETED');
-    if (filterState.starredOnly) tasks = tasks.filter(t => t.important);
-    if (filterCat) tasks = tasks.filter(t => (t.categories || []).includes(filterCat));
-    if (filterSource) tasks = tasks.filter(t => t.source === filterSource);
+    tasks = visibleTasks.filter((t) => t.status !== 'COMPLETED');
+    if (filterState.starredOnly) tasks = tasks.filter((t) => t.important);
+    if (filterCat) tasks = tasks.filter((t) => (t.categories || []).includes(filterCat));
+    if (filterSource) tasks = tasks.filter((t) => t.source === filterSource);
     tasks = sortTasks(tasks, sortOrder);
   }
 
@@ -254,7 +295,7 @@ function renderList(container, filterState, sortOrder, groupBy, filterCat, filte
 }
 
 function renderByDateGroups(container, tasks, callbacks) {
-  const today    = localDateStr(new Date());
+  const today = localDateStr(new Date());
   const tomorrow = localDateStr(new Date(Date.now() + 86400000));
 
   const overdue = [];
@@ -279,9 +320,16 @@ function renderByDateGroups(container, tasks, callbacks) {
   }
 
   const groups = [];
-  if (overdue.length)       groups.push({ key: 'overdue',  label: 'Overdue',   overdue: true, items: overdue });
-  if (todayItems.length)    groups.push({ key: 'today',    label: `Today · ${formatDateHeader(today)}`,         items: todayItems });
-  if (tomorrowItems.length) groups.push({ key: 'tomorrow', label: `Tomorrow · ${formatDateHeader(tomorrow)}`,   items: tomorrowItems });
+  if (overdue.length)
+    groups.push({ key: 'overdue', label: 'Overdue', overdue: true, items: overdue });
+  if (todayItems.length)
+    groups.push({ key: 'today', label: `Today · ${formatDateHeader(today)}`, items: todayItems });
+  if (tomorrowItems.length)
+    groups.push({
+      key: 'tomorrow',
+      label: `Tomorrow · ${formatDateHeader(tomorrow)}`,
+      items: tomorrowItems,
+    });
   for (const [date, items] of [...byDate.entries()].sort()) {
     groups.push({ key: date, label: formatDateHeader(date), items });
   }
@@ -295,7 +343,10 @@ function renderByCompletionGroups(container, tasks, callbacks) {
   const noDate = [];
   for (const task of tasks) {
     const dateStr = task.completed ? task.completed.slice(0, 10) : null;
-    if (!dateStr) { noDate.push(task); continue; }
+    if (!dateStr) {
+      noDate.push(task);
+      continue;
+    }
     if (!byDate.has(dateStr)) byDate.set(dateStr, []);
     byDate.get(dateStr).push(task);
   }
@@ -332,13 +383,15 @@ function renderGroups(container, groups, callbacks, totalCount, showDue = false)
     const ul = document.createElement('ul');
     ul.className = 'tasks-group-list';
     for (const task of group.items) {
-      ul.appendChild(buildTaskItem(task, {
-        onComplete: t => callbacks.onComplete(t),
-        onStar:     t => callbacks.onStar(t),
-        onClick:    t => callbacks.onEdit(t),
-        onSnooze:   t => callbacks.onSnooze?.(t),
-        showDue,
-      }));
+      ul.appendChild(
+        buildTaskItem(task, {
+          onComplete: (t) => callbacks.onComplete(t),
+          onStar: (t) => callbacks.onStar(t),
+          onClick: (t) => callbacks.onEdit(t),
+          onSnooze: (t) => callbacks.onSnooze?.(t),
+          showDue,
+        }),
+      );
     }
     section.appendChild(ul);
     container.appendChild(section);
@@ -359,7 +412,8 @@ function renderGroups(container, groups, callbacks, totalCount, showDue = false)
 function sortTasks(tasks, order) {
   const copy = [...tasks];
   if (order === 'alpha') return copy.sort((a, b) => a.title.localeCompare(b.title));
-  if (order === 'created') return copy.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+  if (order === 'created')
+    return copy.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
   if (order === 'starred') {
     return copy.sort((a, b) => {
       if (a.important && !b.important) return -1;

@@ -3,14 +3,14 @@ const assert = require('node:assert/strict');
 const { expandRecurring, setRruleUntil, parseExdate } = require('../server/caldav/recurrence');
 
 const FROM = new Date('2024-01-01T00:00:00Z');
-const TO   = new Date('2024-03-01T00:00:00Z');
+const TO = new Date('2024-03-01T00:00:00Z');
 
 function base(overrides = {}) {
   return {
     uid: 'test-uid',
     title: 'Test',
     start: '2024-01-01T09:00:00.000Z',
-    end:   '2024-01-01T10:00:00.000Z',
+    end: '2024-01-01T10:00:00.000Z',
     allDay: false,
     description: '',
     location: '',
@@ -45,18 +45,23 @@ describe('expandRecurring', () => {
   });
 
   it('respects UNTIL in RRULE', () => {
-    const occ = expandRecurring(base({ rrule: 'FREQ=WEEKLY;BYDAY=MO;UNTIL=20240115T000000Z' }), FROM, TO);
+    const occ = expandRecurring(
+      base({ rrule: 'FREQ=WEEKLY;BYDAY=MO;UNTIL=20240115T000000Z' }),
+      FROM,
+      TO,
+    );
     assert.equal(occ.length, 2); // Jan 1 and Jan 8 (Jan 15 is excluded by UNTIL)
   });
 
   it('excludes dates from EXDATE', () => {
     const occ = expandRecurring(
       base({ rrule: 'FREQ=WEEKLY;BYDAY=MO;COUNT=4', exdates: ['20240108T090000Z'] }),
-      FROM, TO,
+      FROM,
+      TO,
     );
     assert.equal(occ.length, 3);
-    const starts = occ.map(o => o.start);
-    assert.ok(!starts.some(s => s.startsWith('2024-01-08')), 'Jan 8 should be excluded');
+    const starts = occ.map((o) => o.start);
+    assert.ok(!starts.some((s) => s.startsWith('2024-01-08')), 'Jan 8 should be excluded');
   });
 
   it('attaches recurring=true and unique id to each occurrence', () => {
@@ -81,7 +86,10 @@ describe('setRruleUntil', () => {
   });
 
   it('replaces an existing UNTIL', () => {
-    const result = setRruleUntil('FREQ=WEEKLY;UNTIL=20241231T000000Z', new Date('2024-06-01T00:00:00Z'));
+    const result = setRruleUntil(
+      'FREQ=WEEKLY;UNTIL=20241231T000000Z',
+      new Date('2024-06-01T00:00:00Z'),
+    );
     assert.ok(result.includes('20240601'));
     assert.ok(!result.includes('20241231'));
   });

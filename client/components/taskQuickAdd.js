@@ -7,7 +7,10 @@ import { openTaskModal } from './taskModal.js';
 let _quickAddEl = null;
 
 export function destroyTaskQuickAdd() {
-  if (_quickAddEl) { _quickAddEl.remove(); _quickAddEl = null; }
+  if (_quickAddEl) {
+    _quickAddEl.remove();
+    _quickAddEl = null;
+  }
   document.getElementById('app')?.classList.remove('tasks-quickadd-visible');
 }
 
@@ -52,22 +55,30 @@ function buildQuickAdd(callbacks) {
 
   function showAutocomplete() {
     const hw = getCurrentHashWord();
-    if (!hw) { autocompleteList.style.display = 'none'; return; }
+    if (!hw) {
+      autocompleteList.style.display = 'none';
+      return;
+    }
     const hidden = state.config.hiddenCategories || [];
-    const cats = getAllCategories(state.tasks)
-      .filter(c => !hidden.includes(c) && c.startsWith(hw.partial.toLowerCase()));
-    if (!cats.length) { autocompleteList.style.display = 'none'; return; }
+    const cats = getAllCategories(state.tasks).filter(
+      (c) => !hidden.includes(c) && c.startsWith(hw.partial.toLowerCase()),
+    );
+    if (!cats.length) {
+      autocompleteList.style.display = 'none';
+      return;
+    }
 
     autocompleteList.innerHTML = '';
     for (const cat of cats.slice(0, 8)) {
       const li = document.createElement('li');
       li.textContent = cat;
-      li.addEventListener('mousedown', e => {
+      li.addEventListener('mousedown', (e) => {
         e.preventDefault();
         const hw2 = getCurrentHashWord();
         if (!hw2) return;
         const val = input.value;
-        input.value = val.slice(0, hw2.start) + '#' + cat + ' ' + val.slice(hw2.start + hw2.word.length);
+        input.value =
+          val.slice(0, hw2.start) + '#' + cat + ' ' + val.slice(hw2.start + hw2.word.length);
         input.focus();
         autocompleteList.style.display = 'none';
       });
@@ -83,16 +94,23 @@ function buildQuickAdd(callbacks) {
   let nlpTimer = null;
   function updateNlpFeedback() {
     const raw = input.value.trim();
-    if (!raw || raw.startsWith('#') || selectedDue) { nlpFb.classList.add('hidden'); return; }
+    if (!raw || raw.startsWith('#') || selectedDue) {
+      nlpFb.classList.add('hidden');
+      return;
+    }
     clearTimeout(nlpTimer);
     nlpTimer = setTimeout(async () => {
       try {
         const res = await fetch('/nlp/parse-task', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: raw }),
         });
         const data = await res.json();
-        if (!data.parsed) { nlpFb.classList.add('hidden'); return; }
+        if (!data.parsed) {
+          nlpFb.classList.add('hidden');
+          return;
+        }
         const parts = [];
         if (data.due) {
           const d = new Date(data.due + 'T00:00:00');
@@ -100,7 +118,10 @@ function buildQuickAdd(callbacks) {
           const tomorrow = localDateStr(new Date(Date.now() + 86400000));
           if (data.due === today) parts.push('Today');
           else if (data.due === tomorrow) parts.push('Tomorrow');
-          else parts.push(d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
+          else
+            parts.push(
+              d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+            );
         }
         if (data.rrule) parts.push('Repeats');
         else if (data.xRecurringType) parts.push('Repeats after done');
@@ -110,16 +131,31 @@ function buildQuickAdd(callbacks) {
         } else {
           nlpFb.classList.add('hidden');
         }
-      } catch { nlpFb.classList.add('hidden'); }
+      } catch {
+        nlpFb.classList.add('hidden');
+      }
     }, 300);
   }
 
-  input.addEventListener('input', () => { showAutocomplete(); updateNlpFeedback(); });
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { autocompleteList.style.display = 'none'; }
-    if (e.key === 'Enter') { autocompleteList.style.display = 'none'; nlpFb.classList.add('hidden'); submit(); }
+  input.addEventListener('input', () => {
+    showAutocomplete();
+    updateNlpFeedback();
   });
-  input.addEventListener('blur', () => { setTimeout(() => { autocompleteList.style.display = 'none'; }, 150); });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      autocompleteList.style.display = 'none';
+    }
+    if (e.key === 'Enter') {
+      autocompleteList.style.display = 'none';
+      nlpFb.classList.add('hidden');
+      submit();
+    }
+  });
+  input.addEventListener('blur', () => {
+    setTimeout(() => {
+      autocompleteList.style.display = 'none';
+    }, 150);
+  });
 
   inputWrap.appendChild(input);
   inputWrap.appendChild(autocompleteList);
@@ -129,7 +165,7 @@ function buildQuickAdd(callbacks) {
   dates.className = 'tasks-quickadd-dates';
 
   let selectedDue = null;
-  const today    = localDateStr(new Date());
+  const today = localDateStr(new Date());
   const tomorrow = localDateStr(new Date(Date.now() + 86400000));
 
   function makeShortcut(label, value) {
@@ -137,7 +173,7 @@ function buildQuickAdd(callbacks) {
     btn.className = 'tasks-date-shortcut';
     btn.textContent = label;
     // Prevent focus theft: keep mobile keyboard visible when tapping date shortcuts
-    btn.addEventListener('mousedown', e => e.preventDefault());
+    btn.addEventListener('mousedown', (e) => e.preventDefault());
     btn.addEventListener('click', () => {
       selectedDue = selectedDue === value ? null : value;
       updateActive();
@@ -146,7 +182,7 @@ function buildQuickAdd(callbacks) {
     return btn;
   }
 
-  const todayBtn    = makeShortcut('Today',    today);
+  const todayBtn = makeShortcut('Today', today);
   const tomorrowBtn = makeShortcut('Tomorrow', tomorrow);
   const pickBtn = document.createElement('button');
   pickBtn.className = 'tasks-date-shortcut';
@@ -156,15 +192,21 @@ function buildQuickAdd(callbacks) {
   datePicker.type = 'date';
   datePicker.className = 'tasks-date-picker-hidden';
   datePicker.addEventListener('change', () => {
-    if (datePicker.value) { selectedDue = datePicker.value; updateActive(); }
+    if (datePicker.value) {
+      selectedDue = datePicker.value;
+      updateActive();
+    }
   });
-  pickBtn.addEventListener('mousedown', e => e.preventDefault());
+  pickBtn.addEventListener('mousedown', (e) => e.preventDefault());
   pickBtn.addEventListener('click', () => datePicker.showPicker?.() || datePicker.click());
 
   function updateActive() {
     todayBtn.classList.toggle('active', selectedDue === today);
     tomorrowBtn.classList.toggle('active', selectedDue === tomorrow);
-    pickBtn.classList.toggle('active', selectedDue && selectedDue !== today && selectedDue !== tomorrow);
+    pickBtn.classList.toggle(
+      'active',
+      selectedDue && selectedDue !== today && selectedDue !== tomorrow,
+    );
     if (pickBtn.classList.contains('active') && selectedDue) {
       const d = new Date(selectedDue + 'T00:00:00');
       pickBtn.textContent = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -188,7 +230,10 @@ function buildQuickAdd(callbacks) {
 
   function buildSourceSelector() {
     const sources = state.taskSources;
-    if (!sources || sources.length < 2) { sourceRow.style.display = 'none'; return; }
+    if (!sources || sources.length < 2) {
+      sourceRow.style.display = 'none';
+      return;
+    }
     sourceRow.style.display = '';
     sourceRow.innerHTML = '';
     const lbl = document.createElement('span');
@@ -212,7 +257,10 @@ function buildQuickAdd(callbacks) {
     const raw = input.value.trim();
     if (!raw) return;
     const { title: rawTitle, tags } = parseTagsFromTitle(raw);
-    if (!rawTitle) { input.value = ''; return; }
+    if (!rawTitle) {
+      input.value = '';
+      return;
+    }
     input.value = '';
     nlpFb.classList.add('hidden');
     const source = selectedSource || undefined;
@@ -222,7 +270,12 @@ function buildQuickAdd(callbacks) {
       const due = selectedDue;
       selectedDue = null;
       updateActive();
-      await callbacks.onAdd({ title: rawTitle, due, categories: tags.length ? tags : undefined, source });
+      await callbacks.onAdd({
+        title: rawTitle,
+        due,
+        categories: tags.length ? tags : undefined,
+        source,
+      });
       return;
     }
     selectedDue = null;
@@ -247,10 +300,20 @@ function buildQuickAdd(callbacks) {
           source,
         });
       } else {
-        await callbacks.onAdd({ title: rawTitle, due: null, categories: tags.length ? tags : undefined, source });
+        await callbacks.onAdd({
+          title: rawTitle,
+          due: null,
+          categories: tags.length ? tags : undefined,
+          source,
+        });
       }
     } catch {
-      await callbacks.onAdd({ title: rawTitle, due: null, categories: tags.length ? tags : undefined, source });
+      await callbacks.onAdd({
+        title: rawTitle,
+        due: null,
+        categories: tags.length ? tags : undefined,
+        source,
+      });
     }
   }
 
@@ -268,7 +331,7 @@ function buildQuickAdd(callbacks) {
     // Seed the full form with the profile's task source (or the one picked in
     // the source row) so new tasks — including recurring ones — land there.
     const source = selectedSource || effectiveTaskSource() || undefined;
-    openTaskModal({ source }, { onSave: data => callbacks.onAdd(data), onDelete: () => {} });
+    openTaskModal({ source }, { onSave: (data) => callbacks.onAdd(data), onDelete: () => {} });
   });
 
   const row = document.createElement('div');

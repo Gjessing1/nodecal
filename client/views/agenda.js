@@ -30,19 +30,22 @@ export function renderAgenda(container, onEventClick, onTaskClick, onTaskComplet
   function buildCatFilter() {
     filterBar.innerHTML = '';
     const hiddenEvCats = state.config.hiddenEventCategories || [];
-    const visibleEvents = state.events.filter(ev => !state.hiddenCalendars.has(ev.calendarId));
-    const allCats = getAllEventCategories(visibleEvents).filter(c => !hiddenEvCats.includes(c));
+    const visibleEvents = state.events.filter((ev) => !state.hiddenCalendars.has(ev.calendarId));
+    const allCats = getAllEventCategories(visibleEvents).filter((c) => !hiddenEvCats.includes(c));
     if (!allCats.length) return;
 
     const label = document.createElement('span');
-    label.className = 'tasks-cat-filter-label'; label.textContent = 'Filter:';
+    label.className = 'tasks-cat-filter-label';
+    label.textContent = 'Filter:';
     filterBar.appendChild(label);
 
     const allChip = document.createElement('button');
     allChip.className = 'tasks-cat-chip-filter' + (!activeCategoryFilter ? ' active' : '');
     allChip.textContent = 'All';
     allChip.addEventListener('click', () => {
-      activeCategoryFilter = ''; buildCatFilter(); renderDays();
+      activeCategoryFilter = '';
+      buildCatFilter();
+      renderDays();
     });
     filterBar.appendChild(allChip);
 
@@ -52,7 +55,8 @@ export function renderAgenda(container, onEventClick, onTaskClick, onTaskComplet
       chip.textContent = cat;
       chip.addEventListener('click', () => {
         activeCategoryFilter = activeCategoryFilter === cat ? '' : cat;
-        buildCatFilter(); renderDays();
+        buildCatFilter();
+        renderDays();
       });
       filterBar.appendChild(chip);
     }
@@ -67,47 +71,55 @@ export function renderAgenda(container, onEventClick, onTaskClick, onTaskComplet
   function renderDays() {
     const fragments = [];
     for (let i = 0; i < agendaDays; i++) {
-    const raw = new Date(today.getTime() + i * DAY_MS);
-    const day = new Date(raw.getFullYear(), raw.getMonth(), raw.getDate());
-    const dayEnd = new Date(day.getTime() + DAY_MS);
-    const str = localDateStr(day);
-    let dayEvents = state.events.filter(ev => {
-      if (state.hiddenCalendars.has(ev.calendarId)) return false;
-      if (ev.allDay) return ev.start.slice(0, 10) <= str && ev.end.slice(0, 10) > str;
-      return new Date(ev.start) < dayEnd && new Date(ev.end) > day;
-    });
-    if (activeCategoryFilter) {
-      dayEvents = dayEvents.filter(ev => (ev.categories || []).includes(activeCategoryFilter));
-    }
-    const dayTasks = (state.config.showTasksOnAgenda ?? state.config.showTasksOnCalendar)
-      ? state.tasks.filter(t => t.due === str && t.status !== 'COMPLETED' && taskSourceVisible(t, state.hiddenCalendars))
-      : [];
-
-    const isToday = i === 0;
-    const header = document.createElement('div');
-    header.className = 'agenda-group';
-
-    const dateEl = document.createElement('div');
-    dateEl.className = 'agenda-date-header' + (isToday ? ' today' : '');
-    dateEl.textContent = formatDayHeader(day, isToday);
-    header.appendChild(dateEl);
-
-    if (dayEvents.length > 0 || dayTasks.length > 0) {
-      for (const ev of dayEvents) {
-        header.appendChild(buildEventCard(ev, onEventClick));
-      }
-      for (const task of dayTasks) {
-        header.appendChild(buildTaskCard(task, onTaskClick, onTaskComplete));
-      }
-    }
-
-    if (onLongPress) {
-      const capturedDay = new Date(day);
-      initLongPressCreate(header, {
-        skipSelector: '.event-card,.task-check',
-        onLongPress() { onLongPress(capturedDay); },
+      const raw = new Date(today.getTime() + i * DAY_MS);
+      const day = new Date(raw.getFullYear(), raw.getMonth(), raw.getDate());
+      const dayEnd = new Date(day.getTime() + DAY_MS);
+      const str = localDateStr(day);
+      let dayEvents = state.events.filter((ev) => {
+        if (state.hiddenCalendars.has(ev.calendarId)) return false;
+        if (ev.allDay) return ev.start.slice(0, 10) <= str && ev.end.slice(0, 10) > str;
+        return new Date(ev.start) < dayEnd && new Date(ev.end) > day;
       });
-    }
+      if (activeCategoryFilter) {
+        dayEvents = dayEvents.filter((ev) => (ev.categories || []).includes(activeCategoryFilter));
+      }
+      const dayTasks =
+        (state.config.showTasksOnAgenda ?? state.config.showTasksOnCalendar)
+          ? state.tasks.filter(
+              (t) =>
+                t.due === str &&
+                t.status !== 'COMPLETED' &&
+                taskSourceVisible(t, state.hiddenCalendars),
+            )
+          : [];
+
+      const isToday = i === 0;
+      const header = document.createElement('div');
+      header.className = 'agenda-group';
+
+      const dateEl = document.createElement('div');
+      dateEl.className = 'agenda-date-header' + (isToday ? ' today' : '');
+      dateEl.textContent = formatDayHeader(day, isToday);
+      header.appendChild(dateEl);
+
+      if (dayEvents.length > 0 || dayTasks.length > 0) {
+        for (const ev of dayEvents) {
+          header.appendChild(buildEventCard(ev, onEventClick));
+        }
+        for (const task of dayTasks) {
+          header.appendChild(buildTaskCard(task, onTaskClick, onTaskComplete));
+        }
+      }
+
+      if (onLongPress) {
+        const capturedDay = new Date(day);
+        initLongPressCreate(header, {
+          skipSelector: '.event-card,.task-check',
+          onLongPress() {
+            onLongPress(capturedDay);
+          },
+        });
+      }
 
       fragments.push(header);
     }
@@ -137,7 +149,11 @@ function buildEventCard(ev, onClick) {
 
   const time = document.createElement('div');
   time.className = 'event-time';
-  time.textContent = ev.allDay ? 'All day' : formatTime(new Date(ev.start), state.config.timeFormat, state.config.timezone) + ' – ' + formatTime(new Date(ev.end), state.config.timeFormat, state.config.timezone);
+  time.textContent = ev.allDay
+    ? 'All day'
+    : formatTime(new Date(ev.start), state.config.timeFormat, state.config.timezone) +
+      ' – ' +
+      formatTime(new Date(ev.end), state.config.timeFormat, state.config.timezone);
 
   info.appendChild(title);
   info.appendChild(time);
@@ -153,9 +169,15 @@ function buildTaskCard(task, onTaskClick, onTaskComplete) {
 
   const check = document.createElement('button');
   check.className = 'task-check' + (task.status === 'COMPLETED' ? ' checked' : '');
-  check.setAttribute('aria-label', task.status === 'COMPLETED' ? 'Mark incomplete' : 'Complete task');
+  check.setAttribute(
+    'aria-label',
+    task.status === 'COMPLETED' ? 'Mark incomplete' : 'Complete task',
+  );
   if (onTaskComplete) {
-    check.addEventListener('click', e => { e.stopPropagation(); onTaskComplete(task); });
+    check.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onTaskComplete(task);
+    });
   }
 
   const info = document.createElement('div');
@@ -175,7 +197,10 @@ function buildTaskCard(task, onTaskClick, onTaskComplete) {
 
 function formatDayHeader(date, isToday) {
   const isMonday = date.getDay() === 1;
-  const wn = ((state.config.showWeekNumbersAgenda ?? state.config.showWeekNumbers) && isMonday) ? ` · W${getISOWeek(date)}` : '';
+  const wn =
+    (state.config.showWeekNumbersAgenda ?? state.config.showWeekNumbers) && isMonday
+      ? ` · W${getISOWeek(date)}`
+      : '';
   const agendaWxDays = state.config.weatherDaysAgenda ?? 1;
   const wx = weatherBadge(localDateStr(date), state.weather, agendaWxDays);
   const wxTag = wx ? ` · ${wx}` : '';

@@ -12,7 +12,7 @@ const BASE_VIEWS = ['', 'agenda', 'day', 'week', 'month'];
 // switcher. The editor mutates the live `state.config.profiles` objects in
 // place; settingsPanel saves them via PUT /settings and main.js re-applies the
 // active profile on close.
-export function renderProfilesSection(sheet, cfg) {
+export function renderProfilesSection(sheet, _cfg) {
   const section = sheet.querySelector('#s-profiles-section');
   if (!section) return;
 
@@ -24,8 +24,10 @@ export function renderProfilesSection(sheet, cfg) {
   section.innerHTML = '';
 
   const intro = document.createElement('p');
-  intro.style.cssText = 'font-size:var(--font-size-sm);color:var(--color-text-muted);margin:4px 0 0;padding:0 var(--space-md)';
-  intro.textContent = 'Per-profile overrides of the global settings above — calendar visibility, accent, task source and default view.';
+  intro.style.cssText =
+    'font-size:var(--font-size-sm);color:var(--color-text-muted);margin:4px 0 0;padding:0 var(--space-md)';
+  intro.textContent =
+    'Per-profile overrides of the global settings above — calendar visibility, accent, task source and default view.';
   section.appendChild(intro);
 
   const activeField = document.createElement('div');
@@ -33,13 +35,19 @@ export function renderProfilesSection(sheet, cfg) {
   activeField.innerHTML = '<label>Active profile</label>';
   const activeSel = document.createElement('select');
   activeSel.id = 's-active-profile';
-  activeSel.innerHTML = profileIds().map(id =>
-    `<option value="${esc(id)}" ${activeProfileId() === id ? 'selected' : ''}>${esc(profiles[id].name || id)}</option>`
-  ).join('');
-  activeSel.addEventListener('change', () => { state.config.activeProfile = activeSel.value; });
+  activeSel.innerHTML = profileIds()
+    .map(
+      (id) =>
+        `<option value="${esc(id)}" ${activeProfileId() === id ? 'selected' : ''}>${esc(profiles[id].name || id)}</option>`,
+    )
+    .join('');
+  activeSel.addEventListener('change', () => {
+    state.config.activeProfile = activeSel.value;
+  });
   activeField.appendChild(activeSel);
   const hint = document.createElement('span');
-  hint.style.cssText = 'font-size:var(--font-size-sm);color:var(--color-text-muted);display:block;margin-top:4px';
+  hint.style.cssText =
+    'font-size:var(--font-size-sm);color:var(--color-text-muted);display:block;margin-top:4px';
   hint.textContent = 'Single hides the navbar switcher. Personal / Work shows it.';
   activeField.appendChild(hint);
   section.appendChild(activeField);
@@ -158,7 +166,7 @@ function buildTaskSourceField(profile) {
   const field = document.createElement('div');
   field.className = 'modal-field';
   field.innerHTML = '<label>Task source</label>';
-  const cals = (state.calendars || []).filter(c => !c.readOnly);
+  const cals = (state.calendars || []).filter((c) => !c.readOnly);
   if (!cals.length) {
     const note = document.createElement('span');
     note.style.cssText = 'font-size:var(--font-size-sm);color:var(--color-text-muted)';
@@ -169,23 +177,30 @@ function buildTaskSourceField(profile) {
   // Pre-select the profile's stored source if it still matches a calendar, else
   // the global default, else the first calendar.
   let current = profile.defaultTaskSource;
-  if (!cals.some(c => c.id === current)) {
-    current = cals.some(c => c.id === state.config.defaultTaskSource)
+  if (!cals.some((c) => c.id === current)) {
+    current = cals.some((c) => c.id === state.config.defaultTaskSource)
       ? state.config.defaultTaskSource
       : cals[0].id;
   }
   const sel = document.createElement('select');
-  sel.innerHTML = cals.map(c =>
-    `<option value="${esc(c.id)}" ${current === c.id ? 'selected' : ''}>${esc(c.name)}</option>`
-  ).join('');
+  sel.innerHTML = cals
+    .map(
+      (c) =>
+        `<option value="${esc(c.id)}" ${current === c.id ? 'selected' : ''}>${esc(c.name)}</option>`,
+    )
+    .join('');
   // Persist the resolved value immediately so an untouched dropdown still saves
   // the concrete source it is showing.
   profile.defaultTaskSource = current;
-  sel.addEventListener('change', () => { profile.defaultTaskSource = sel.value; });
+  sel.addEventListener('change', () => {
+    profile.defaultTaskSource = sel.value;
+  });
   field.appendChild(sel);
   const hint = document.createElement('span');
-  hint.style.cssText = 'font-size:var(--font-size-sm);color:var(--color-text-muted);display:block;margin-top:4px';
-  hint.textContent = 'Each profile can use a different calendar — it is registered as a task source automatically.';
+  hint.style.cssText =
+    'font-size:var(--font-size-sm);color:var(--color-text-muted);display:block;margin-top:4px';
+  hint.textContent =
+    'Each profile can use a different calendar — it is registered as a task source automatically.';
   field.appendChild(hint);
   return field;
 }
@@ -197,7 +212,7 @@ function buildEventCalendarField(profile) {
   const field = document.createElement('div');
   field.className = 'modal-field';
   field.innerHTML = '<label>Default calendar for new events</label>';
-  const cals = (state.calendars || []).filter(c => !c.readOnly);
+  const cals = (state.calendars || []).filter((c) => !c.readOnly);
   if (!cals.length) {
     const note = document.createElement('span');
     note.style.cssText = 'font-size:var(--font-size-sm);color:var(--color-text-muted)';
@@ -208,10 +223,17 @@ function buildEventCalendarField(profile) {
   const current = profile.defaultEventCalendar || '';
   const sel = document.createElement('select');
   const globalOpt = `<option value="" ${current === '' ? 'selected' : ''}>(use global default)</option>`;
-  sel.innerHTML = globalOpt + cals.map(c =>
-    `<option value="${esc(c.id)}" ${current === c.id ? 'selected' : ''}>${esc(c.name)}</option>`
-  ).join('');
-  sel.addEventListener('change', () => { profile.defaultEventCalendar = sel.value; });
+  sel.innerHTML =
+    globalOpt +
+    cals
+      .map(
+        (c) =>
+          `<option value="${esc(c.id)}" ${current === c.id ? 'selected' : ''}>${esc(c.name)}</option>`,
+      )
+      .join('');
+  sel.addEventListener('change', () => {
+    profile.defaultEventCalendar = sel.value;
+  });
   field.appendChild(sel);
   return field;
 }
@@ -224,10 +246,15 @@ function buildDefaultViewField(profile) {
   const views = [...BASE_VIEWS];
   if (state.config.enableTasksView) views.push('tasks');
   const sel = document.createElement('select');
-  sel.innerHTML = views.map(v =>
-    `<option value="${v}" ${(profile.defaultView || '') === v ? 'selected' : ''}>${v || '(use global)'}</option>`
-  ).join('');
-  sel.addEventListener('change', () => { profile.defaultView = sel.value; });
+  sel.innerHTML = views
+    .map(
+      (v) =>
+        `<option value="${v}" ${(profile.defaultView || '') === v ? 'selected' : ''}>${v || '(use global)'}</option>`,
+    )
+    .join('');
+  sel.addEventListener('change', () => {
+    profile.defaultView = sel.value;
+  });
   field.appendChild(sel);
   return field;
 }

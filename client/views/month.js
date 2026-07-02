@@ -1,6 +1,6 @@
 import { state, calendarById } from '../app/state.js';
 import { initDayDnd, initLongPressCreate, initSwipe } from '../components/dnd.js';
-import { localDateStr, getISOWeek, weatherIcon, weatherBadge, toTimeInputValue } from '../app/utils.js';
+import { localDateStr, getISOWeek, weatherIcon, toTimeInputValue } from '../app/utils.js';
 import { showMonthYearPicker } from '../components/datePicker.js';
 import { showDayPopup } from './dayPopup.js';
 import { taskSourceVisible } from '../app/taskUtils.js';
@@ -16,16 +16,50 @@ import { taskSourceVisible } from '../app/taskUtils.js';
  * @param {function(task): void} [onTaskClick] - open task for editing from popup
  * @param {function(Date): void} [onNewTask] - open new task modal for a given day
  */
-export function renderMonth(container, onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask) {
+export function renderMonth(
+  container,
+  onEventClick,
+  onDayClick,
+  onEventMove,
+  onTasksClick,
+  onLongPress,
+  onTaskComplete,
+  onTaskClick,
+  onNewTask,
+) {
   const anchor = state.selectedDate;
   const year = anchor.getFullYear();
   const month = anchor.getMonth();
   const today = new Date();
 
   container.innerHTML = '';
-  container.appendChild(buildNavBar(year, month, onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask));
+  container.appendChild(
+    buildNavBar(
+      year,
+      month,
+      onEventClick,
+      onDayClick,
+      onEventMove,
+      onTasksClick,
+      onLongPress,
+      onTaskComplete,
+      onTaskClick,
+      onNewTask,
+    ),
+  );
   container.appendChild(buildWeekDayHeader());
-  const grid = buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask);
+  const grid = buildGrid(
+    year,
+    month,
+    today,
+    onEventClick,
+    onDayClick,
+    onTasksClick,
+    onLongPress,
+    onTaskComplete,
+    onTaskClick,
+    onNewTask,
+  );
   container.appendChild(grid);
 
   if (onEventMove) {
@@ -37,13 +71,51 @@ export function renderMonth(container, onEventClick, onDayClick, onEventMove, on
   }
 
   // Swipe left/right to navigate months
-  initSwipe(grid,
-    () => { state.selectedDate = new Date(year, month - 1, 1); renderMonth(container, onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask); },
-    () => { state.selectedDate = new Date(year, month + 1, 1); renderMonth(container, onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask); },
+  initSwipe(
+    grid,
+    () => {
+      state.selectedDate = new Date(year, month - 1, 1);
+      renderMonth(
+        container,
+        onEventClick,
+        onDayClick,
+        onEventMove,
+        onTasksClick,
+        onLongPress,
+        onTaskComplete,
+        onTaskClick,
+        onNewTask,
+      );
+    },
+    () => {
+      state.selectedDate = new Date(year, month + 1, 1);
+      renderMonth(
+        container,
+        onEventClick,
+        onDayClick,
+        onEventMove,
+        onTasksClick,
+        onLongPress,
+        onTaskComplete,
+        onTaskClick,
+        onNewTask,
+      );
+    },
   );
 }
 
-function buildNavBar(year, month, onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask) {
+function buildNavBar(
+  year,
+  month,
+  onEventClick,
+  onDayClick,
+  onEventMove,
+  onTasksClick,
+  onLongPress,
+  onTaskComplete,
+  onTaskClick,
+  onNewTask,
+) {
   const nav = document.createElement('div');
   nav.className = 'view-nav';
 
@@ -52,16 +124,39 @@ function buildNavBar(year, month, onEventClick, onDayClick, onEventMove, onTasks
   prev.textContent = '‹';
   prev.addEventListener('click', () => {
     state.selectedDate = new Date(year, month - 1, 1);
-    renderMonth(prev.closest('#view-container'), onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask);
+    renderMonth(
+      prev.closest('#view-container'),
+      onEventClick,
+      onDayClick,
+      onEventMove,
+      onTasksClick,
+      onLongPress,
+      onTaskComplete,
+      onTaskClick,
+      onNewTask,
+    );
   });
 
   const title = document.createElement('span');
   title.className = 'view-nav-title clickable-title';
-  title.textContent = new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  title.textContent = new Date(year, month, 1).toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  });
   title.addEventListener('click', () => {
     showMonthYearPicker(year, month, (y, m) => {
       state.selectedDate = new Date(y, m, 1);
-      renderMonth(title.closest('#view-container'), onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask);
+      renderMonth(
+        title.closest('#view-container'),
+        onEventClick,
+        onDayClick,
+        onEventMove,
+        onTasksClick,
+        onLongPress,
+        onTaskComplete,
+        onTaskClick,
+        onNewTask,
+      );
     });
   });
 
@@ -72,7 +167,17 @@ function buildNavBar(year, month, onEventClick, onDayClick, onEventMove, onTasks
   todayBtn.hidden = now.getFullYear() === year && now.getMonth() === month;
   todayBtn.addEventListener('click', () => {
     state.selectedDate = new Date();
-    renderMonth(prev.closest('#view-container'), onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask);
+    renderMonth(
+      prev.closest('#view-container'),
+      onEventClick,
+      onDayClick,
+      onEventMove,
+      onTasksClick,
+      onLongPress,
+      onTaskComplete,
+      onTaskClick,
+      onNewTask,
+    );
   });
 
   const next = document.createElement('button');
@@ -80,7 +185,17 @@ function buildNavBar(year, month, onEventClick, onDayClick, onEventMove, onTasks
   next.textContent = '›';
   next.addEventListener('click', () => {
     state.selectedDate = new Date(year, month + 1, 1);
-    renderMonth(next.closest('#view-container'), onEventClick, onDayClick, onEventMove, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask);
+    renderMonth(
+      next.closest('#view-container'),
+      onEventClick,
+      onDayClick,
+      onEventMove,
+      onTasksClick,
+      onLongPress,
+      onTaskComplete,
+      onTaskClick,
+      onNewTask,
+    );
   });
 
   nav.appendChild(prev);
@@ -91,7 +206,7 @@ function buildNavBar(year, month, onEventClick, onDayClick, onEventMove, onTasks
 }
 
 function buildWeekDayHeader() {
-  const showWN = (state.config.showWeekNumbersMonth ?? state.config.showWeekNumbers);
+  const showWN = state.config.showWeekNumbersMonth ?? state.config.showWeekNumbers;
   const row = document.createElement('div');
   row.className = 'month-weekday-row' + (showWN ? ' with-weeknum' : '');
   if (showWN) {
@@ -109,8 +224,19 @@ function buildWeekDayHeader() {
   return row;
 }
 
-function buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask) {
-  const showWN = (state.config.showWeekNumbersMonth ?? state.config.showWeekNumbers);
+function buildGrid(
+  year,
+  month,
+  today,
+  onEventClick,
+  onDayClick,
+  onTasksClick,
+  onLongPress,
+  onTaskComplete,
+  onTaskClick,
+  onNewTask,
+) {
+  const showWN = state.config.showWeekNumbersMonth ?? state.config.showWeekNumbers;
   const grid = document.createElement('div');
   grid.className = 'month-grid' + (showWN ? ' with-weeknum' : '');
 
@@ -125,7 +251,7 @@ function buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick, o
   const start = new Date(year, month, 1 - startOffset);
   const end = new Date(year, month, 1 - startOffset + 42);
 
-  const monthEvents = state.events.filter(ev => {
+  const monthEvents = state.events.filter((ev) => {
     if (state.hiddenCalendars.has(ev.calendarId)) return false;
     return new Date(ev.start) < end && new Date(ev.end) > start;
   });
@@ -139,27 +265,61 @@ function buildGrid(year, month, today, onEventClick, onDayClick, onTasksClick, o
       wn.textContent = 'W' + getISOWeek(day);
       grid.appendChild(wn);
     }
-    grid.appendChild(buildDayCell(day, month, today, monthEvents, onEventClick, onDayClick, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask));
+    grid.appendChild(
+      buildDayCell(
+        day,
+        month,
+        today,
+        monthEvents,
+        onEventClick,
+        onDayClick,
+        onTasksClick,
+        onLongPress,
+        onTaskComplete,
+        onTaskClick,
+        onNewTask,
+      ),
+    );
   }
   return grid;
 }
 
-function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, onTasksClick, onLongPress, onTaskComplete, onTaskClick, onNewTask) {
+function buildDayCell(
+  day,
+  curMonth,
+  today,
+  events,
+  onEventClick,
+  onDayClick,
+  onTasksClick,
+  onLongPress,
+  onTaskComplete,
+  onTaskClick,
+  onNewTask,
+) {
   const isToday = day.toDateString() === today.toDateString();
   const isOther = day.getMonth() !== curMonth;
   const dow = day.getDay();
   const isWeekend = (dow === 0 || dow === 6) && state.config.showWeekendBg !== false;
 
   const cell = document.createElement('div');
-  cell.className = 'month-day' + (isToday ? ' today' : '') + (isOther ? ' other-month' : '') + (isWeekend ? ' weekend' : '');
-  cell.dataset.day = `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
+  cell.className =
+    'month-day' +
+    (isToday ? ' today' : '') +
+    (isOther ? ' other-month' : '') +
+    (isWeekend ? ' weekend' : '');
+  cell.dataset.day = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
 
   const numWrap = document.createElement('div');
   numWrap.className = 'month-day-num';
   const numSpan = document.createElement('span');
   numSpan.textContent = day.getDate();
   numWrap.appendChild(numSpan);
-  const wx = weatherIcon(localDateStr(day), state.weather, state.config.weatherDaysMonth ?? state.config.weatherDays ?? 4);
+  const wx = weatherIcon(
+    localDateStr(day),
+    state.weather,
+    state.config.weatherDaysMonth ?? state.config.weatherDays ?? 4,
+  );
   if (wx && !isOther) {
     const wxEl = document.createElement('span');
     wxEl.className = 'month-weather';
@@ -168,59 +328,115 @@ function buildDayCell(day, curMonth, today, events, onEventClick, onDayClick, on
   }
   const dayStr = localDateStr(day);
 
-  numWrap.addEventListener('click', e => {
+  numWrap.addEventListener('click', (e) => {
     e.stopPropagation();
-    showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask, onLongPress);
+    showDayPopup(
+      day,
+      dayStr,
+      onEventClick,
+      onDayClick,
+      onTaskComplete,
+      onTaskClick,
+      onNewTask,
+      onLongPress,
+    );
   });
   cell.appendChild(numWrap);
   const dayStart = new Date(day);
   const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
   const dayEvs = events
-    .filter(ev => {
+    .filter((ev) => {
       if (ev.allDay) return ev.start.slice(0, 10) <= dayStr && ev.end.slice(0, 10) > dayStr;
       return new Date(ev.start) < dayEnd && new Date(ev.end) > dayStart;
     })
-    .sort((a, b) => (a.allDay ? -1 : 1) - (b.allDay ? -1 : 1) || new Date(a.start) - new Date(b.start));
+    .sort(
+      (a, b) => (a.allDay ? -1 : 1) - (b.allDay ? -1 : 1) || new Date(a.start) - new Date(b.start),
+    );
 
-  const dayTasks = (state.config.showTasksOnMonth ?? state.config.showTasksOnCalendar)
-    ? state.tasks.filter(t => t.due === dayStr && t.status !== 'COMPLETED' && taskSourceVisible(t, state.hiddenCalendars))
-    : [];
+  const dayTasks =
+    (state.config.showTasksOnMonth ?? state.config.showTasksOnCalendar)
+      ? state.tasks.filter(
+          (t) =>
+            t.due === dayStr &&
+            t.status !== 'COMPLETED' &&
+            taskSourceVisible(t, state.hiddenCalendars),
+        )
+      : [];
 
   const MAX = 2;
   for (let i = 0; i < Math.min(dayEvs.length, MAX); i++) {
-    const popup = () => showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask, onLongPress);
+    const popup = () =>
+      showDayPopup(
+        day,
+        dayStr,
+        onEventClick,
+        onDayClick,
+        onTaskComplete,
+        onTaskClick,
+        onNewTask,
+        onLongPress,
+      );
     cell.appendChild(buildChip(dayEvs[i], onEventClick, popup));
   }
   if (dayEvs.length > MAX) {
     const more = document.createElement('div');
     more.className = 'month-more';
     more.textContent = `+${dayEvs.length - MAX}`;
-    more.addEventListener('click', e => { e.stopPropagation(); onDayClick && onDayClick(new Date(day)); });
+    more.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onDayClick && onDayClick(new Date(day));
+    });
     cell.appendChild(more);
   }
   if (dayTasks.length > 0) {
     const pill = document.createElement('div');
     pill.className = 'month-task-pill';
     const MAX_TASK_TITLE = 16;
-    const taskLabel = dayTasks.length === 1
-      ? (dayTasks[0].title.length > MAX_TASK_TITLE
+    const taskLabel =
+      dayTasks.length === 1
+        ? dayTasks[0].title.length > MAX_TASK_TITLE
           ? dayTasks[0].title.slice(0, MAX_TASK_TITLE) + '…'
-          : dayTasks[0].title)
-      : `${dayTasks.length} tasks`;
+          : dayTasks[0].title
+        : `${dayTasks.length} tasks`;
     pill.textContent = taskLabel;
     // Clicking the task pill opens the day popup (same as clicking the date number)
     pill.style.cursor = 'pointer';
-    pill.addEventListener('click', e => { e.stopPropagation(); showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask, onLongPress); });
+    pill.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showDayPopup(
+        day,
+        dayStr,
+        onEventClick,
+        onDayClick,
+        onTaskComplete,
+        onTaskClick,
+        onNewTask,
+        onLongPress,
+      );
+    });
     cell.appendChild(pill);
   }
 
   // Clicking empty cell space opens popup (chips/pill/num all stopPropagation)
-  cell.addEventListener('click', () => showDayPopup(day, dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask, onLongPress));
+  cell.addEventListener('click', () =>
+    showDayPopup(
+      day,
+      dayStr,
+      onEventClick,
+      onDayClick,
+      onTaskComplete,
+      onTaskClick,
+      onNewTask,
+      onLongPress,
+    ),
+  );
 
   if (onLongPress) {
     initLongPressCreate(cell, {
       skipSelector: '.month-event-chip,.month-more,.month-task-pill,.month-day-num',
-      onLongPress() { onLongPress(new Date(day)); },
+      onLongPress() {
+        onLongPress(new Date(day));
+      },
     });
   }
 
@@ -250,7 +466,7 @@ function buildChip(ev, onClick, onPopup) {
     chip.textContent = ev.title;
   }
 
-  chip.addEventListener('click', e => {
+  chip.addEventListener('click', (e) => {
     e.stopPropagation();
     // Mobile (coarse pointer): open the day popup for context; desktop: open event directly
     if (onPopup && window.matchMedia('(pointer: coarse)').matches) {

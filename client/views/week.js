@@ -1,8 +1,14 @@
 import { state, calendarById } from '../app/state.js';
 import { localDateStr, getISOWeek, weatherBadge } from '../app/utils.js';
 import {
-  buildTimeColumn, buildHourLines, buildEventBlock,
-  buildCurrentTimeLine, updateCurrentTimeLine, getTotalHeight, timeToTop, buildNightOverlay,
+  buildTimeColumn,
+  buildHourLines,
+  buildEventBlock,
+  buildCurrentTimeLine,
+  updateCurrentTimeLine,
+  getTotalHeight,
+  timeToTop,
+  buildNightOverlay,
   TIME_COL_WIDTH,
 } from '../components/timeGrid.js';
 import { initDnd, initSwipe, initLongPressCreate } from '../components/dnd.js';
@@ -32,7 +38,10 @@ export function renderWeek(container, callbacks) {
   _container = container;
   container.classList.add('internal-scroll');
   const { onEventClick, onEventMove, onEventResize, onLongPress } = callbacks;
-  if (timerId) { clearInterval(timerId); timerId = null; }
+  if (timerId) {
+    clearInterval(timerId);
+    timerId = null;
+  }
 
   const wStart = weekStart(state.selectedDate);
   const wEnd = new Date(wStart.getFullYear(), wStart.getMonth(), wStart.getDate() + 7);
@@ -49,16 +58,34 @@ export function renderWeek(container, callbacks) {
   container.appendChild(buildNavBar(wStart, callbacks));
 
   // All-day row (events + optional tasks)
-  const allDayEvents = state.events.filter(ev => {
+  const allDayEvents = state.events.filter((ev) => {
     if (state.hiddenCalendars.has(ev.calendarId)) return false;
     return ev.allDay && new Date(ev.start) < wEnd && new Date(ev.end) > wStart;
   });
   const showTasksWeek = state.config.showTasksOnWeek ?? state.config.showTasksOnCalendar ?? false;
   const allDayTasks = showTasksWeek
-    ? state.tasks.filter(t => t.status !== 'COMPLETED' && t.due && days.some(d => localDateStr(d) === t.due) && taskSourceVisible(t, state.hiddenCalendars))
+    ? state.tasks.filter(
+        (t) =>
+          t.status !== 'COMPLETED' &&
+          t.due &&
+          days.some((d) => localDateStr(d) === t.due) &&
+          taskSourceVisible(t, state.hiddenCalendars),
+      )
     : [];
   if (allDayEvents.length > 0 || allDayTasks.length > 0) {
-    container.appendChild(buildAllDayRow(days, allDayEvents, allDayTasks, onEventClick, callbacks.onTaskClick, callbacks.onDayClick, callbacks.onTaskComplete, callbacks.onNewTask, callbacks.onLongPress));
+    container.appendChild(
+      buildAllDayRow(
+        days,
+        allDayEvents,
+        allDayTasks,
+        onEventClick,
+        callbacks.onTaskClick,
+        callbacks.onDayClick,
+        callbacks.onTaskComplete,
+        callbacks.onNewTask,
+        callbacks.onLongPress,
+      ),
+    );
   }
 
   // Day-column headers (date numbers open the day popup on tap)
@@ -91,7 +118,7 @@ export function renderWeek(container, callbacks) {
     }
 
     const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
-    const dayEvents = state.events.filter(ev => {
+    const dayEvents = state.events.filter((ev) => {
       if (state.hiddenCalendars.has(ev.calendarId)) return false;
       return !ev.allDay && new Date(ev.start) < dayEnd && new Date(ev.end) > day;
     });
@@ -119,9 +146,16 @@ export function renderWeek(container, callbacks) {
   });
 
   // Swipe navigation
-  initSwipe(scroll,
-    () => { state.selectedDate = new Date(wStart.getTime() - 7 * 86400000); renderWeek(container, callbacks); },
-    () => { state.selectedDate = new Date(wStart.getTime() + 7 * 86400000); renderWeek(container, callbacks); },
+  initSwipe(
+    scroll,
+    () => {
+      state.selectedDate = new Date(wStart.getTime() - 7 * 86400000);
+      renderWeek(container, callbacks);
+    },
+    () => {
+      state.selectedDate = new Date(wStart.getTime() + 7 * 86400000);
+      renderWeek(container, callbacks);
+    },
   );
 
   // Long-press on empty time grid → create event at that day/time
@@ -134,9 +168,11 @@ export function renderWeek(container, callbacks) {
         const colW = (gridRect.width - TIME_COL_WIDTH) / 7;
         const dayIdx = Math.max(0, Math.min(6, Math.floor(x / colW)));
         const y = clientY - gridRect.top;
-        const totalMinutes = Math.floor(y / HOUR_HEIGHT * 2) * 30;
+        const totalMinutes = Math.floor((y / HOUR_HEIGHT) * 2) * 30;
         const day = days[dayIdx];
-        const eventDate = new Date(day.getTime() + Math.min(Math.max(totalMinutes, 0), 23 * 60) * 60000);
+        const eventDate = new Date(
+          day.getTime() + Math.min(Math.max(totalMinutes, 0), 23 * 60) * 60000,
+        );
         onLongPress(eventDate);
       },
     });
@@ -166,7 +202,7 @@ function buildNavBar(wStart, callbacks) {
     renderWeek(prev.closest('#view-container'), callbacks);
   });
 
-  const fmt = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   const weekNum = getISOWeek(wStart);
   const title = document.createElement('span');
   title.className = 'view-nav-title';
@@ -206,22 +242,32 @@ function buildDayHeaders(days, today, callbacks) {
   row.appendChild(spacer);
   for (const day of days) {
     const dayStr = localDateStr(day);
-    const dayEnd = new Date(day.getTime() + 86400000);
     const cell = document.createElement('div');
-    cell.className = 'week-day-header' + (day.toDateString() === today.toDateString() ? ' today' : '');
-    const wx = weatherBadge(localDateStr(day), state.weather, state.config.weatherDaysWeek ?? state.config.weatherDays ?? 9);
-    cell.innerHTML = `<span class="wdh-name">${day.toLocaleDateString('en-US',{weekday:'short'})}</span><span class="wdh-date">${day.getDate()}</span>${wx ? `<span class="wdh-weather">${wx}</span>` : ''}`;
+    cell.className =
+      'week-day-header' + (day.toDateString() === today.toDateString() ? ' today' : '');
+    const wx = weatherBadge(
+      localDateStr(day),
+      state.weather,
+      state.config.weatherDaysWeek ?? state.config.weatherDays ?? 9,
+    );
+    cell.innerHTML = `<span class="wdh-name">${day.toLocaleDateString('en-US', { weekday: 'short' })}</span><span class="wdh-date">${day.getDate()}</span>${wx ? `<span class="wdh-weather">${wx}</span>` : ''}`;
     // Tapping the date number opens the day popup
     if (callbacks) {
       const dateSpan = cell.querySelector('.wdh-date');
       if (dateSpan) {
         dateSpan.style.cursor = 'pointer';
-        dateSpan.addEventListener('click', e => {
+        dateSpan.addEventListener('click', (e) => {
           e.stopPropagation();
-          showDayPopup(day, dayStr,
-            callbacks.onEventClick, callbacks.onDayClick,
-            callbacks.onTaskComplete, callbacks.onTaskClick,
-            callbacks.onNewTask, callbacks.onLongPress);
+          showDayPopup(
+            day,
+            dayStr,
+            callbacks.onEventClick,
+            callbacks.onDayClick,
+            callbacks.onTaskComplete,
+            callbacks.onTaskClick,
+            callbacks.onNewTask,
+            callbacks.onLongPress,
+          );
         });
       }
     }
@@ -230,7 +276,17 @@ function buildDayHeaders(days, today, callbacks) {
   return row;
 }
 
-function buildAllDayRow(days, events, tasks, onEventClick, onTaskClick, onDayClick, onTaskComplete, onNewTask, onLongPress) {
+function buildAllDayRow(
+  days,
+  events,
+  tasks,
+  onEventClick,
+  onTaskClick,
+  onDayClick,
+  onTaskComplete,
+  onNewTask,
+  onLongPress,
+) {
   const row = document.createElement('div');
   row.className = 'week-allday-row';
   const spacer = document.createElement('div');
@@ -243,7 +299,17 @@ function buildAllDayRow(days, events, tasks, onEventClick, onTaskClick, onDayCli
     const cell = document.createElement('div');
     cell.className = 'week-allday-cell';
 
-    const openPopup = () => showDayPopup(new Date(day), dayStr, onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask, onLongPress);
+    const openPopup = () =>
+      showDayPopup(
+        new Date(day),
+        dayStr,
+        onEventClick,
+        onDayClick,
+        onTaskComplete,
+        onTaskClick,
+        onNewTask,
+        onLongPress,
+      );
 
     for (const ev of events) {
       let onDay, isFirst;
@@ -264,11 +330,14 @@ function buildAllDayRow(days, events, tasks, onEventClick, onTaskClick, onDayCli
       chip.className = 'allday-chip';
       chip.style.background = cal?.color || '#4a90d9';
       chip.textContent = ev.title;
-      chip.addEventListener('click', e => { e.stopPropagation(); onEventClick(ev); });
+      chip.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onEventClick(ev);
+      });
       cell.appendChild(chip);
     }
 
-    const dayTasks = tasks.filter(t => t.due === dayStr);
+    const dayTasks = tasks.filter((t) => t.due === dayStr);
     const MAX_TASKS = 2;
     // If exactly 1 task overflows MAX_TASKS, show it directly (no space saved by "+1 task")
     const limit = dayTasks.length === MAX_TASKS + 1 ? MAX_TASKS + 1 : MAX_TASKS;
@@ -277,7 +346,10 @@ function buildAllDayRow(days, events, tasks, onEventClick, onTaskClick, onDayCli
       chip.className = 'allday-chip task-allday-chip';
       chip.style.cursor = 'pointer';
       chip.textContent = task.title;
-      chip.addEventListener('click', e => { e.stopPropagation(); if (onTaskClick) onTaskClick(task); });
+      chip.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (onTaskClick) onTaskClick(task);
+      });
       cell.appendChild(chip);
     }
     if (dayTasks.length > limit) {
@@ -285,7 +357,10 @@ function buildAllDayRow(days, events, tasks, onEventClick, onTaskClick, onDayCli
       more.className = 'allday-chip task-allday-chip';
       more.style.cssText = 'cursor:pointer;opacity:0.7;font-style:italic';
       more.textContent = `+${dayTasks.length - limit} tasks`;
-      more.addEventListener('click', e => { e.stopPropagation(); openPopup(); });
+      more.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openPopup();
+      });
       cell.appendChild(more);
     }
 
@@ -297,6 +372,12 @@ function buildAllDayRow(days, events, tasks, onEventClick, onTaskClick, onDayCli
 }
 
 export function destroyWeek() {
-  if (timerId) { clearInterval(timerId); timerId = null; }
-  if (_container) { _container.classList.remove('internal-scroll'); _container = null; }
+  if (timerId) {
+    clearInterval(timerId);
+    timerId = null;
+  }
+  if (_container) {
+    _container.classList.remove('internal-scroll');
+    _container = null;
+  }
 }

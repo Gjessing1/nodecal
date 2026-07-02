@@ -14,9 +14,11 @@ function getIcsFeeds() {
   try {
     const s = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
     if (Array.isArray(s.icsFeeds)) {
-      return s.icsFeeds.filter(f => f && f.id && f.url);
+      return s.icsFeeds.filter((f) => f && f.id && f.url);
     }
-  } catch { /* no override file */ }
+  } catch {
+    /* no override file */
+  }
   return [];
 }
 
@@ -30,7 +32,7 @@ function getIcsFeeds() {
  * @returns {Promise<Array>} parsed event objects
  */
 async function fetchFeed(feed) {
-  const res = await fetch(feed.url, { headers: { 'Accept': 'text/calendar, */*' } });
+  const res = await fetch(feed.url, { headers: { Accept: 'text/calendar, */*' } });
   if (!res.ok) throw new Error(`ICS feed ${feed.id} GET failed: ${res.status}`);
   const text = await res.text();
   const events = [];

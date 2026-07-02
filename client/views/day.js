@@ -2,8 +2,14 @@ import { state, calendarById } from '../app/state.js';
 import { localDateStr, getISOWeek, weatherBadge } from '../app/utils.js';
 import { showDatePicker } from '../components/datePicker.js';
 import {
-  buildTimeColumn, buildHourLines, buildEventBlock,
-  buildCurrentTimeLine, updateCurrentTimeLine, getTotalHeight, timeToTop, buildNightOverlay,
+  buildTimeColumn,
+  buildHourLines,
+  buildEventBlock,
+  buildCurrentTimeLine,
+  updateCurrentTimeLine,
+  getTotalHeight,
+  timeToTop,
+  buildNightOverlay,
 } from '../components/timeGrid.js';
 import { initDnd, initSwipe, initLongPressCreate } from '../components/dnd.js';
 import { HOUR_HEIGHT } from '../components/timeGrid.js';
@@ -21,28 +27,37 @@ export function renderDay(container, callbacks) {
   _container = container;
   container.classList.add('internal-scroll');
   const { onEventClick, onEventMove, onEventResize, onTaskClick, onLongPress } = callbacks;
-  if (timerId) { clearInterval(timerId); timerId = null; }
+  if (timerId) {
+    clearInterval(timerId);
+    timerId = null;
+  }
 
   const date = state.selectedDate;
   const isToday = date.toDateString() === new Date().toDateString();
   const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const dayEnd = new Date(dayStart.getTime() + 86400000);
 
-  const dayEvents = state.events.filter(ev => {
+  const dayEvents = state.events.filter((ev) => {
     if (state.hiddenCalendars.has(ev.calendarId)) return false;
     return !ev.allDay && new Date(ev.start) < dayEnd && new Date(ev.end) > dayStart;
   });
 
   const dayStr = localDateStr(dayStart);
-  const allDayEvents = state.events.filter(ev => {
+  const allDayEvents = state.events.filter((ev) => {
     if (state.hiddenCalendars.has(ev.calendarId)) return false;
     if (!ev.allDay) return false;
     return ev.start.slice(0, 10) <= dayStr && ev.end.slice(0, 10) > dayStr;
   });
 
-  const dayTasks = (state.config.showTasksOnDay ?? state.config.showTasksOnCalendar)
-    ? state.tasks.filter(t => t.due === dayStr && t.status !== 'COMPLETED' && taskSourceVisible(t, state.hiddenCalendars))
-    : [];
+  const dayTasks =
+    (state.config.showTasksOnDay ?? state.config.showTasksOnCalendar)
+      ? state.tasks.filter(
+          (t) =>
+            t.due === dayStr &&
+            t.status !== 'COMPLETED' &&
+            taskSourceVisible(t, state.hiddenCalendars),
+        )
+      : [];
 
   container.innerHTML = '';
 
@@ -93,9 +108,16 @@ export function renderDay(container, callbacks) {
   });
 
   // Swipe navigation
-  initSwipe(scroll,
-    () => { state.selectedDate = new Date(dayStart.getTime() - 86400000); renderDay(container, callbacks); },
-    () => { state.selectedDate = new Date(dayStart.getTime() + 86400000); renderDay(container, callbacks); },
+  initSwipe(
+    scroll,
+    () => {
+      state.selectedDate = new Date(dayStart.getTime() - 86400000);
+      renderDay(container, callbacks);
+    },
+    () => {
+      state.selectedDate = new Date(dayStart.getTime() + 86400000);
+      renderDay(container, callbacks);
+    },
   );
 
   // Long-press on empty time grid → create event at that time
@@ -105,8 +127,10 @@ export function renderDay(container, callbacks) {
       onLongPress(clientX, clientY) {
         const rect = eventsCol.getBoundingClientRect();
         const y = clientY - rect.top;
-        const totalMinutes = Math.floor(y / HOUR_HEIGHT * 2) * 30;
-        const eventDate = new Date(dayStart.getTime() + Math.min(Math.max(totalMinutes, 0), 23 * 60) * 60000);
+        const totalMinutes = Math.floor((y / HOUR_HEIGHT) * 2) * 30;
+        const eventDate = new Date(
+          dayStart.getTime() + Math.min(Math.max(totalMinutes, 0), 23 * 60) * 60000,
+        );
         onLongPress(eventDate);
       },
     });
@@ -134,8 +158,12 @@ function buildNavBar(date, isToday, callbacks) {
     renderDay(prev.closest('#view-container'), callbacks);
   });
 
-  const fmt = d => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-  const weekTag = (state.config.showWeekNumbersDay ?? state.config.showWeekNumbers) ? ` · W${getISOWeek(date)}` : '';
+  const fmt = (d) =>
+    d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const weekTag =
+    (state.config.showWeekNumbersDay ?? state.config.showWeekNumbers)
+      ? ` · W${getISOWeek(date)}`
+      : '';
   const wx = weatherBadge(localDateStr(date), state.weather, state.config.weatherDays ?? 6);
   const wxTag = wx ? ` · ${wx}` : '';
 
@@ -147,7 +175,7 @@ function buildNavBar(date, isToday, callbacks) {
   title.textContent = (isToday ? 'Today · ' + fmt(date) : fmt(date)) + weekTag + wxTag;
   titleWrap.appendChild(title);
   titleWrap.addEventListener('click', () => {
-    showDatePicker(date, selected => {
+    showDatePicker(date, (selected) => {
       state.selectedDate = selected;
       renderDay(prev.closest('#view-container'), callbacks);
     });
@@ -201,6 +229,12 @@ function buildAllDayStrip(events, tasks, onEventClick, onTaskClick) {
 }
 
 export function destroyDay() {
-  if (timerId) { clearInterval(timerId); timerId = null; }
-  if (_container) { _container.classList.remove('internal-scroll'); _container = null; }
+  if (timerId) {
+    clearInterval(timerId);
+    timerId = null;
+  }
+  if (_container) {
+    _container.classList.remove('internal-scroll');
+    _container = null;
+  }
 }

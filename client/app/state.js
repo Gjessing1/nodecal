@@ -42,20 +42,53 @@ export const state = {
     activeProfile: 'personal',
     /** @type {Object<string, {name, hiddenCalendars, accentColor, defaultTaskSource, defaultEventCalendar, defaultView}>} */
     profiles: {
-      single:   { name: 'Single',   hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultEventCalendar: '', defaultView: '' },
-      personal: { name: 'Personal', hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultEventCalendar: '', defaultView: '' },
-      work:     { name: 'Work',     hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultEventCalendar: '', defaultView: '' },
+      single: {
+        name: 'Single',
+        hiddenCalendars: [],
+        accentColor: '',
+        defaultTaskSource: '',
+        defaultEventCalendar: '',
+        defaultView: '',
+      },
+      personal: {
+        name: 'Personal',
+        hiddenCalendars: [],
+        accentColor: '',
+        defaultTaskSource: '',
+        defaultEventCalendar: '',
+        defaultView: '',
+      },
+      work: {
+        name: 'Work',
+        hiddenCalendars: [],
+        accentColor: '',
+        defaultTaskSource: '',
+        defaultEventCalendar: '',
+        defaultView: '',
+      },
     },
   },
 };
 
-export function setCalendars(cals) { state.calendars = cals; }
-export function setEvents(evts) { state.events = evts; }
-export function setTasks(tasks) { state.tasks = tasks; }
-export function setTaskSources(sources) { state.taskSources = sources; }
-export function setWeather(w) { state.weather = w; }
-export function setConfig(cfg) { state.config = { ...state.config, ...cfg }; }
+export function setCalendars(cals) {
+  state.calendars = cals;
+}
+export function setEvents(evts) {
+  state.events = evts;
+}
+export function setTasks(tasks) {
+  state.tasks = tasks;
+}
+export function setTaskSources(sources) {
+  state.taskSources = sources;
+}
+export function setWeather(w) {
+  state.weather = w;
+}
+export function setConfig(cfg) {
+  state.config = { ...state.config, ...cfg };
+}
 
 export function calendarById(id) {
-  return state.calendars.find(c => c.id === id) || null;
+  return state.calendars.find((c) => c.id === id) || null;
 }

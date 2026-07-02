@@ -1,6 +1,14 @@
 const { Router } = require('express');
 const config = require('../config');
-const { addActiveToken, removeActiveToken, generateToken, saveTokens, setCookie, clearCookie, parseCookies } = require('../middleware/auth');
+const {
+  addActiveToken,
+  removeActiveToken,
+  generateToken,
+  saveTokens,
+  setCookie,
+  clearCookie,
+  parseCookies,
+} = require('../middleware/auth');
 
 const router = Router();
 

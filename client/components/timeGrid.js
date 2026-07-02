@@ -11,10 +11,13 @@ const TOTAL_HEIGHT = HOUR_HEIGHT * 24;
  */
 export function timeToTop(date, timezone = 'UTC') {
   const parts = new Intl.DateTimeFormat('en-US', {
-    hour: '2-digit', minute: '2-digit', hour12: false, timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: timezone,
   }).formatToParts(date);
-  const h = parseInt(parts.find(p => p.type === 'hour').value) % 24;
-  const m = parseInt(parts.find(p => p.type === 'minute').value);
+  const h = parseInt(parts.find((p) => p.type === 'hour').value) % 24;
+  const m = parseInt(parts.find((p) => p.type === 'minute').value);
   return (h * 60 + m) * (HOUR_HEIGHT / 60);
 }
 
@@ -65,7 +68,7 @@ export function buildEventBlock(ev, color, onClick, timezone = 'UTC') {
   const start = new Date(ev.start);
   const end = new Date(ev.end);
   const top = timeToTop(start, timezone);
-  const rawHeight = (end - start) / 60000 * (HOUR_HEIGHT / 60);
+  const rawHeight = ((end - start) / 60000) * (HOUR_HEIGHT / 60);
   const height = Math.max(rawHeight, 24);
 
   const block = document.createElement('div');
@@ -80,7 +83,10 @@ export function buildEventBlock(ev, color, onClick, timezone = 'UTC') {
     const timeLabel = document.createElement('span');
     timeLabel.className = 'event-block-time';
     timeLabel.textContent = start.toLocaleTimeString('en-US', {
-      hour: 'numeric', minute: '2-digit', hour12: is12h, timeZone: tz,
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: is12h,
+      timeZone: tz,
     });
     block.appendChild(timeLabel);
   }
@@ -94,7 +100,10 @@ export function buildEventBlock(ev, color, onClick, timezone = 'UTC') {
   handle.className = 'resize-handle';
   block.appendChild(handle);
 
-  block.addEventListener('click', e => { e.stopPropagation(); onClick(ev); });
+  block.addEventListener('click', (e) => {
+    e.stopPropagation();
+    onClick(ev);
+  });
   return block;
 }
 
@@ -114,7 +123,9 @@ export function updateCurrentTimeLine(el, timezone = 'UTC') {
   el.style.top = `${timeToTop(new Date(), timezone)}px`;
 }
 
-export function getTotalHeight() { return TOTAL_HEIGHT; }
+export function getTotalHeight() {
+  return TOTAL_HEIGHT;
+}
 
 /** Translucent overlay for the night hours (00:00–05:00) in a time-grid column. */
 export function buildNightOverlay() {

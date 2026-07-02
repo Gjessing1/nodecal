@@ -4,6 +4,16 @@ COPY package*.json ./
 # --no-audit/--no-fund drop network round-trips that add nothing to a CI build
 RUN npm ci --omit=dev --no-audit --no-fund
 
+# Quality gates that need devDependencies (prettier/eslint) run in a throwaway
+# stage so the final image never ships them. A red check fails `docker build`,
+# so a broken commit can never produce a pushed image.
+FROM node:20-alpine AS check
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --no-audit --no-fund
+COPY . .
+RUN npm run format:check && npm run lint && npm test
+
 FROM node:20-alpine
 WORKDIR /app
 
@@ -14,9 +24,12 @@ RUN addgroup -S nodecal && adduser -S nodecal -G nodecal
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Quality gate folded into the build: a red test run fails `docker build`, so a
-# broken commit can never produce a pushed image. Tests use Node's built-in
-# runner and the prod deps only — no devDependencies needed.
+# Pull one file from the check stage so the final image cannot build unless the
+# checks passed (stages otherwise build independently under BuildKit).
+COPY --from=check /app/package.json /tmp/.checks-passed
+
+# Re-run tests against prod-only node_modules: catches server code accidentally
+# requiring a devDependency, which the check stage (full install) would miss.
 RUN npm test
 
 RUN mkdir -p /config /cache

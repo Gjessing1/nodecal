@@ -6,7 +6,7 @@
 export function getAllEventCategories(events) {
   const cats = new Set();
   for (const ev of events) {
-    for (const c of (ev.categories || [])) cats.add(c);
+    for (const c of ev.categories || []) cats.add(c);
   }
   return [...cats].sort();
 }

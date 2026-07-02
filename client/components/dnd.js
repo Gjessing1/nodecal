@@ -1,4 +1,4 @@
-import { HOUR_HEIGHT, TIME_COL_WIDTH } from './timeGrid.js';
+import { HOUR_HEIGHT } from './timeGrid.js';
 
 const LONG_PRESS_MS = 400;
 const SNAP_MIN = 15;
@@ -19,11 +19,13 @@ function snap(minutes) {
  * @param {function(id: string, endMin: number): void} opts.onResize
  */
 export function initDnd(gridEl, scrollEl, opts) {
-  gridEl.addEventListener('pointerdown', e => {
+  gridEl.addEventListener('pointerdown', (e) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
 
     const isResize = !!e.target.closest('.resize-handle');
-    const block = (isResize ? e.target.closest('.resize-handle') : e.target).closest('.event-block');
+    const block = (isResize ? e.target.closest('.resize-handle') : e.target).closest(
+      '.event-block',
+    );
     if (!block) return;
 
     e.preventDefault();
@@ -40,7 +42,8 @@ export function initDnd(gridEl, scrollEl, opts) {
       active = true;
       block.style.opacity = '0.3';
       ghost = block.cloneNode(true);
-      ghost.style.cssText = `position:fixed;width:${blockRect.width}px;height:${blockRect.height}px;` +
+      ghost.style.cssText =
+        `position:fixed;width:${blockRect.width}px;height:${blockRect.height}px;` +
         `left:${blockRect.left}px;top:${isResize ? blockRect.top : e.clientY - grabOffsetY}px;` +
         `opacity:0.8;pointer-events:none;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,0.35);` +
         `border-radius:6px;`;
@@ -88,7 +91,10 @@ export function initDnd(gridEl, scrollEl, opts) {
       block.removeEventListener('pointermove', handleMove);
       block.removeEventListener('pointerup', handleUp);
       block.removeEventListener('pointercancel', cleanup);
-      if (ghost) { ghost.remove(); ghost = null; }
+      if (ghost) {
+        ghost.remove();
+        ghost = null;
+      }
       block.style.opacity = '';
     }
 
@@ -108,7 +114,7 @@ export function initDnd(gridEl, scrollEl, opts) {
  * @param {{ chipSelector: string, daySelector: string, onMove: function }} opts
  */
 export function initDayDnd(containerEl, { chipSelector, daySelector, onMove }) {
-  containerEl.addEventListener('pointerdown', e => {
+  containerEl.addEventListener('pointerdown', (e) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
 
     const chip = e.target.closest(chipSelector);
@@ -129,7 +135,8 @@ export function initDayDnd(containerEl, { chipSelector, daySelector, onMove }) {
       active = true;
       chip.style.opacity = '0.3';
       ghost = chip.cloneNode(true);
-      ghost.style.cssText = `position:fixed;width:${chipRect.width}px;height:${chipRect.height}px;` +
+      ghost.style.cssText =
+        `position:fixed;width:${chipRect.width}px;height:${chipRect.height}px;` +
         `left:${chipRect.left}px;top:${chipRect.top}px;` +
         `opacity:0.85;pointer-events:none;z-index:200;box-shadow:0 4px 12px rgba(0,0,0,0.3);`;
       document.body.appendChild(ghost);
@@ -151,11 +158,14 @@ export function initDayDnd(containerEl, { chipSelector, daySelector, onMove }) {
       if (targetEl) targetEl.classList.add('dnd-over');
     }
 
-    function handleUp(ev) {
+    function handleUp(_ev) {
       clearTimeout(timer);
       if (active) {
         // Suppress the click event that fires immediately after pointerup
-        chip.addEventListener('click', e => e.stopImmediatePropagation(), { capture: true, once: true });
+        chip.addEventListener('click', (e) => e.stopImmediatePropagation(), {
+          capture: true,
+          once: true,
+        });
         if (targetEl?.dataset.day) {
           const day = new Date(targetEl.dataset.day + 'T00:00:00');
           onMove(id, day, startMin);
@@ -168,8 +178,14 @@ export function initDayDnd(containerEl, { chipSelector, daySelector, onMove }) {
       chip.removeEventListener('pointermove', handleMove);
       chip.removeEventListener('pointerup', handleUp);
       chip.removeEventListener('pointercancel', cleanup);
-      if (ghost) { ghost.remove(); ghost = null; }
-      if (targetEl) { targetEl.classList.remove('dnd-over'); targetEl = null; }
+      if (ghost) {
+        ghost.remove();
+        ghost = null;
+      }
+      if (targetEl) {
+        targetEl.classList.remove('dnd-over');
+        targetEl = null;
+      }
       chip.style.opacity = '';
     }
 
@@ -192,10 +208,11 @@ export function initDayDnd(containerEl, { chipSelector, daySelector, onMove }) {
  */
 export function initLongPressCreate(el, { onLongPress, skipSelector }) {
   let timer = null;
-  let startX = 0, startY = 0;
+  let startX = 0,
+    startY = 0;
   const MOVE_TOL = 8;
 
-  el.addEventListener('pointerdown', e => {
+  el.addEventListener('pointerdown', (e) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
     if (skipSelector && e.target.closest(skipSelector)) return;
     startX = e.clientX;
@@ -206,11 +223,15 @@ export function initLongPressCreate(el, { onLongPress, skipSelector }) {
     }, LONG_PRESS_MS);
   });
 
-  const cancel = () => { clearTimeout(timer); timer = null; };
+  const cancel = () => {
+    clearTimeout(timer);
+    timer = null;
+  };
 
-  el.addEventListener('pointermove', e => {
+  el.addEventListener('pointermove', (e) => {
     if (!timer) return;
-    if (Math.abs(e.clientX - startX) > MOVE_TOL || Math.abs(e.clientY - startY) > MOVE_TOL) cancel();
+    if (Math.abs(e.clientX - startX) > MOVE_TOL || Math.abs(e.clientY - startY) > MOVE_TOL)
+      cancel();
   });
   el.addEventListener('pointerup', cancel);
   el.addEventListener('pointercancel', cancel);
@@ -218,17 +239,26 @@ export function initLongPressCreate(el, { onLongPress, skipSelector }) {
 
 export function initSwipe(el, onPrev, onNext) {
   let startX, startY, startScrollTop;
-  el.addEventListener('touchstart', e => {
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
-    startScrollTop = el.scrollTop;
-  }, { passive: true });
-  el.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - startX;
-    const dy = Math.abs(e.changedTouches[0].clientY - startY);
-    const scrolled = Math.abs(el.scrollTop - startScrollTop);
-    if (Math.abs(dx) > 60 && dy < 40 && scrolled < 10) {
-      if (dx < 0) onNext(); else onPrev();
-    }
-  }, { passive: true });
+  el.addEventListener(
+    'touchstart',
+    (e) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      startScrollTop = el.scrollTop;
+    },
+    { passive: true },
+  );
+  el.addEventListener(
+    'touchend',
+    (e) => {
+      const dx = e.changedTouches[0].clientX - startX;
+      const dy = Math.abs(e.changedTouches[0].clientY - startY);
+      const scrolled = Math.abs(el.scrollTop - startScrollTop);
+      if (Math.abs(dx) > 60 && dy < 40 && scrolled < 10) {
+        if (dx < 0) onNext();
+        else onPrev();
+      }
+    },
+    { passive: true },
+  );
 }

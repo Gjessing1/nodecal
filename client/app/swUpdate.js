@@ -26,15 +26,21 @@ export function initSwUpdate() {
   // On the very first visit the initial claim must not reload.
   let hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!hadController) { hadController = true; return; }
+    if (!hadController) {
+      hadController = true;
+      return;
+    }
     window.location.reload();
   });
 
   // updateViaCache:'none' makes every update check hit the server for the
   // worker script instead of the HTTP cache.
-  navigator.serviceWorker.register('/service-worker.js', { updateViaCache: 'none' })
+  navigator.serviceWorker
+    .register('/service-worker.js', { updateViaCache: 'none' })
     .then(watchForUpdates)
-    .catch(() => { /* the SW is progressive enhancement — the app works without it */ });
+    .catch(() => {
+      /* the SW is progressive enhancement — the app works without it */
+    });
 }
 
 function watchForUpdates(reg) {
@@ -54,7 +60,9 @@ function watchForUpdates(reg) {
   function check() {
     if (!navigator.onLine || Date.now() - lastCheck < CHECK_MIN_GAP_MS) return;
     lastCheck = Date.now();
-    reg.update().catch(() => { /* offline or server unreachable — retry later */ });
+    reg.update().catch(() => {
+      /* offline or server unreachable — retry later */
+    });
     // Re-offer an update that was dismissed earlier.
     if (reg.waiting) offerUpdate(reg);
   }

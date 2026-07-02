@@ -5,7 +5,9 @@ let overlay, onToggleCb;
 export function initCalendarDrawer(onToggle) {
   overlay = document.getElementById('cal-drawer-overlay');
   onToggleCb = onToggle;
-  overlay.addEventListener('click', e => { if (e.target === overlay) closeDrawer(); });
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeDrawer();
+  });
 }
 
 export function openDrawer() {

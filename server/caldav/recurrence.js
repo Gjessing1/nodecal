@@ -1,4 +1,4 @@
-const { RRule, RRuleSet, rrulestr } = require('rrule');
+const { RRuleSet, rrulestr } = require('rrule');
 const { formatIcsDate } = require('./parser');
 
 /**
@@ -30,7 +30,7 @@ function expandRecurring(event, from, to) {
     return [];
   }
 
-  return source.between(from, to, true).map(occStart => {
+  return source.between(from, to, true).map((occStart) => {
     const occEnd = new Date(occStart.getTime() + duration);
     const occDateIso = formatIcsDate(occStart, false);
     return {
@@ -79,7 +79,7 @@ function parseExdate(str) {
  */
 function parseXInterval(interval) {
   if (!interval) return null;
-  if (interval === 'daily')  return 86400000;
+  if (interval === 'daily') return 86400000;
   if (interval === 'weekly') return 7 * 86400000;
   const nd = interval.match(/^(\d+)d$/i);
   if (nd) return parseInt(nd[1], 10) * 86400000;
@@ -115,4 +115,11 @@ function computeNextDue(task, completionDate) {
   return null;
 }
 
-module.exports = { expandRecurring, setRruleUntil, parseExdate, computeNextDue, parseXInterval, rrulestr };
+module.exports = {
+  expandRecurring,
+  setRruleUntil,
+  parseExdate,
+  computeNextDue,
+  parseXInterval,
+  rrulestr,
+};

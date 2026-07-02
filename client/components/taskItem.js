@@ -16,8 +16,14 @@ export function buildTaskItem(task, { onComplete, onStar, onClick, onSnooze, sho
   // Checkbox
   const check = document.createElement('button');
   check.className = 'task-check' + (task.status === 'COMPLETED' ? ' checked' : '');
-  check.setAttribute('aria-label', task.status === 'COMPLETED' ? 'Mark incomplete' : 'Complete task');
-  check.addEventListener('click', e => { e.stopPropagation(); onComplete(task); });
+  check.setAttribute(
+    'aria-label',
+    task.status === 'COMPLETED' ? 'Mark incomplete' : 'Complete task',
+  );
+  check.addEventListener('click', (e) => {
+    e.stopPropagation();
+    onComplete(task);
+  });
 
   // Body
   const body = document.createElement('div');
@@ -90,7 +96,10 @@ export function buildTaskItem(task, { onComplete, onStar, onClick, onSnooze, sho
     snooze.textContent = '+1d';
     snooze.setAttribute('aria-label', 'Defer by 1 day');
     snooze.title = 'Defer to tomorrow';
-    snooze.addEventListener('click', e => { e.stopPropagation(); onSnooze(task); });
+    snooze.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onSnooze(task);
+    });
     li.appendChild(snooze);
   }
 
@@ -99,7 +108,10 @@ export function buildTaskItem(task, { onComplete, onStar, onClick, onSnooze, sho
   star.className = 'task-star' + (task.important ? ' starred' : '');
   star.textContent = '★';
   star.setAttribute('aria-label', task.important ? 'Remove important' : 'Mark important');
-  star.addEventListener('click', e => { e.stopPropagation(); onStar(task); });
+  star.addEventListener('click', (e) => {
+    e.stopPropagation();
+    onStar(task);
+  });
 
   li.appendChild(star);
   return li;
@@ -121,10 +133,10 @@ function formatDue(due) {
 
 function todayString() {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function tomorrowString() {
   const d = new Date(Date.now() + 86400000);
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }

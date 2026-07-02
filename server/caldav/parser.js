@@ -36,7 +36,7 @@ function parseProperty(line) {
 // Intl.DateTimeFormat rejects. Map the common ones; anything unknown falls back
 // to the feed's configured timezone so a single odd TZID never breaks a feed.
 const WINDOWS_TZ = {
-  'UTC': 'UTC',
+  UTC: 'UTC',
   'GMT Standard Time': 'Europe/London',
   'Greenwich Standard Time': 'Atlantic/Reykjavik',
   'W. Europe Standard Time': 'Europe/Berlin',
@@ -61,8 +61,11 @@ const _tzValidCache = new Map();
 function isValidTimezone(tz) {
   if (_tzValidCache.has(tz)) return _tzValidCache.get(tz);
   let ok = true;
-  try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); }
-  catch { ok = false; }
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: tz });
+  } catch {
+    ok = false;
+  }
   _tzValidCache.set(tz, ok);
   return ok;
 }
@@ -88,14 +91,20 @@ function floatingToUtc(dateStr, timezone) {
   const parts = {};
   for (const p of new Intl.DateTimeFormat('en-US', {
     timeZone: timezone,
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
     hour12: false,
   }).formatToParts(asUtc)) {
     parts[p.type] = p.value;
   }
   const h = parts.hour === '24' ? '00' : parts.hour;
-  const shownAsUtc = new Date(`${parts.year}-${parts.month}-${parts.day}T${h}:${parts.minute}:${parts.second}Z`);
+  const shownAsUtc = new Date(
+    `${parts.year}-${parts.month}-${parts.day}T${h}:${parts.minute}:${parts.second}Z`,
+  );
   return new Date(asUtc.getTime() + (asUtc - shownAsUtc));
 }
 
@@ -103,7 +112,10 @@ function parseIcsDate(value, params = {}, fallbackTz = 'UTC') {
   if (/^\d{8}$/.test(value)) {
     // All-day dates are stored as UTC midnight so the date string is unambiguous
     // in all browser timezones. Never use local midnight here.
-    return { date: new Date(`${value.slice(0,4)}-${value.slice(4,6)}-${value.slice(6,8)}T00:00:00Z`), allDay: true };
+    return {
+      date: new Date(`${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}T00:00:00Z`),
+      allDay: true,
+    };
   }
   const m = value.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z?)$/);
   if (!m) return null;
@@ -112,23 +124,37 @@ function parseIcsDate(value, params = {}, fallbackTz = 'UTC') {
   }
   // Floating or TZID-local time — convert to UTC using TZID param or fallback timezone
   const tz = resolveTimezone(params.TZID, fallbackTz);
-  return { date: floatingToUtc(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`, tz), allDay: false };
+  return {
+    date: floatingToUtc(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`, tz),
+    allDay: false,
+  };
 }
 
 function parseDuration(dur) {
   const m = dur.match(/^-?P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/);
   if (!m) return 0;
-  const w = parseInt(m[1] || 0), d = parseInt(m[2] || 0);
-  const h = parseInt(m[3] || 0), min = parseInt(m[4] || 0), s = parseInt(m[5] || 0);
+  const w = parseInt(m[1] || 0),
+    d = parseInt(m[2] || 0);
+  const h = parseInt(m[3] || 0),
+    min = parseInt(m[4] || 0),
+    s = parseInt(m[5] || 0);
   return ((w * 7 + d) * 86400 + h * 3600 + min * 60 + s) * 1000;
 }
 
 function unescapeIcsText(text) {
-  return text.replace(/\\n/g, '\n').replace(/\\,/g, ',').replace(/\\;/g, ';').replace(/\\\\/g, '\\');
+  return text
+    .replace(/\\n/g, '\n')
+    .replace(/\\,/g, ',')
+    .replace(/\\;/g, ';')
+    .replace(/\\\\/g, '\\');
 }
 
 function escapeIcsText(text) {
-  return text.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+  return text
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\n/g, '\\n');
 }
 
 /**
@@ -150,10 +176,12 @@ function parseIcs(icsText, { timezone = 'UTC' } = {}) {
     }
     const uid = props.UID?.value;
     if (!uid) continue;
-    const startInfo = props.DTSTART ? parseIcsDate(props.DTSTART.value, props.DTSTART.params, timezone) : null;
+    const startInfo = props.DTSTART
+      ? parseIcsDate(props.DTSTART.value, props.DTSTART.params, timezone)
+      : null;
     if (!startInfo) continue;
 
-    let endDate = null;
+    let endDate;
     if (props.DTEND) {
       endDate = parseIcsDate(props.DTEND.value, props.DTEND.params, timezone)?.date;
     } else if (props.DURATION) {
@@ -173,7 +201,9 @@ function parseIcs(icsText, { timezone = 'UTC' } = {}) {
           if (vp) {
             const m2 = vp.value.match(/-P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?)?/i);
             if (m2) {
-              const d2 = parseInt(m2[1] || 0), h2 = parseInt(m2[2] || 0), min2 = parseInt(m2[3] || 0);
+              const d2 = parseInt(m2[1] || 0),
+                h2 = parseInt(m2[2] || 0),
+                min2 = parseInt(m2[3] || 0);
               alarmMinutes = d2 * 1440 + h2 * 60 + min2;
             }
           }
@@ -192,7 +222,10 @@ function parseIcs(icsText, { timezone = 'UTC' } = {}) {
 
     const rawCats = props.CATEGORIES?.value || '';
     const categories = rawCats
-      ? rawCats.split(',').map(c => c.trim()).filter(Boolean)
+      ? rawCats
+          .split(',')
+          .map((c) => c.trim())
+          .filter(Boolean)
       : [];
 
     events.push({
@@ -238,7 +271,7 @@ function serializeEvent(event) {
     'PRODID:-//Nodecal//EN',
     'BEGIN:VEVENT',
     `UID:${event.uid}`,
-    `DTSTAMP:${new Date().toISOString().replace(/[-:.]/g,'').slice(0,15)}Z`,
+    `DTSTAMP:${new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15)}Z`,
     `SUMMARY:${escapeIcsText(event.title)}`,
     `DTSTART${event.allDay ? ';VALUE=DATE' : ''}:${formatIcsDate(new Date(event.start), event.allDay)}`,
     `DTEND${event.allDay ? ';VALUE=DATE' : ''}:${formatIcsDate(new Date(event.end), event.allDay)}`,
@@ -246,7 +279,8 @@ function serializeEvent(event) {
   if (event.categories?.length) lines.push(`CATEGORIES:${event.categories.join(',')}`);
   if (event.rrule) lines.push(`RRULE:${event.rrule}`);
   if (event.exdates?.length) {
-    for (const ex of event.exdates) lines.push(`${event.allDay ? 'EXDATE;VALUE=DATE:' : 'EXDATE:'}${ex}`);
+    for (const ex of event.exdates)
+      lines.push(`${event.allDay ? 'EXDATE;VALUE=DATE:' : 'EXDATE:'}${ex}`);
   }
   if (event.recurrenceId) {
     lines.push(`RECURRENCE-ID:${formatIcsDate(new Date(event.recurrenceId), event.allDay)}`);
@@ -256,10 +290,19 @@ function serializeEvent(event) {
   if (event.url) lines.push(`URL:${event.url}`);
   if (event.alarmMinutes > 0) {
     const am = event.alarmMinutes;
-    const trigger = am >= 1440 && am % 1440 === 0 ? `-P${am / 1440}D`
-      : am >= 60 && am % 60 === 0 ? `-PT${am / 60}H`
-      : `-PT${am}M`;
-    lines.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Reminder', `TRIGGER:${trigger}`, 'END:VALARM');
+    const trigger =
+      am >= 1440 && am % 1440 === 0
+        ? `-P${am / 1440}D`
+        : am >= 60 && am % 60 === 0
+          ? `-PT${am / 60}H`
+          : `-PT${am}M`;
+    lines.push(
+      'BEGIN:VALARM',
+      'ACTION:DISPLAY',
+      'DESCRIPTION:Reminder',
+      `TRIGGER:${trigger}`,
+      'END:VALARM',
+    );
   }
   lines.push('END:VEVENT', 'END:VCALENDAR');
   return lines.map(foldLine).join(CRLF) + CRLF;
@@ -289,7 +332,7 @@ function parseVtodo(icsText) {
     if (props.DUE) {
       const val = props.DUE.value;
       if (/^\d{8}$/.test(val)) {
-        due = `${val.slice(0,4)}-${val.slice(4,6)}-${val.slice(6,8)}`;
+        due = `${val.slice(0, 4)}-${val.slice(4, 6)}-${val.slice(6, 8)}`;
       } else {
         const parsed = parseIcsDate(val, props.DUE.params);
         if (parsed) due = parsed.date.toISOString().slice(0, 10);
@@ -303,7 +346,10 @@ function parseVtodo(icsText) {
     }
 
     const categories = props.CATEGORIES?.value
-      ? props.CATEGORIES.value.split(',').map(c => c.trim()).filter(Boolean)
+      ? props.CATEGORIES.value
+          .split(',')
+          .map((c) => c.trim())
+          .filter(Boolean)
       : [];
 
     result.push({
@@ -338,7 +384,7 @@ function serializeTask(task) {
     'PRODID:-//Nodecal//EN',
     'BEGIN:VTODO',
     `UID:${task.uid}`,
-    `DTSTAMP:${new Date().toISOString().replace(/[-:.]/g,'').slice(0,15)}Z`,
+    `DTSTAMP:${new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15)}Z`,
     `SUMMARY:${escapeIcsText(task.title || '')}`,
     `STATUS:${task.status || 'NEEDS-ACTION'}`,
   ];
@@ -351,7 +397,8 @@ function serializeTask(task) {
   if (task.rrule) lines.push(`RRULE:${task.rrule}`);
   if (task.xRecurringType) lines.push(`X-RECURRING-TYPE:${task.xRecurringType}`);
   if (task.xRecurringInterval) lines.push(`X-RECURRING-INTERVAL:${task.xRecurringInterval}`);
-  if (task.taskReminder && task.taskReminder !== 'none') lines.push(`X-REMINDER:${task.taskReminder}`);
+  if (task.taskReminder && task.taskReminder !== 'none')
+    lines.push(`X-REMINDER:${task.taskReminder}`);
   if (task.location) lines.push(`LOCATION:${escapeIcsText(task.location)}`);
   if (task.url) lines.push(`URL:${task.url}`);
   if (task.description) lines.push(`DESCRIPTION:${escapeIcsText(task.description)}`);

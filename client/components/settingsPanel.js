@@ -1,15 +1,19 @@
 import { state, setConfig, setTaskSources } from '../app/state.js';
 import { esc } from '../app/utils.js';
 import { buildTimePicker } from './timePicker.js';
-import { renderTaskSourcesSection, renderCategoriesSection, renderIcsFeedsSection } from './settingsHelpers.js';
+import {
+  renderTaskSourcesSection,
+  renderCategoriesSection,
+  renderIcsFeedsSection,
+} from './settingsHelpers.js';
 import { renderProfilesSection } from './profilesSettings.js';
 import { registerProfileTaskSources } from '../app/profiles.js';
 
 const ALL_VIEWS = [
   { id: 'agenda', label: 'Agenda' },
-  { id: 'day',    label: 'Day' },
-  { id: 'week',   label: 'Week' },
-  { id: 'month',  label: 'Month' },
+  { id: 'day', label: 'Day' },
+  { id: 'week', label: 'Week' },
+  { id: 'month', label: 'Month' },
 ];
 
 let overlay, onChangeCb;
@@ -17,7 +21,9 @@ let overlay, onChangeCb;
 export function initSettingsPanel(onChange) {
   overlay = document.getElementById('settings-overlay');
   onChangeCb = onChange;
-  overlay.addEventListener('click', e => { if (e.target === overlay) closeSettings(); });
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeSettings();
+  });
 }
 
 export function openSettings() {
@@ -37,7 +43,7 @@ function timeStrToDate(str) {
 function renderForm() {
   const sheet = overlay.querySelector('.modal-sheet');
   const cfg = state.config;
-  const enabled = cfg.enabledViews || ALL_VIEWS.map(v => v.id);
+  const enabled = cfg.enabledViews || ALL_VIEWS.map((v) => v.id);
 
   sheet.innerHTML = `
     <div class="modal-handle"></div>
@@ -52,11 +58,13 @@ function renderForm() {
     <div class="modal-row">
       <div class="modal-field">
         <label>Visible views</label>
-        ${ALL_VIEWS.map(v => `
+        ${ALL_VIEWS.map(
+          (v) => `
           <label class="settings-toggle">
             <input type="checkbox" name="view" value="${v.id}" ${enabled.includes(v.id) ? 'checked' : ''}>
             <span>${v.label}</span>
-          </label>`).join('')}
+          </label>`,
+        ).join('')}
         <label class="settings-toggle">
           <input type="checkbox" id="s-tasks-enable" ${cfg.enableTasksView ? 'checked' : ''}>
           <span>Tasks</span>
@@ -87,7 +95,7 @@ function renderForm() {
       <div class="modal-field">
         <label>Default view</label>
         <select id="s-default">
-          ${ALL_VIEWS.map(v => `<option value="${v.id}" ${cfg.defaultView === v.id ? 'selected' : ''}>${v.label}</option>`).join('')}
+          ${ALL_VIEWS.map((v) => `<option value="${v.id}" ${cfg.defaultView === v.id ? 'selected' : ''}>${v.label}</option>`).join('')}
           ${cfg.enableTasksView ? `<option value="tasks" ${cfg.defaultView === 'tasks' ? 'selected' : ''}>Tasks</option>` : ''}
         </select>
       </div>
@@ -122,7 +130,7 @@ function renderForm() {
       <label>Default calendar for new events</label>
       <select id="s-defcal">
         <option value="">First available</option>
-        ${state.calendars.map(c => `<option value="${esc(c.id)}" ${cfg.defaultCalendar === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
+        ${state.calendars.map((c) => `<option value="${esc(c.id)}" ${cfg.defaultCalendar === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
       </select>
     </div>
 
@@ -145,22 +153,22 @@ function renderForm() {
       <div class="modal-field">
         <label>Default event reminder</label>
         <select id="s-alarm-default">
-          <option value="0"  ${(cfg.alarmDefaultMinutes ?? 0) === 0    ? 'selected' : ''}>None</option>
-          <option value="5"  ${cfg.alarmDefaultMinutes === 5    ? 'selected' : ''}>5 min before</option>
-          <option value="10" ${cfg.alarmDefaultMinutes === 10   ? 'selected' : ''}>10 min before</option>
-          <option value="15" ${cfg.alarmDefaultMinutes === 15   ? 'selected' : ''}>15 min before</option>
-          <option value="30" ${cfg.alarmDefaultMinutes === 30   ? 'selected' : ''}>30 min before</option>
-          <option value="60" ${cfg.alarmDefaultMinutes === 60   ? 'selected' : ''}>1 hour before</option>
+          <option value="0"  ${(cfg.alarmDefaultMinutes ?? 0) === 0 ? 'selected' : ''}>None</option>
+          <option value="5"  ${cfg.alarmDefaultMinutes === 5 ? 'selected' : ''}>5 min before</option>
+          <option value="10" ${cfg.alarmDefaultMinutes === 10 ? 'selected' : ''}>10 min before</option>
+          <option value="15" ${cfg.alarmDefaultMinutes === 15 ? 'selected' : ''}>15 min before</option>
+          <option value="30" ${cfg.alarmDefaultMinutes === 30 ? 'selected' : ''}>30 min before</option>
+          <option value="60" ${cfg.alarmDefaultMinutes === 60 ? 'selected' : ''}>1 hour before</option>
         </select>
       </div>
       <div class="modal-field">
         <label>Default task reminder</label>
         <select id="s-task-reminder-default">
           <option value="none"           ${!cfg.taskReminderDefault || cfg.taskReminderDefault === 'none' ? 'selected' : ''}>None</option>
-          <option value="on-due"         ${cfg.taskReminderDefault === 'on-due'          ? 'selected' : ''}>Morning on due date</option>
-          <option value="evening-due"    ${cfg.taskReminderDefault === 'evening-due'     ? 'selected' : ''}>Evening on due date</option>
-          <option value="morning-before" ${cfg.taskReminderDefault === 'morning-before'  ? 'selected' : ''}>Morning day before</option>
-          <option value="evening-before" ${cfg.taskReminderDefault === 'evening-before'  ? 'selected' : ''}>Evening day before</option>
+          <option value="on-due"         ${cfg.taskReminderDefault === 'on-due' ? 'selected' : ''}>Morning on due date</option>
+          <option value="evening-due"    ${cfg.taskReminderDefault === 'evening-due' ? 'selected' : ''}>Evening on due date</option>
+          <option value="morning-before" ${cfg.taskReminderDefault === 'morning-before' ? 'selected' : ''}>Morning day before</option>
+          <option value="evening-before" ${cfg.taskReminderDefault === 'evening-before' ? 'selected' : ''}>Evening day before</option>
         </select>
       </div>
     </div>
@@ -239,9 +247,9 @@ function renderForm() {
       <div class="modal-field">
         <label>Default task sort</label>
         <select id="s-tasks-sort">
-          <option value="due"     ${cfg.taskSortOrder === 'due'     ? 'selected' : ''}>Due date</option>
+          <option value="due"     ${cfg.taskSortOrder === 'due' ? 'selected' : ''}>Due date</option>
           <option value="starred" ${cfg.taskSortOrder === 'starred' ? 'selected' : ''}>Starred first</option>
-          <option value="alpha"   ${cfg.taskSortOrder === 'alpha'   ? 'selected' : ''}>Alphabetical</option>
+          <option value="alpha"   ${cfg.taskSortOrder === 'alpha' ? 'selected' : ''}>Alphabetical</option>
           <option value="created" ${cfg.taskSortOrder === 'created' ? 'selected' : ''}>Creation date</option>
         </select>
       </div>
@@ -291,28 +299,52 @@ function renderForm() {
 
   // Running build id — lets you verify a deploy actually reached this device.
   fetch('/health')
-    .then(res => res.json())
-    .then(h => {
+    .then((res) => res.json())
+    .then((h) => {
       const about = sheet.querySelector('#s-about');
-      if (about) about.textContent = `Nodecal ${h.version || ''} · build ${h.build || 'unknown'}`.replace('  ', ' ');
+      if (about)
+        about.textContent = `Nodecal ${h.version || ''} · build ${h.build || 'unknown'}`.replace(
+          '  ',
+          ' ',
+        );
     })
-    .catch(() => { /* offline — leave the footer empty */ });
+    .catch(() => {
+      /* offline — leave the footer empty */
+    });
 
   // ── Time pickers (replace native <input type="time">) ──────────────────────
-  sheet.querySelector('#s-morning-pick-wrap').appendChild(
-    buildTimePicker('s-task-reminder-morning', timeStrToDate(cfg.taskReminderMorningTime || '09:00'), 'UTC')
-  );
-  sheet.querySelector('#s-evening-pick-wrap').appendChild(
-    buildTimePicker('s-task-reminder-evening', timeStrToDate(cfg.taskReminderEveningTime || '18:00'), 'UTC')
-  );
-  sheet.querySelector('#s-default-event-time-wrap').appendChild(
-    buildTimePicker('s-default-event-time', timeStrToDate(cfg.defaultEventTime || '09:00'), 'UTC')
-  );
+  sheet
+    .querySelector('#s-morning-pick-wrap')
+    .appendChild(
+      buildTimePicker(
+        's-task-reminder-morning',
+        timeStrToDate(cfg.taskReminderMorningTime || '09:00'),
+        'UTC',
+      ),
+    );
+  sheet
+    .querySelector('#s-evening-pick-wrap')
+    .appendChild(
+      buildTimePicker(
+        's-task-reminder-evening',
+        timeStrToDate(cfg.taskReminderEveningTime || '18:00'),
+        'UTC',
+      ),
+    );
+  sheet
+    .querySelector('#s-default-event-time-wrap')
+    .appendChild(
+      buildTimePicker(
+        's-default-event-time',
+        timeStrToDate(cfg.defaultEventTime || '09:00'),
+        'UTC',
+      ),
+    );
 
   // ── Notification permission + status + test ────────────────────────────────
-  const notifCheck  = sheet.querySelector('#s-notif-enable');
+  const notifCheck = sheet.querySelector('#s-notif-enable');
   const notifStatus = sheet.querySelector('#s-notif-status');
-  const notifTest   = sheet.querySelector('#s-notif-test');
+  const notifTest = sheet.querySelector('#s-notif-test');
 
   function updateNotifStatus() {
     if (!notifStatus) return;
@@ -320,11 +352,18 @@ function renderForm() {
       notifStatus.textContent = 'Not supported by this browser';
     } else {
       const perm = Notification.permission;
-      notifStatus.textContent = perm === 'granted' ? '✓ Permission granted'
-        : perm === 'denied' ? '✗ Permission denied — enable in browser settings'
-        : 'Permission not yet requested';
-      notifStatus.style.color = perm === 'granted' ? 'var(--color-accent)'
-        : perm === 'denied' ? 'var(--color-danger)' : 'var(--color-text-muted)';
+      notifStatus.textContent =
+        perm === 'granted'
+          ? '✓ Permission granted'
+          : perm === 'denied'
+            ? '✗ Permission denied — enable in browser settings'
+            : 'Permission not yet requested';
+      notifStatus.style.color =
+        perm === 'granted'
+          ? 'var(--color-accent)'
+          : perm === 'denied'
+            ? 'var(--color-danger)'
+            : 'var(--color-text-muted)';
     }
   }
   updateNotifStatus();
@@ -332,11 +371,21 @@ function renderForm() {
   if (notifCheck) {
     notifCheck.addEventListener('change', async () => {
       if (!notifCheck.checked) return;
-      if (!('Notification' in window)) { notifCheck.checked = false; alert('Notifications not supported by this browser'); return; }
-      if (Notification.permission === 'denied') { notifCheck.checked = false; alert('Permission denied — please enable in browser/OS settings.'); return; }
+      if (!('Notification' in window)) {
+        notifCheck.checked = false;
+        alert('Notifications not supported by this browser');
+        return;
+      }
+      if (Notification.permission === 'denied') {
+        notifCheck.checked = false;
+        alert('Permission denied — please enable in browser/OS settings.');
+        return;
+      }
       if (Notification.permission === 'default') {
         const r = await Notification.requestPermission();
-        if (r !== 'granted') { notifCheck.checked = false; }
+        if (r !== 'granted') {
+          notifCheck.checked = false;
+        }
       }
       updateNotifStatus();
     });
@@ -344,7 +393,10 @@ function renderForm() {
 
   if (notifTest) {
     notifTest.addEventListener('click', async () => {
-      if (!('Notification' in window)) { alert('Not supported'); return; }
+      if (!('Notification' in window)) {
+        alert('Not supported');
+        return;
+      }
       if (Notification.permission !== 'granted') {
         const r = await Notification.requestPermission();
         updateNotifStatus();
@@ -353,11 +405,19 @@ function renderForm() {
       if ('serviceWorker' in navigator) {
         try {
           const reg = await navigator.serviceWorker.ready;
-          await reg.showNotification('Nodecal test', { body: 'Notifications are working! ✓', icon: '/icons/icon.svg' });
+          await reg.showNotification('Nodecal test', {
+            body: 'Notifications are working! ✓',
+            icon: '/icons/icon.svg',
+          });
           return;
-        } catch { /* fall through */ }
+        } catch {
+          /* fall through */
+        }
       }
-      new Notification('Nodecal test', { body: 'Notifications are working! ✓', icon: '/icons/icon.svg' });
+      new Notification('Nodecal test', {
+        body: 'Notifications are working! ✓',
+        icon: '/icons/icon.svg',
+      });
     });
   }
 
@@ -371,16 +431,22 @@ function renderForm() {
   const detectBtn = sheet.querySelector('#s-weather-detect');
   if (detectBtn) {
     detectBtn.addEventListener('click', () => {
-      if (!navigator.geolocation) { alert('Geolocation not supported by your browser'); return; }
+      if (!navigator.geolocation) {
+        alert('Geolocation not supported by your browser');
+        return;
+      }
       detectBtn.textContent = '⏳ Detecting…';
-      navigator.geolocation.getCurrentPosition(pos => {
-        sheet.querySelector('#s-weather-lat').value = pos.coords.latitude.toFixed(4);
-        sheet.querySelector('#s-weather-lon').value = pos.coords.longitude.toFixed(4);
-        detectBtn.textContent = '✓ Location detected';
-      }, () => {
-        detectBtn.textContent = '📍 Detect my location';
-        alert('Location permission denied');
-      });
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          sheet.querySelector('#s-weather-lat').value = pos.coords.latitude.toFixed(4);
+          sheet.querySelector('#s-weather-lon').value = pos.coords.longitude.toFixed(4);
+          detectBtn.textContent = '✓ Location detected';
+        },
+        () => {
+          detectBtn.textContent = '📍 Detect my location';
+          alert('Location permission denied');
+        },
+      );
     });
   }
 
@@ -393,8 +459,12 @@ function renderForm() {
     try {
       const res = await fetch('/sync/clear', { method: 'POST' });
       const data = await res.json();
-      if (data.ok) { closeSettings(); onChangeCb(); }
-      else { alert('Clear failed: ' + data.error); }
+      if (data.ok) {
+        closeSettings();
+        onChangeCb();
+      } else {
+        alert('Clear failed: ' + data.error);
+      }
     } catch (err) {
       alert('Clear failed: ' + err.message);
     } finally {
@@ -414,47 +484,56 @@ async function handleLogout() {
 
 async function handleSave() {
   const sheet = overlay.querySelector('.modal-sheet');
-  const enabledViews    = Array.from(sheet.querySelectorAll('input[name="view"]:checked')).map(c => c.value);
+  const enabledViews = Array.from(sheet.querySelectorAll('input[name="view"]:checked')).map(
+    (c) => c.value,
+  );
   const enableTasksView = sheet.querySelector('#s-tasks-enable').checked;
 
-  if (!enabledViews.length) { alert('At least one view must be enabled.'); return; }
+  if (!enabledViews.length) {
+    alert('At least one view must be enabled.');
+    return;
+  }
   if (enabledViews.length + (enableTasksView ? 1 : 0) > 5) {
     alert('Maximum 5 navigation tabs allowed. Uncheck a view or disable the tasks tab.');
     return;
   }
 
-  const defaultView   = sheet.querySelector('#s-default').value;
-  const timeFormat    = sheet.querySelector('#s-timefmt').value;
-  const weekStart     = sheet.querySelector('#s-weekstart').value;
-  const defaultCalRaw        = sheet.querySelector('#s-defcal').value;
-  const showTasksOnDay    = sheet.querySelector('#s-tasks-day').checked;
-  const showTasksOnWeek   = sheet.querySelector('#s-tasks-week').checked;
-  const showTasksOnMonth  = sheet.querySelector('#s-tasks-month').checked;
+  const defaultView = sheet.querySelector('#s-default').value;
+  const timeFormat = sheet.querySelector('#s-timefmt').value;
+  const weekStart = sheet.querySelector('#s-weekstart').value;
+  const defaultCalRaw = sheet.querySelector('#s-defcal').value;
+  const showTasksOnDay = sheet.querySelector('#s-tasks-day').checked;
+  const showTasksOnWeek = sheet.querySelector('#s-tasks-week').checked;
+  const showTasksOnMonth = sheet.querySelector('#s-tasks-month').checked;
   const showTasksOnAgenda = sheet.querySelector('#s-tasks-agenda').checked;
-  const showTasksOnCalendar = showTasksOnDay || showTasksOnWeek || showTasksOnMonth || showTasksOnAgenda;
-  const taskSortOrder        = sheet.querySelector('#s-tasks-sort').value;
-  const defaultEventTime     = sheet.querySelector('#s-default-event-time').value || '09:00';
+  const showTasksOnCalendar =
+    showTasksOnDay || showTasksOnWeek || showTasksOnMonth || showTasksOnAgenda;
+  const taskSortOrder = sheet.querySelector('#s-tasks-sort').value;
+  const defaultEventTime = sheet.querySelector('#s-default-event-time').value || '09:00';
   const defaultEventDuration = parseInt(sheet.querySelector('#s-default-event-dur').value) || 60;
-  const showWeekNumbersDay   = sheet.querySelector('#s-weeknums-day').checked;
+  const showWeekNumbersDay = sheet.querySelector('#s-weeknums-day').checked;
   const showWeekNumbersMonth = sheet.querySelector('#s-weeknums-month').checked;
-  const showWeekNumbersAgenda= sheet.querySelector('#s-weeknums-agenda').checked;
-  const showWeekNumbers      = showWeekNumbersDay || showWeekNumbersMonth || showWeekNumbersAgenda;
-  const enableNotifications       = sheet.querySelector('#s-notif-enable').checked;
-  const alarmDefaultMinutes       = parseInt(sheet.querySelector('#s-alarm-default').value) || 0;
-  const taskReminderDefault       = sheet.querySelector('#s-task-reminder-default').value || 'none';
-  const taskReminderMorningTime   = sheet.querySelector('#s-task-reminder-morning').value || '09:00';
-  const taskReminderEveningTime   = sheet.querySelector('#s-task-reminder-evening').value || '18:00';
-  const agendaDays           = parseInt(sheet.querySelector('#s-agenda-days').value) || 90;
-  const syncIntervalMinutes  = parseInt(sheet.querySelector('#s-sync-interval').value) || 2;
-  const syncHistoryDays      = Math.max(30, parseInt(sheet.querySelector('#s-sync-history').value) || 730);
-  const syncFutureDays       = Math.max(0, parseInt(sheet.querySelector('#s-sync-future').value) || 0);
-  const dateFormat           = sheet.querySelector('#s-datefmt').value;
-  const weatherLat           = sheet.querySelector('#s-weather-lat').value.trim();
-  const weatherLon           = sheet.querySelector('#s-weather-lon').value.trim();
-  const weatherDaysWeek      = parseInt(sheet.querySelector('#s-weather-days-week').value) || 9;
-  const weatherDaysMonth     = parseInt(sheet.querySelector('#s-weather-days-month').value) || 4;
-  const weatherDaysAgenda    = parseInt(sheet.querySelector('#s-weather-days-agenda').value) || 1;
-  const showWeekendBg        = sheet.querySelector('#s-weekend-bg').checked;
+  const showWeekNumbersAgenda = sheet.querySelector('#s-weeknums-agenda').checked;
+  const showWeekNumbers = showWeekNumbersDay || showWeekNumbersMonth || showWeekNumbersAgenda;
+  const enableNotifications = sheet.querySelector('#s-notif-enable').checked;
+  const alarmDefaultMinutes = parseInt(sheet.querySelector('#s-alarm-default').value) || 0;
+  const taskReminderDefault = sheet.querySelector('#s-task-reminder-default').value || 'none';
+  const taskReminderMorningTime = sheet.querySelector('#s-task-reminder-morning').value || '09:00';
+  const taskReminderEveningTime = sheet.querySelector('#s-task-reminder-evening').value || '18:00';
+  const agendaDays = parseInt(sheet.querySelector('#s-agenda-days').value) || 90;
+  const syncIntervalMinutes = parseInt(sheet.querySelector('#s-sync-interval').value) || 2;
+  const syncHistoryDays = Math.max(
+    30,
+    parseInt(sheet.querySelector('#s-sync-history').value) || 730,
+  );
+  const syncFutureDays = Math.max(0, parseInt(sheet.querySelector('#s-sync-future').value) || 0);
+  const dateFormat = sheet.querySelector('#s-datefmt').value;
+  const weatherLat = sheet.querySelector('#s-weather-lat').value.trim();
+  const weatherLon = sheet.querySelector('#s-weather-lon').value.trim();
+  const weatherDaysWeek = parseInt(sheet.querySelector('#s-weather-days-week').value) || 9;
+  const weatherDaysMonth = parseInt(sheet.querySelector('#s-weather-days-month').value) || 4;
+  const weatherDaysAgenda = parseInt(sheet.querySelector('#s-weather-days-agenda').value) || 1;
+  const showWeekendBg = sheet.querySelector('#s-weekend-bg').checked;
 
   // A profile may point at any calendar; make sure each chosen calendar is a
   // registered task source so the server syncs it. Mutates state.taskSources,
@@ -462,21 +541,46 @@ async function handleSave() {
   registerProfileTaskSources();
 
   const payload = {
-    enabledViews, defaultView, timeFormat, weekStart,
-    enableTasksView, showTasksOnCalendar, taskSortOrder,
-    showTasksOnDay, showTasksOnWeek, showTasksOnMonth, showTasksOnAgenda,
-    hiddenCategories:      state.config.hiddenCategories || [],
+    enabledViews,
+    defaultView,
+    timeFormat,
+    weekStart,
+    enableTasksView,
+    showTasksOnCalendar,
+    taskSortOrder,
+    showTasksOnDay,
+    showTasksOnWeek,
+    showTasksOnMonth,
+    showTasksOnAgenda,
+    hiddenCategories: state.config.hiddenCategories || [],
     hiddenEventCategories: state.config.hiddenEventCategories || [],
     taskSources: state.taskSources || [],
     defaultTaskSource: state.config.defaultTaskSource || '',
-    icsFeeds: (state.config.icsFeeds || []).filter(f => f.id && (f.url || '').trim()),
+    icsFeeds: (state.config.icsFeeds || []).filter((f) => f.id && (f.url || '').trim()),
     profiles: state.config.profiles,
     activeProfile: state.config.activeProfile,
-    enableNotifications, alarmDefaultMinutes, taskReminderDefault, taskReminderMorningTime, taskReminderEveningTime,
-    agendaDays, syncIntervalMinutes, defaultEventTime, defaultEventDuration, showWeekNumbers,
-    showWeekNumbersDay, showWeekNumbersMonth, showWeekNumbersAgenda,
-    syncHistoryDays, syncFutureDays, dateFormat,
-    weatherLat, weatherLon, weatherDaysWeek, weatherDaysMonth, weatherDaysAgenda, showWeekendBg,
+    enableNotifications,
+    alarmDefaultMinutes,
+    taskReminderDefault,
+    taskReminderMorningTime,
+    taskReminderEveningTime,
+    agendaDays,
+    syncIntervalMinutes,
+    defaultEventTime,
+    defaultEventDuration,
+    showWeekNumbers,
+    showWeekNumbersDay,
+    showWeekNumbersMonth,
+    showWeekNumbersAgenda,
+    syncHistoryDays,
+    syncFutureDays,
+    dateFormat,
+    weatherLat,
+    weatherLon,
+    weatherDaysWeek,
+    weatherDaysMonth,
+    weatherDaysAgenda,
+    showWeekendBg,
   };
   if (defaultCalRaw) payload.defaultCalendar = defaultCalRaw;
 

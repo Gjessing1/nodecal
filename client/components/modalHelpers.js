@@ -25,7 +25,11 @@ export function buildDatePickerButton(inputEl, wrapEl, opts = {}) {
   function refresh() {
     if (inputEl.value) {
       const d = new Date(inputEl.value + 'T00:00:00');
-      btn.textContent = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      btn.textContent = d.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      });
     } else {
       btn.textContent = emptyLabel;
     }
@@ -34,10 +38,10 @@ export function buildDatePickerButton(inputEl, wrapEl, opts = {}) {
 
   btn.addEventListener('click', () => {
     const cur = inputEl.value ? new Date(inputEl.value + 'T00:00:00') : new Date();
-    showDatePicker(cur, selected => {
-      const y  = selected.getFullYear();
+    showDatePicker(cur, (selected) => {
+      const y = selected.getFullYear();
       const mo = String(selected.getMonth() + 1).padStart(2, '0');
-      const d  = String(selected.getDate()).padStart(2, '0');
+      const d = String(selected.getDate()).padStart(2, '0');
       inputEl.value = `${y}-${mo}-${d}`;
       refresh();
       inputEl.dispatchEvent(new Event('change'));
@@ -74,16 +78,20 @@ export function mountLocationUrlSection(wrap, opts) {
         row.className = 'collapsible-summary-row';
         const text = document.createElement('span');
         text.className = 'collapsible-summary-text';
-        text.textContent = [locVal && `📍 ${locVal}`, urlVal && `🔗 ${urlVal}`].filter(Boolean).join('  ');
+        text.textContent = [locVal && `📍 ${locVal}`, urlVal && `🔗 ${urlVal}`]
+          .filter(Boolean)
+          .join('  ');
         const expandBtn = document.createElement('button');
-        expandBtn.type = 'button'; expandBtn.className = 'add-field-btn';
+        expandBtn.type = 'button';
+        expandBtn.className = 'add-field-btn';
         expandBtn.textContent = 'Edit';
         expandBtn.addEventListener('click', () => mount(true));
         row.append(text, expandBtn);
         wrap.appendChild(row);
       } else {
         const btn = document.createElement('button');
-        btn.type = 'button'; btn.className = 'add-field-btn';
+        btn.type = 'button';
+        btn.className = 'add-field-btn';
         btn.textContent = '+ Location / URL';
         btn.addEventListener('click', () => mount(true));
         wrap.appendChild(btn);
@@ -91,7 +99,8 @@ export function mountLocationUrlSection(wrap, opts) {
     } else {
       // Clickable header — collapses back to summary on click
       const hdr = document.createElement('button');
-      hdr.type = 'button'; hdr.className = 'add-field-btn';
+      hdr.type = 'button';
+      hdr.className = 'add-field-btn';
       hdr.textContent = '− Location / URL';
       hdr.style.marginBottom = 'var(--space-xs)';
       hdr.addEventListener('click', () => {
@@ -118,7 +127,6 @@ export function mountLocationUrlSection(wrap, opts) {
         </div>`;
       wrap.appendChild(inputRow);
 
-      const locInput = wrap.querySelector(`#${locId}`);
       const urlInput = wrap.querySelector(`#${urlId}`);
 
       if (showUrlLink && urlInput) {
@@ -127,8 +135,10 @@ export function mountLocationUrlSection(wrap, opts) {
           if (urlInput.value.trim()) {
             const link = document.createElement('a');
             link.href = urlInput.value.trim();
-            link.target = '_blank'; link.rel = 'noopener noreferrer';
-            link.textContent = '↗ Open'; link.className = 'url-open-link btn btn-ghost';
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.textContent = '↗ Open';
+            link.className = 'url-open-link btn btn-ghost';
             urlInput.parentElement.appendChild(link);
           }
         }
@@ -161,7 +171,9 @@ export function mountCollapsibleToggle(toggleEl, bodyEl, { label, hasContent, on
   btn.type = 'button';
   btn.className = 'add-field-btn';
   btn.style.cssText = 'display:flex;align-items:center;gap:4px;';
-  function update() { btn.textContent = (expanded ? '− ' : '+ ') + cleanLabel; }
+  function update() {
+    btn.textContent = (expanded ? '− ' : '+ ') + cleanLabel;
+  }
   update();
   btn.addEventListener('click', () => {
     expanded = !expanded;
@@ -187,7 +199,15 @@ export function mountCollapsibleToggle(toggleEl, bodyEl, { label, hasContent, on
  * @param {{ onAdd?: function, onRemove?: function }} [callbacks]
  * @returns {{ getCategories: function(): string[] }}
  */
-export function wireCategoryUI(chipsEl, inputEl, addBtnEl, autoListEl, modalCats, existingCats, callbacks = {}) {
+export function wireCategoryUI(
+  chipsEl,
+  inputEl,
+  addBtnEl,
+  autoListEl,
+  modalCats,
+  existingCats,
+  callbacks = {},
+) {
   function renderChips() {
     chipsEl.innerHTML = '';
     for (const c of modalCats) {
@@ -197,7 +217,11 @@ export function wireCategoryUI(chipsEl, inputEl, addBtnEl, autoListEl, modalCats
       chip.dataset.cat = c;
       chip.addEventListener('click', () => {
         const idx = modalCats.indexOf(c);
-        if (idx !== -1) { modalCats.splice(idx, 1); renderChips(); callbacks.onRemove?.(); }
+        if (idx !== -1) {
+          modalCats.splice(idx, 1);
+          renderChips();
+          callbacks.onRemove?.();
+        }
       });
       chipsEl.appendChild(chip);
     }
@@ -206,19 +230,29 @@ export function wireCategoryUI(chipsEl, inputEl, addBtnEl, autoListEl, modalCats
 
   function addCategory(cat) {
     const c = cat.trim().toLowerCase();
-    if (c && !modalCats.includes(c)) { modalCats.push(c); renderChips(); callbacks.onAdd?.(); }
+    if (c && !modalCats.includes(c)) {
+      modalCats.push(c);
+      renderChips();
+      callbacks.onAdd?.();
+    }
   }
 
   function showAuto() {
     const q = inputEl.value.trim().toLowerCase();
-    const matches = existingCats.filter(c => !modalCats.includes(c) && c.startsWith(q));
-    if (!matches.length) { autoListEl.style.display = 'none'; return; }
+    const matches = existingCats.filter((c) => !modalCats.includes(c) && c.startsWith(q));
+    if (!matches.length) {
+      autoListEl.style.display = 'none';
+      return;
+    }
     autoListEl.innerHTML = '';
     for (const cat of matches.slice(0, 8)) {
       const li = document.createElement('li');
       li.textContent = cat;
-      li.addEventListener('mousedown', e => {
-        e.preventDefault(); addCategory(cat); inputEl.value = ''; autoListEl.style.display = 'none';
+      li.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        addCategory(cat);
+        inputEl.value = '';
+        autoListEl.style.display = 'none';
       });
       autoListEl.appendChild(li);
     }
@@ -226,12 +260,25 @@ export function wireCategoryUI(chipsEl, inputEl, addBtnEl, autoListEl, modalCats
   }
 
   inputEl.addEventListener('input', showAuto);
-  inputEl.addEventListener('blur', () => setTimeout(() => { autoListEl.style.display = 'none'; }, 150));
-  inputEl.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); addCategory(inputEl.value); inputEl.value = ''; autoListEl.style.display = 'none'; }
+  inputEl.addEventListener('blur', () =>
+    setTimeout(() => {
+      autoListEl.style.display = 'none';
+    }, 150),
+  );
+  inputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addCategory(inputEl.value);
+      inputEl.value = '';
+      autoListEl.style.display = 'none';
+    }
     if (e.key === 'Escape') autoListEl.style.display = 'none';
   });
-  addBtnEl?.addEventListener('click', () => { addCategory(inputEl.value); inputEl.value = ''; autoListEl.style.display = 'none'; });
+  addBtnEl?.addEventListener('click', () => {
+    addCategory(inputEl.value);
+    inputEl.value = '';
+    autoListEl.style.display = 'none';
+  });
 
   return {
     getCategories() {

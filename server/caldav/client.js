@@ -23,10 +23,12 @@ function getEffectiveTasksSources() {
   try {
     const s = JSON.parse(fs.readFileSync('/config/settings.json', 'utf8'));
     if (Array.isArray(s.taskSources) && s.taskSources.length) {
-      return s.taskSources.filter(src => src?.url);
+      return s.taskSources.filter((src) => src?.url);
     }
     if (s.tasksCalDAVUrl) return [{ url: s.tasksCalDAVUrl, name: 'Tasks' }];
-  } catch { /* no override file */ }
+  } catch {
+    /* no override file */
+  }
   if (config.caldav.tasksUrl) return [{ url: config.caldav.tasksUrl, name: 'Tasks' }];
   return [];
 }
@@ -39,10 +41,12 @@ function getDefaultTaskSourceUrl() {
   try {
     const s = JSON.parse(fs.readFileSync('/config/settings.json', 'utf8'));
     const sources = getEffectiveTasksSources();
-    if (s.defaultTaskSource && sources.find(src => src.url === s.defaultTaskSource)) {
+    if (s.defaultTaskSource && sources.find((src) => src.url === s.defaultTaskSource)) {
       return s.defaultTaskSource;
     }
-  } catch {}
+  } catch {
+    /* settings unreadable — fall through to the default tasks URL */
+  }
   return getEffectiveTasksUrl();
 }
 
@@ -53,7 +57,9 @@ function fullUrlFromBase(href, base) {
 }
 
 function getAuth() {
-  return 'Basic ' + Buffer.from(`${config.caldav.username}:${config.caldav.password}`).toString('base64');
+  return (
+    'Basic ' + Buffer.from(`${config.caldav.username}:${config.caldav.password}`).toString('base64')
+  );
 }
 
 function fullUrl(href) {
@@ -63,7 +69,9 @@ function fullUrl(href) {
 }
 
 function extractTag(xml, tag) {
-  const m = xml.match(new RegExp(`<(?:[^:>]+:)?${tag}[^>]*>([\\s\\S]*?)<\\/(?:[^:>]+:)?${tag}>`, 'i'));
+  const m = xml.match(
+    new RegExp(`<(?:[^:>]+:)?${tag}[^>]*>([\\s\\S]*?)<\\/(?:[^:>]+:)?${tag}>`, 'i'),
+  );
   return m ? m[1].trim() : null;
 }
 
@@ -76,10 +84,23 @@ function extractAllTags(xml, tag) {
 }
 
 function unescapeXml(str) {
-  return str.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"');
 }
 
-const PALETTE = ['#4a90d9','#7ed321','#d0021b','#f5a623','#50e3c2','#9b59b6','#e74c3c','#2ecc71'];
+const PALETTE = [
+  '#4a90d9',
+  '#7ed321',
+  '#d0021b',
+  '#f5a623',
+  '#50e3c2',
+  '#9b59b6',
+  '#e74c3c',
+  '#2ecc71',
+];
 function paletteColor(str) {
   let h = 0;
   for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) & 0xffffffff;
@@ -89,7 +110,11 @@ function paletteColor(str) {
 async function davRequest(method, url, extraHeaders = {}, body = null) {
   return fetch(url, {
     method,
-    headers: { 'Authorization': getAuth(), 'Content-Type': 'application/xml; charset=utf-8', ...extraHeaders },
+    headers: {
+      Authorization: getAuth(),
+      'Content-Type': 'application/xml; charset=utf-8',
+      ...extraHeaders,
+    },
     body,
   });
 }
@@ -104,7 +129,7 @@ async function listCalendars() {
   <d:prop><d:resourcetype /><d:displayname /><ical:calendar-color /><cs:getctag /></d:prop>
 </d:propfind>`;
 
-  const res = await davRequest('PROPFIND', config.caldav.baseUrl + '/', { 'Depth': '1' }, body);
+  const res = await davRequest('PROPFIND', config.caldav.baseUrl + '/', { Depth: '1' }, body);
   if (!res.ok && res.status !== 207) throw new Error(`PROPFIND failed: ${res.status}`);
   const xml = await res.text();
 
@@ -114,7 +139,8 @@ async function listCalendars() {
     if (!resourceType.includes('calendar')) continue;
     const href = extractTag(block, 'href');
     if (!href) continue;
-    const name = extractTag(block, 'displayname') || href.split('/').filter(Boolean).pop() || 'Calendar';
+    const name =
+      extractTag(block, 'displayname') || href.split('/').filter(Boolean).pop() || 'Calendar';
     const rawColor = extractTag(block, 'calendar-color');
     const color = rawColor ? rawColor.slice(0, 7) : paletteColor(href);
     const ctag = extractTag(block, 'getctag') || '';
@@ -131,7 +157,7 @@ async function listCalendars() {
  */
 async function listEventEtags(calendarHref, from, to) {
   const url = fullUrl(calendarHref);
-  const fmt = d => d.toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
+  const fmt = (d) => d.toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
   const body = `<?xml version="1.0" encoding="UTF-8"?>
 <cal:calendar-query xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav">
   <d:prop><d:getetag /></d:prop>
@@ -144,7 +170,7 @@ async function listEventEtags(calendarHref, from, to) {
   </cal:filter>
 </cal:calendar-query>`;
 
-  const res = await davRequest('REPORT', url, { 'Depth': '1' }, body);
+  const res = await davRequest('REPORT', url, { Depth: '1' }, body);
   if (res.status === 404) return [];
   if (!res.ok && res.status !== 207) throw new Error(`etag REPORT failed: ${res.status}`);
   const xml = await res.text();
@@ -165,14 +191,14 @@ async function listEventEtags(calendarHref, from, to) {
 async function fetchEventsByHref(calendarHref, hrefs) {
   if (!hrefs.length) return [];
   const url = fullUrl(calendarHref);
-  const hrefLines = hrefs.map(h => `  <d:href>${h}</d:href>`).join('\n');
+  const hrefLines = hrefs.map((h) => `  <d:href>${h}</d:href>`).join('\n');
   const body = `<?xml version="1.0" encoding="UTF-8"?>
 <cal:calendar-multiget xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav">
   <d:prop><d:getetag /><cal:calendar-data /></d:prop>
 ${hrefLines}
 </cal:calendar-multiget>`;
 
-  const res = await davRequest('REPORT', url, { 'Depth': '1' }, body);
+  const res = await davRequest('REPORT', url, { Depth: '1' }, body);
   if (!res.ok && res.status !== 207) throw new Error(`multiget REPORT failed: ${res.status}`);
   const xml = await res.text();
 
@@ -196,7 +222,7 @@ ${hrefLines}
 async function putEvent(calendarHref, uid, icsData, etag = null) {
   const base = fullUrl(calendarHref).replace(/\/?$/, '/');
   const url = base + uid + '.ics';
-  const headers = { 'Authorization': getAuth(), 'Content-Type': 'text/calendar; charset=utf-8' };
+  const headers = { Authorization: getAuth(), 'Content-Type': 'text/calendar; charset=utf-8' };
   if (etag) headers['If-Match'] = `"${etag}"`;
   else headers['If-None-Match'] = '*';
 
@@ -204,7 +230,9 @@ async function putEvent(calendarHref, uid, icsData, etag = null) {
 
   if (res.status === 412 && etag) {
     // Concurrent edit — last-write-wins: force-overwrite without etag guard
-    console.log(`Conflict on PUT ${uid}: local etag ${etag} rejected by server (412) — overwriting with last-write-wins`);
+    console.log(
+      `Conflict on PUT ${uid}: local etag ${etag} rejected by server (412) — overwriting with last-write-wins`,
+    );
     syncLog(`etag mismatch detected on PUT: uid=${uid} local-etag=${etag}`);
     delete headers['If-Match'];
     res = await fetch(url, { method: 'PUT', headers, body: icsData });
@@ -221,7 +249,7 @@ async function putEvent(calendarHref, uid, icsData, etag = null) {
  */
 async function putEventAtHref(href, icsData, etag = null) {
   const url = fullUrl(href);
-  const headers = { 'Authorization': getAuth(), 'Content-Type': 'text/calendar; charset=utf-8' };
+  const headers = { Authorization: getAuth(), 'Content-Type': 'text/calendar; charset=utf-8' };
   if (etag) headers['If-Match'] = `"${etag}"`;
   let res = await fetch(url, { method: 'PUT', headers, body: icsData });
   if (res.status === 412 && etag) {
@@ -241,7 +269,7 @@ async function putEventAtHref(href, icsData, etag = null) {
  */
 async function deleteEvent(eventHref, etag = null) {
   const url = fullUrl(eventHref);
-  const headers = { 'Authorization': getAuth() };
+  const headers = { Authorization: getAuth() };
   if (etag) headers['If-Match'] = `"${etag}"`;
   const res = await fetch(url, { method: 'DELETE', headers });
   if (!res.ok && res.status !== 404) throw new Error(`DELETE failed: ${res.status}`);
@@ -263,7 +291,7 @@ async function listTaskEtags(tasksUrl) {
   </cal:filter>
 </cal:calendar-query>`;
 
-  const res = await davRequest('REPORT', tasksUrl, { 'Depth': '1' }, body);
+  const res = await davRequest('REPORT', tasksUrl, { Depth: '1' }, body);
   if (res.status === 404) return [];
   if (!res.ok && res.status !== 207) throw new Error(`task etag REPORT failed: ${res.status}`);
   const xml = await res.text();
@@ -285,14 +313,14 @@ async function listTaskEtags(tasksUrl) {
  */
 async function fetchTasksByHref(tasksUrl, hrefs) {
   if (!hrefs.length) return [];
-  const hrefLines = hrefs.map(h => `  <d:href>${h}</d:href>`).join('\n');
+  const hrefLines = hrefs.map((h) => `  <d:href>${h}</d:href>`).join('\n');
   const body = `<?xml version="1.0" encoding="UTF-8"?>
 <cal:calendar-multiget xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav">
   <d:prop><d:getetag /><cal:calendar-data /></d:prop>
 ${hrefLines}
 </cal:calendar-multiget>`;
 
-  const res = await davRequest('REPORT', tasksUrl, { 'Depth': '1' }, body);
+  const res = await davRequest('REPORT', tasksUrl, { Depth: '1' }, body);
   if (!res.ok && res.status !== 207) throw new Error(`task multiget REPORT failed: ${res.status}`);
   const xml = await res.text();
 
@@ -319,14 +347,16 @@ ${hrefLines}
 async function putTask(tasksUrl, uid, icsData, etag = null) {
   const base = tasksUrl.replace(/\/?$/, '/');
   const url = base + uid + '.ics';
-  const headers = { 'Authorization': getAuth(), 'Content-Type': 'text/calendar; charset=utf-8' };
+  const headers = { Authorization: getAuth(), 'Content-Type': 'text/calendar; charset=utf-8' };
   if (etag) headers['If-Match'] = `"${etag}"`;
   else headers['If-None-Match'] = '*';
 
   let res = await fetch(url, { method: 'PUT', headers, body: icsData });
 
   if (res.status === 412 && etag) {
-    console.log(`Conflict on PUT task ${uid}: local etag ${etag} rejected (412) — overwriting with last-write-wins`);
+    console.log(
+      `Conflict on PUT task ${uid}: local etag ${etag} rejected (412) — overwriting with last-write-wins`,
+    );
     syncLog(`etag mismatch detected on PUT task: uid=${uid} local-etag=${etag}`);
     delete headers['If-Match'];
     res = await fetch(url, { method: 'PUT', headers, body: icsData });
@@ -343,14 +373,24 @@ async function putTask(tasksUrl, uid, icsData, etag = null) {
  * @param {string|null} etag
  */
 async function deleteTask(href, etag = null) {
-  const headers = { 'Authorization': getAuth() };
+  const headers = { Authorization: getAuth() };
   if (etag) headers['If-Match'] = `"${etag}"`;
   const res = await fetch(href, { method: 'DELETE', headers });
   if (!res.ok && res.status !== 404) throw new Error(`DELETE task failed: ${res.status}`);
 }
 
 module.exports = {
-  listCalendars, listEventEtags, fetchEventsByHref, putEvent, putEventAtHref, deleteEvent,
-  getEffectiveTasksUrl, getEffectiveTasksSources, getDefaultTaskSourceUrl,
-  listTaskEtags, fetchTasksByHref, putTask, deleteTask,
+  listCalendars,
+  listEventEtags,
+  fetchEventsByHref,
+  putEvent,
+  putEventAtHref,
+  deleteEvent,
+  getEffectiveTasksUrl,
+  getEffectiveTasksSources,
+  getDefaultTaskSourceUrl,
+  listTaskEtags,
+  fetchTasksByHref,
+  putTask,
+  deleteTask,
 };

@@ -1,15 +1,16 @@
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 // SVG viewBox is 200×200; all coordinates are in these units.
-const CX = 100, CY = 100;
-const R_FACE  = 88;   // clock face background circle
-const R_OUTER = 74;   // outer ring: hours 1-12 / all minutes
-const R_INNER = 50;   // inner ring: hours 0, 13-23
-const SEL_R   = 15;   // radius of the selection circle at the hand tip
+const CX = 100,
+  CY = 100;
+const R_FACE = 88; // clock face background circle
+const R_OUTER = 74; // outer ring: hours 1-12 / all minutes
+const R_INNER = 50; // inner ring: hours 0, 13-23
+const SEL_R = 15; // radius of the selection circle at the hand tip
 
 // idx 0 = 12-o'clock, increases clockwise, 12 steps per revolution
 function idxToAngle(idx) {
-  return idx * (2 * Math.PI / 12) - Math.PI / 2;
+  return idx * ((2 * Math.PI) / 12) - Math.PI / 2;
 }
 function polar(r, angle) {
   return [CX + r * Math.cos(angle), CY + r * Math.sin(angle)];
@@ -48,10 +49,13 @@ export function buildTimePicker(id, date, timezone, onChange) {
 
   // Parse initial time in the configured timezone
   const parts = new Intl.DateTimeFormat('en-US', {
-    hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: tz,
   }).formatToParts(date instanceof Date ? date : new Date());
-  let hour   = parseInt(parts.find(p => p.type === 'hour').value) % 24;
-  let minute = Math.round(parseInt(parts.find(p => p.type === 'minute').value) / 5) * 5 % 60;
+  let hour = parseInt(parts.find((p) => p.type === 'hour').value) % 24;
+  let minute = (Math.round(parseInt(parts.find((p) => p.type === 'minute').value) / 5) * 5) % 60;
 
   const wrap = document.createElement('div');
   wrap.className = 'tp-wrap';
@@ -79,19 +83,21 @@ export function buildTimePicker(id, date, timezone, onChange) {
   function openPicker() {
     document.getElementById('time-picker-overlay')?.remove();
 
-    let pickHour   = hour;
+    let pickHour = hour;
     let pickMinute = minute;
-    let mode       = 'hour';
+    let mode = 'hour';
 
     // ── Overlay ───────────────────────────────────────────────────────────────
     const overlay = document.createElement('div');
     overlay.id = 'time-picker-overlay';
     overlay.className = 'mini-cal-overlay';
-    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.remove();
+    });
 
     const panel = document.createElement('div');
     panel.className = 'mini-cal-panel tp-panel';
-    panel.addEventListener('click', e => e.stopPropagation());
+    panel.addEventListener('click', (e) => e.stopPropagation());
 
     // Close button
     const closeRow = document.createElement('div');
@@ -125,7 +131,7 @@ export function buildTimePicker(id, date, timezone, onChange) {
 
     function updateSegs() {
       hourSeg.textContent = String(pickHour).padStart(2, '0');
-      minSeg.textContent  = String(pickMinute).padStart(2, '0');
+      minSeg.textContent = String(pickMinute).padStart(2, '0');
       hourSeg.classList.toggle('active', mode === 'hour');
       minSeg.classList.toggle('active', mode === 'minute');
     }
@@ -140,8 +146,13 @@ export function buildTimePicker(id, date, timezone, onChange) {
     const svg = svgEl('svg', { viewBox: '0 0 200 200', class: 'tp-dial' });
     svg.appendChild(svgEl('circle', { cx: CX, cy: CY, r: R_FACE, class: 'dial-face' }));
 
-    const handLine  = svgEl('line',   { x1: CX, y1: CY, class: 'dial-hand-line', 'stroke-linecap': 'round' });
-    const handDot   = svgEl('circle', { r: SEL_R, class: 'dial-hand-dot' });
+    const handLine = svgEl('line', {
+      x1: CX,
+      y1: CY,
+      class: 'dial-hand-line',
+      'stroke-linecap': 'round',
+    });
+    const handDot = svgEl('circle', { r: SEL_R, class: 'dial-hand-dot' });
     const centerDot = svgEl('circle', { cx: CX, cy: CY, r: 4, class: 'dial-center-dot' });
     svg.append(handLine, handDot, centerDot);
 
@@ -159,7 +170,10 @@ export function buildTimePicker(id, date, timezone, onChange) {
           const h = i === 0 ? 12 : i;
           const [x, y] = polar(R_OUTER, idxToAngle(i));
           const t = svgEl('text', {
-            x, y, 'text-anchor': 'middle', 'dominant-baseline': 'central',
+            x,
+            y,
+            'text-anchor': 'middle',
+            'dominant-baseline': 'central',
             class: 'dial-num' + (selOut && selIdx === i ? ' sel' : ''),
           });
           t.textContent = String(h);
@@ -171,7 +185,10 @@ export function buildTimePicker(id, date, timezone, onChange) {
           const h = i === 0 ? 0 : i + 12;
           const [x, y] = polar(R_INNER, idxToAngle(i));
           const t = svgEl('text', {
-            x, y, 'text-anchor': 'middle', 'dominant-baseline': 'central',
+            x,
+            y,
+            'text-anchor': 'middle',
+            'dominant-baseline': 'central',
             class: 'dial-num dial-num-in' + (!selOut && selIdx === i ? ' sel' : ''),
           });
           t.textContent = String(h);
@@ -180,16 +197,20 @@ export function buildTimePicker(id, date, timezone, onChange) {
 
         const { outer, idx } = hourToPos(pickHour);
         const [hx, hy] = polar(outer ? R_OUTER : R_INNER, idxToAngle(idx));
-        handLine.setAttribute('x2', hx); handLine.setAttribute('y2', hy);
-        handDot.setAttribute('cx', hx);  handDot.setAttribute('cy', hy);
-
+        handLine.setAttribute('x2', hx);
+        handLine.setAttribute('y2', hy);
+        handDot.setAttribute('cx', hx);
+        handDot.setAttribute('cy', hy);
       } else {
         // Minute mode: 0, 5, 10 … 55
         for (let i = 0; i < 12; i++) {
           const m = i * 5;
           const [x, y] = polar(R_OUTER, idxToAngle(i));
           const t = svgEl('text', {
-            x, y, 'text-anchor': 'middle', 'dominant-baseline': 'central',
+            x,
+            y,
+            'text-anchor': 'middle',
+            'dominant-baseline': 'central',
             class: 'dial-num' + (pickMinute === m ? ' sel' : ''),
           });
           t.textContent = m === 0 ? '00' : String(m);
@@ -197,8 +218,10 @@ export function buildTimePicker(id, date, timezone, onChange) {
         }
 
         const [hx, hy] = polar(R_OUTER, idxToAngle(pickMinute / 5));
-        handLine.setAttribute('x2', hx); handLine.setAttribute('y2', hy);
-        handDot.setAttribute('cx', hx);  handDot.setAttribute('cy', hy);
+        handLine.setAttribute('x2', hx);
+        handLine.setAttribute('y2', hy);
+        handDot.setAttribute('cx', hx);
+        handDot.setAttribute('cy', hy);
       }
     }
 
@@ -209,7 +232,7 @@ export function buildTimePicker(id, date, timezone, onChange) {
       const px = e.touches ? e.touches[0].clientX : e.clientX;
       const py = e.touches ? e.touches[0].clientY : e.clientY;
       const dx = (px - rect.left) / scale - CX;
-      const dy = (py - rect.top)  / scale - CY;
+      const dy = (py - rect.top) / scale - CY;
       return { angle: Math.atan2(dy, dx), dist: Math.sqrt(dx * dx + dy * dy) };
     }
 
@@ -219,7 +242,7 @@ export function buildTimePicker(id, date, timezone, onChange) {
       let a = angle + Math.PI / 2;
       if (a < 0) a += 2 * Math.PI;
       if (a >= 2 * Math.PI) a -= 2 * Math.PI;
-      const idx = Math.round(a * 12 / (2 * Math.PI)) % 12;
+      const idx = Math.round((a * 12) / (2 * Math.PI)) % 12;
 
       if (mode === 'hour') {
         pickHour = posToHour(dist > (R_OUTER + R_INNER) / 2, idx);
@@ -231,24 +254,26 @@ export function buildTimePicker(id, date, timezone, onChange) {
     }
 
     let _drag = false;
-    svg.addEventListener('pointerdown', e => {
+    svg.addEventListener('pointerdown', (e) => {
       _drag = true;
       svg.setPointerCapture(e.pointerId);
       applyPointer(readPointer(e));
     });
-    svg.addEventListener('pointermove', e => { if (_drag) applyPointer(readPointer(e)); });
+    svg.addEventListener('pointermove', (e) => {
+      if (_drag) applyPointer(readPointer(e));
+    });
     svg.addEventListener('pointerup', () => {
       if (!_drag) return;
       _drag = false;
       if (mode === 'hour') {
-        setMode('minute');   // auto-advance after hour selection
+        setMode('minute'); // auto-advance after hour selection
       } else {
-        commit();            // auto-close after minute selection
+        commit(); // auto-close after minute selection
       }
     });
 
     function commit() {
-      hour   = pickHour;
+      hour = pickHour;
       minute = pickMinute;
       syncValue();
       if (onChange) onChange(hidden.value);
@@ -270,7 +295,7 @@ export function buildTimePicker(id, date, timezone, onChange) {
   wrap.updateTime = (val) => {
     const [h, m] = val.split(':').map(Number);
     if (!isNaN(h)) hour = ((h % 24) + 24) % 24;
-    if (!isNaN(m)) minute = Math.round(m / 5) * 5 % 60;
+    if (!isNaN(m)) minute = (Math.round(m / 5) * 5) % 60;
     syncValue();
     updateBtn();
   };

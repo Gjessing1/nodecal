@@ -9,65 +9,81 @@ function chronoToUtc(result, timezone) {
   // If chrono captured an explicit timezone in the text, trust its Date
   if (result.start.get('timezone') !== null) return result.start.date();
   const s = result.start;
-  const year  = s.get('year');
+  const year = s.get('year');
   const month = String(s.get('month')).padStart(2, '0');
-  const day   = String(s.get('day')).padStart(2, '0');
-  const hour  = String(s.get('hour')).padStart(2, '0');
-  const min   = String(s.get('minute')).padStart(2, '0');
+  const day = String(s.get('day')).padStart(2, '0');
+  const hour = String(s.get('hour')).padStart(2, '0');
+  const min = String(s.get('minute')).padStart(2, '0');
   // Treat the time as floating local in `timezone`, convert to UTC
   const naive = new Date(`${year}-${month}-${day}T${hour}:${min}:00Z`);
   const parts = {};
   for (const p of new Intl.DateTimeFormat('en-US', {
     timeZone: timezone,
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
-  }).formatToParts(naive)) parts[p.type] = p.value;
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(naive))
+    parts[p.type] = p.value;
   const h = parts.hour === '24' ? '00' : parts.hour;
-  const shownAsUtc = new Date(`${parts.year}-${parts.month}-${parts.day}T${h}:${parts.minute}:${parts.second}Z`);
+  const shownAsUtc = new Date(
+    `${parts.year}-${parts.month}-${parts.day}T${h}:${parts.minute}:${parts.second}Z`,
+  );
   return new Date(naive.getTime() + (naive.getTime() - shownAsUtc.getTime()));
 }
 
-function chronoEndToUtc(result, timezone, startUtc, hasTime) {
+function chronoEndToUtc(result, timezone, _startUtc, _hasTime) {
   if (!result.end) return null;
   if (result.end.get('timezone') !== null) return result.end.date();
   const s = result.end;
-  const year  = s.get('year');
+  const year = s.get('year');
   const month = String(s.get('month')).padStart(2, '0');
-  const day   = String(s.get('day')).padStart(2, '0');
-  const hour  = String(s.get('hour')).padStart(2, '0');
-  const min   = String(s.get('minute')).padStart(2, '0');
+  const day = String(s.get('day')).padStart(2, '0');
+  const hour = String(s.get('hour')).padStart(2, '0');
+  const min = String(s.get('minute')).padStart(2, '0');
   const naive = new Date(`${year}-${month}-${day}T${hour}:${min}:00Z`);
   const parts = {};
   for (const p of new Intl.DateTimeFormat('en-US', {
     timeZone: timezone,
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
-  }).formatToParts(naive)) parts[p.type] = p.value;
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(naive))
+    parts[p.type] = p.value;
   const h = parts.hour === '24' ? '00' : parts.hour;
-  const shownAsUtc = new Date(`${parts.year}-${parts.month}-${parts.day}T${h}:${parts.minute}:${parts.second}Z`);
+  const shownAsUtc = new Date(
+    `${parts.year}-${parts.month}-${parts.day}T${h}:${parts.minute}:${parts.second}Z`,
+  );
   return new Date(naive.getTime() + (naive.getTime() - shownAsUtc.getTime()));
 }
 
 const RECURRENCE = [
-  [/every\s+day\b|daily\b/i,     'FREQ=DAILY'],
-  [/every\s+week\b|weekly\b/i,   'FREQ=WEEKLY'],
+  [/every\s+day\b|daily\b/i, 'FREQ=DAILY'],
+  [/every\s+week\b|weekly\b/i, 'FREQ=WEEKLY'],
   [/every\s+month\b|monthly\b/i, 'FREQ=MONTHLY'],
   [/every\s+year\b|yearly\b|annually\b/i, 'FREQ=YEARLY'],
-  [/every\s+monday/i,    'FREQ=WEEKLY;BYDAY=MO'],
-  [/every\s+tuesday/i,   'FREQ=WEEKLY;BYDAY=TU'],
+  [/every\s+monday/i, 'FREQ=WEEKLY;BYDAY=MO'],
+  [/every\s+tuesday/i, 'FREQ=WEEKLY;BYDAY=TU'],
   [/every\s+wednesday/i, 'FREQ=WEEKLY;BYDAY=WE'],
-  [/every\s+thursday/i,  'FREQ=WEEKLY;BYDAY=TH'],
-  [/every\s+friday/i,    'FREQ=WEEKLY;BYDAY=FR'],
-  [/every\s+saturday/i,  'FREQ=WEEKLY;BYDAY=SA'],
-  [/every\s+sunday/i,    'FREQ=WEEKLY;BYDAY=SU'],
+  [/every\s+thursday/i, 'FREQ=WEEKLY;BYDAY=TH'],
+  [/every\s+friday/i, 'FREQ=WEEKLY;BYDAY=FR'],
+  [/every\s+saturday/i, 'FREQ=WEEKLY;BYDAY=SA'],
+  [/every\s+sunday/i, 'FREQ=WEEKLY;BYDAY=SU'],
   // Norwegian days
-  [/hver\s+mandag/i,   'FREQ=WEEKLY;BYDAY=MO'],
-  [/hver\s+tirsdag/i,  'FREQ=WEEKLY;BYDAY=TU'],
-  [/hver\s+onsdag/i,   'FREQ=WEEKLY;BYDAY=WE'],
-  [/hver\s+torsdag/i,  'FREQ=WEEKLY;BYDAY=TH'],
-  [/hver\s+fredag/i,   'FREQ=WEEKLY;BYDAY=FR'],
-  [/hver\s+l[øo]rdag/i,'FREQ=WEEKLY;BYDAY=SA'],
-  [/hver\s+s[øo]ndag/i,'FREQ=WEEKLY;BYDAY=SU'],
+  [/hver\s+mandag/i, 'FREQ=WEEKLY;BYDAY=MO'],
+  [/hver\s+tirsdag/i, 'FREQ=WEEKLY;BYDAY=TU'],
+  [/hver\s+onsdag/i, 'FREQ=WEEKLY;BYDAY=WE'],
+  [/hver\s+torsdag/i, 'FREQ=WEEKLY;BYDAY=TH'],
+  [/hver\s+fredag/i, 'FREQ=WEEKLY;BYDAY=FR'],
+  [/hver\s+l[øo]rdag/i, 'FREQ=WEEKLY;BYDAY=SA'],
+  [/hver\s+s[øo]ndag/i, 'FREQ=WEEKLY;BYDAY=SU'],
   [/hver\s+dag\b|daglig\b/i, 'FREQ=DAILY'],
   [/hver\s+uke\b|ukentlig\b/i, 'FREQ=WEEKLY'],
   [/hver\s+m[åa]ned\b|m[åa]nedlig\b/i, 'FREQ=MONTHLY'],
@@ -78,7 +94,7 @@ const RECURRENCE = [
 function normalizeOrdinalDate(text) {
   return text.replace(
     /\b(\d{1,2})\.\s+(january|february|march|april|may|june|july|august|september|october|november|december)\b/gi,
-    '$1 $2'
+    '$1 $2',
   );
 }
 
@@ -88,8 +104,9 @@ function normalizeOrdinalDate(text) {
 // "14:00 june" → "june at 14:00"
 // "12:30 next wednesday" → "next wednesday at 12:30"
 // "14:00 10 june" → "10 june at 14:00"
-const _MONTH_WORDS = 'january|february|march|april|may|june|july|august|september|october|november|december';
-const _DAY_WORDS   = 'monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today';
+const _MONTH_WORDS =
+  'january|february|march|april|may|june|july|august|september|october|november|december';
+const _DAY_WORDS = 'monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today';
 const _DATE_WORD_RE = new RegExp(`\\b(${_MONTH_WORDS}|${_DAY_WORDS}|next|last)\\b`, 'i');
 function normalizeTimeBeforeDate(text) {
   // If a date/day word already appears before the first time token, chrono will
@@ -100,12 +117,15 @@ function normalizeTimeBeforeDate(text) {
   // Case 1: "HH:MM day-number month" → "day-number month at HH:MM"
   let t = text.replace(
     new RegExp(`\\b(\\d{1,2}:\\d{2})\\s+(\\d{1,2})\\s+(${_MONTH_WORDS})\\b`, 'gi'),
-    (_, time, day, month) => `${day} ${month} at ${time}`
+    (_, time, day, month) => `${day} ${month} at ${time}`,
   );
   // Case 2: "HH:MM [next|last] date-word" → "[next|last] date-word at HH:MM"
   t = t.replace(
-    new RegExp(`\\b(\\d{1,2}:\\d{2})\\s+((?:next|last)\\s+)?(${_MONTH_WORDS}|${_DAY_WORDS})\\b`, 'gi'),
-    (_, time, mod, dateWord) => `${mod || ''}${dateWord} at ${time}`
+    new RegExp(
+      `\\b(\\d{1,2}:\\d{2})\\s+((?:next|last)\\s+)?(${_MONTH_WORDS}|${_DAY_WORDS})\\b`,
+      'gi',
+    ),
+    (_, time, mod, dateWord) => `${mod || ''}${dateWord} at ${time}`,
   );
   return t;
 }
@@ -114,20 +134,27 @@ function normalizeTimeBeforeDate(text) {
 // Also "kl. 14" / "klokken 14" → "14:00"
 function normalizeTimeRanges(text) {
   // "18-21", "18:00-21", "18-21:00", "9-11" → "18:00-21:00" (hours 0-23 only)
-  let t = text.replace(/\b([01]?\d|2[0-3])(?::(\d{2}))?\s*[-–]\s*([01]?\d|2[0-3])(?::(\d{2}))?\b/g,
+  let t = text.replace(
+    /\b([01]?\d|2[0-3])(?::(\d{2}))?\s*[-–]\s*([01]?\d|2[0-3])(?::(\d{2}))?\b/g,
     (_, h1, m1, h2, m2) => {
-      const start = `${h1.padStart(2,'0')}:${m1 || '00'}`;
-      const end   = `${h2.padStart(2,'0')}:${m2 || '00'}`;
+      const start = `${h1.padStart(2, '0')}:${m1 || '00'}`;
+      const end = `${h2.padStart(2, '0')}:${m2 || '00'}`;
       // Only expand if it looks like a time range (not e.g. "2-3 people")
-      const h1n = parseInt(h1), h2n = parseInt(h2);
+      const h1n = parseInt(h1),
+        h2n = parseInt(h2);
       if (h1n > 23 || h2n > 23 || h2n <= h1n) return _;
       return `${start}-${end}`;
-    });
+    },
+  );
   // "kl. 14" / "kl 14" / "klokken 14" → "at 14:00"
-  t = t.replace(/kl\.?\s+([01]?\d|2[0-3])(?::(\d{2}))?/gi,
-    (_, h, m) => `at ${h.padStart(2,'0')}:${m || '00'}`);
-  t = t.replace(/klokken\s+([01]?\d|2[0-3])(?::(\d{2}))?/gi,
-    (_, h, m) => `at ${h.padStart(2,'0')}:${m || '00'}`);
+  t = t.replace(
+    /kl\.?\s+([01]?\d|2[0-3])(?::(\d{2}))?/gi,
+    (_, h, m) => `at ${h.padStart(2, '0')}:${m || '00'}`,
+  );
+  t = t.replace(
+    /klokken\s+([01]?\d|2[0-3])(?::(\d{2}))?/gi,
+    (_, h, m) => `at ${h.padStart(2, '0')}:${m || '00'}`,
+  );
   return t;
 }
 
@@ -174,12 +201,6 @@ const NO_TO_EN_EVENT = [
   [/\bnov(?:ember)?\b/gi, 'november'],
   [/\bdes(?:ember)?\b/gi, 'december'],
 ];
-
-function normalizeNorwegian(text) {
-  let t = text;
-  for (const [re, en] of NO_TO_EN_EVENT) t = t.replace(re, en);
-  return t;
-}
 
 /**
  * Normalize text and build a map from each normalized character index back
@@ -247,7 +268,10 @@ function parse(text, refDate = new Date(), timezone = 'UTC') {
   // and won't be found after translation (e.g. "hver uke" → "every week").
   let textForParsing = trimmed;
   if (rruleResult?.matchText) {
-    textForParsing = trimmed.replace(new RegExp(escapeRegex(rruleResult.matchText), 'i'), '').replace(/\s{2,}/g, ' ').trim();
+    textForParsing = trimmed
+      .replace(new RegExp(escapeRegex(rruleResult.matchText), 'i'), '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
   }
 
   // Build position map while normalizing, so we can map chrono's result back to original text
@@ -270,8 +294,8 @@ function parse(text, refDate = new Date(), timezone = 'UTC') {
   const end = endRaw ?? new Date(start.getTime() + (hasTime ? 3600000 : 86400000));
 
   const before = normalized.slice(0, result.index).trim();
-  const after  = normalized.slice(result.index + result.text.length).trim();
-  const title  = [before, after].filter(Boolean).join(' ').trim() || normalized.trim() || trimmed;
+  const after = normalized.slice(result.index + result.text.length).trim();
+  const title = [before, after].filter(Boolean).join(' ').trim() || normalized.trim() || trimmed;
 
   // Map chrono's match position back to the original (possibly Norwegian) input.
   // normalizeTimeRanges runs after buildNormMap and can lengthen the text (e.g. "18-21" →
@@ -312,11 +336,6 @@ function detectRrule(text) {
     if (m) return { rule, matchText: m[0] };
   }
   return null;
-}
-
-function stripRruleFromTitle(title, rruleResult) {
-  if (!rruleResult?.matchText) return title;
-  return title.replace(new RegExp(escapeRegex(rruleResult.matchText), 'i'), '').replace(/\s{2,}/g, ' ').trim();
 }
 
 function escapeRegex(s) {

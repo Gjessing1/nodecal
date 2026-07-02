@@ -23,9 +23,11 @@ function authActive() {
 function reloadTokensFromDisk() {
   try {
     const data = JSON.parse(fs.readFileSync(SESSION_FILE, 'utf8'));
-    const tokens = Array.isArray(data.tokens) ? data.tokens : (data.token ? [data.token] : []);
+    const tokens = Array.isArray(data.tokens) ? data.tokens : data.token ? [data.token] : [];
     activeTokens = new Set(tokens);
-  } catch { /* no saved session */ }
+  } catch {
+    /* no saved session */
+  }
 }
 
 if (authActive()) reloadTokensFromDisk();
@@ -46,7 +48,9 @@ function saveTokens() {
   try {
     fs.mkdirSync('/config', { recursive: true });
     fs.writeFileSync(SESSION_FILE, JSON.stringify({ tokens: [...activeTokens] }), 'utf8');
-  } catch { /* ignore — sessions just won't survive restarts */ }
+  } catch {
+    /* ignore — sessions just won't survive restarts */
+  }
 }
 
 function parseCookies(cookieHeader) {
@@ -59,13 +63,14 @@ function parseCookies(cookieHeader) {
 }
 
 function setCookie(res, token) {
-  res.setHeader('Set-Cookie',
-    `${COOKIE_NAME}=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${MAX_AGE_SECS}`);
+  res.setHeader(
+    'Set-Cookie',
+    `${COOKIE_NAME}=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${MAX_AGE_SECS}`,
+  );
 }
 
 function clearCookie(res) {
-  res.setHeader('Set-Cookie',
-    `${COOKIE_NAME}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`);
+  res.setHeader('Set-Cookie', `${COOKIE_NAME}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`);
 }
 
 function isAuthenticated(req) {
@@ -87,7 +92,13 @@ function authMiddleware(req, res, next) {
 }
 
 module.exports = {
-  authMiddleware, isAuthenticated,
-  addActiveToken, removeActiveToken, generateToken, saveTokens,
-  setCookie, clearCookie, parseCookies,
+  authMiddleware,
+  isAuthenticated,
+  addActiveToken,
+  removeActiveToken,
+  generateToken,
+  saveTokens,
+  setCookie,
+  clearCookie,
+  parseCookies,
 };

@@ -1,5 +1,10 @@
 const { Router } = require('express');
-const { putTask, deleteTask, getEffectiveTasksUrl, getDefaultTaskSourceUrl, getEffectiveTasksSources } = require('../caldav/client');
+const {
+  putTask,
+  deleteTask,
+  getEffectiveTasksUrl,
+  getEffectiveTasksSources,
+} = require('../caldav/client');
 const { serializeTask } = require('../caldav/parser');
 const { computeNextDue } = require('../caldav/recurrence');
 const store = require('../cache/store');
@@ -24,10 +29,20 @@ router.post('/tasks', async (req, res) => {
   const sources = getEffectiveTasksSources();
   if (!sources.length) return res.status(503).json({ error: 'Tasks CalDAV URL not configured' });
 
-  const { title, due, description, categories, rrule, xRecurringType, xRecurringInterval, taskReminder, source } = req.body;
+  const {
+    title,
+    due,
+    description,
+    categories,
+    rrule,
+    xRecurringType,
+    xRecurringInterval,
+    taskReminder,
+    source,
+  } = req.body;
   if (!title) return res.status(400).json({ error: 'title required' });
 
-  const targetSrc = sources.find(s => s.url === source) || sources[0];
+  const targetSrc = sources.find((s) => s.url === source) || sources[0];
 
   try {
     const uid = crypto.randomUUID();
@@ -70,7 +85,18 @@ router.put('/tasks/:id', async (req, res) => {
     const existing = store.getTask(req.params.id);
     if (!existing) return res.status(404).json({ error: 'Task not found' });
 
-    const allowed = ['title', 'due', 'description', 'categories', 'rrule', 'xRecurringType', 'xRecurringInterval', 'status', 'completed', 'taskReminder'];
+    const allowed = [
+      'title',
+      'due',
+      'description',
+      'categories',
+      'rrule',
+      'xRecurringType',
+      'xRecurringInterval',
+      'status',
+      'completed',
+      'taskReminder',
+    ];
     const changes = {};
     for (const k of allowed) {
       if (k in req.body) changes[k] = req.body[k];
@@ -78,7 +104,12 @@ router.put('/tasks/:id', async (req, res) => {
 
     const updated = { ...existing, ...changes };
     const ics = serializeTask(updated);
-    const { href, etag } = await putTask(existing.source || tasksUrl, existing.uid, ics, existing.etag);
+    const { href, etag } = await putTask(
+      existing.source || tasksUrl,
+      existing.uid,
+      ics,
+      existing.etag,
+    );
     const now = new Date().toISOString();
     const stored = { ...updated, href, etag, localModifiedAt: now, lastSyncedAt: now };
     store.setTask(stored);
@@ -164,7 +195,7 @@ function toApiShape(task) {
     important: (task.categories || []).includes('important'),
     categories: task.categories || [],
     recurring: !!(task.rrule || task.xRecurringType),
-    recurringType: task.xRecurringType ? 'after-completion' : (task.rrule ? 'rrule' : null),
+    recurringType: task.xRecurringType ? 'after-completion' : task.rrule ? 'rrule' : null,
     recurringInterval: task.xRecurringInterval || null,
     rrule: task.rrule || null,
     createdAt: task.createdAt || null,

@@ -4,21 +4,24 @@ const assert = require('node:assert/strict');
 // Pure functions mirrored from client/app/taskUtils.js
 function parseTagsFromTitle(raw) {
   const tags = [];
-  const cleaned = raw.replace(/#(\S+)/g, (_, tag) => {
-    tags.push(tag.toLowerCase());
-    return '';
-  }).replace(/\s+/g, ' ').trim();
+  const cleaned = raw
+    .replace(/#(\S+)/g, (_, tag) => {
+      tags.push(tag.toLowerCase());
+      return '';
+    })
+    .replace(/\s+/g, ' ')
+    .trim();
   return { title: cleaned, tags };
 }
 
 function visibleCategories(cats, hiddenCategories = []) {
-  return (cats || []).filter(c => c !== 'important' && !hiddenCategories.includes(c));
+  return (cats || []).filter((c) => c !== 'important' && !hiddenCategories.includes(c));
 }
 
 function getAllCategories(tasks) {
   const cats = new Set();
   for (const t of tasks) {
-    for (const c of (t.categories || [])) {
+    for (const c of t.categories || []) {
       if (c !== 'important') cats.add(c);
     }
   }
@@ -34,7 +37,7 @@ function groupTasksByCategory(tasks, hiddenCategories = []) {
     groups.get(key).push(task);
   }
   const sorted = new Map();
-  for (const k of [...groups.keys()].filter(k => k).sort()) sorted.set(k, groups.get(k));
+  for (const k of [...groups.keys()].filter((k) => k).sort()) sorted.set(k, groups.get(k));
   if (groups.has('')) sorted.set('', groups.get(''));
   return sorted;
 }
@@ -140,15 +143,15 @@ describe('groupTasksByCategory', () => {
   it('places tasks with no visible category under empty key', () => {
     const groups = groupTasksByCategory(tasks, []);
     const nocat = groups.get('');
-    assert.ok(nocat.some(t => t.id === 4));
-    assert.ok(nocat.some(t => t.id === 5));
+    assert.ok(nocat.some((t) => t.id === 4));
+    assert.ok(nocat.some((t) => t.id === 5));
   });
 
   it('treats hidden categories as invisible', () => {
     const groups = groupTasksByCategory(tasks, ['work']);
     assert.ok(!groups.has('work'));
     const nocat = groups.get('');
-    assert.ok(nocat.some(t => t.id === 1));
+    assert.ok(nocat.some((t) => t.id === 1));
   });
 
   it('named categories come before uncategorized', () => {

@@ -1,6 +1,10 @@
 const {
-  listCalendars, listEventEtags, fetchEventsByHref,
-  getEffectiveTasksSources, listTaskEtags, fetchTasksByHref,
+  listCalendars,
+  listEventEtags,
+  fetchEventsByHref,
+  getEffectiveTasksSources,
+  listTaskEtags,
+  fetchTasksByHref,
 } = require('./client');
 const { getIcsFeeds, fetchFeed } = require('../ics/feed');
 const store = require('../cache/store');
@@ -10,7 +14,7 @@ function syncLog(msg) {
   if (config.app.debugSync) console.log(`[sync] ${msg}`);
 }
 
-const RANGE_PAST_DAYS   = 30;
+const RANGE_PAST_DAYS = 30;
 const RANGE_FUTURE_DAYS = 90;
 
 /**
@@ -22,8 +26,8 @@ const RANGE_FUTURE_DAYS = 90;
  * @returns {{ toFetch: string[], toDelete: string[] }}
  */
 function computeSyncDiff(serverEtags, cached) {
-  const serverMap = new Map(serverEtags.map(e => [e.href, e.etag]));
-  const toFetch  = [];
+  const serverMap = new Map(serverEtags.map((e) => [e.href, e.etag]));
+  const toFetch = [];
   const toDelete = [];
 
   for (const ev of cached) {
@@ -31,7 +35,7 @@ function computeSyncDiff(serverEtags, cached) {
   }
 
   for (const { href, etag } of serverEtags) {
-    const local = cached.find(ev => ev.href === href);
+    const local = cached.find((ev) => ev.href === href);
     if (!local || local.etag !== etag) {
       syncLog(`etag mismatch: href=${href} local=${local?.etag || 'none'} server=${etag}`);
       toFetch.push(href);
@@ -55,7 +59,7 @@ async function withRetry(fn, retries = 3, delayMs = 2000) {
       if (attempt === retries) throw err;
       const wait = delayMs * 2 ** attempt;
       console.log(`Sync attempt ${attempt + 1} failed (${err.message}). Retrying in ${wait}ms…`);
-      await new Promise(r => setTimeout(r, wait));
+      await new Promise((r) => setTimeout(r, wait));
     }
   }
 }
@@ -66,16 +70,22 @@ async function withRetry(fn, retries = 3, delayMs = 2000) {
  * Falls back to full-fetch on first run (no stored ctags yet).
  */
 async function syncIncremental() {
-  const now  = new Date();
+  const now = new Date();
   const from = new Date(now.getTime() - RANGE_PAST_DAYS * 86400000);
-  const to   = new Date(now.getTime() + RANGE_FUTURE_DAYS * 86400000);
+  const to = new Date(now.getTime() + RANGE_FUTURE_DAYS * 86400000);
 
   const calendars = await withRetry(() => listCalendars());
 
   // Append read-only ICS feed pseudo-calendars so GET /calendars and the
   // drawer list them alongside real CalDAV calendars.
   const feeds = getIcsFeeds();
-  const feedCals = feeds.map(f => ({ id: f.id, href: null, name: f.name || f.id, color: f.color, readOnly: true }));
+  const feedCals = feeds.map((f) => ({
+    id: f.id,
+    href: null,
+    name: f.name || f.id,
+    color: f.color,
+    readOnly: true,
+  }));
   store.setCalendars([...calendars, ...feedCals]);
 
   let totalChanged = 0;
@@ -87,7 +97,7 @@ async function syncIncremental() {
       continue; // nothing changed in this calendar
     }
 
-    const serverEtags  = await withRetry(() => listEventEtags(cal.href, from, to));
+    const serverEtags = await withRetry(() => listEventEtags(cal.href, from, to));
     const cachedEvents = store.getEventsByCalendar(cal.id);
     const { toFetch, toDelete } = computeSyncDiff(serverEtags, cachedEvents);
 
@@ -107,7 +117,9 @@ async function syncIncremental() {
     for (const ev of fetchedEvents) {
       const existing = store.getEvent(ev.uid);
       if (existing?.localModifiedAt) {
-        syncLog(`server overwrites local edit: uid=${ev.uid} localModifiedAt=${existing.localModifiedAt}`);
+        syncLog(
+          `server overwrites local edit: uid=${ev.uid} localModifiedAt=${existing.localModifiedAt}`,
+        );
       }
       syncLog(`fetched remote change: uid=${ev.uid} href=${ev.href}`);
       store.setEventSilent({ ...ev, calendarId: cal.id, lastSyncedAt: now.toISOString() });
@@ -143,8 +155,13 @@ async function syncIncremental() {
     tasks: store.getTaskCount(),
     changed: totalChanged + tasksChanged + feedsChanged,
   };
-  store.setSyncState({ lastSync: now.toISOString(), error: feedErrors.length ? feedErrors.join('; ') : null });
-  console.log(`Sync: ${result.calendars} cals, ${result.events} events, ${result.tasks} tasks, ${result.changed} changed`);
+  store.setSyncState({
+    lastSync: now.toISOString(),
+    error: feedErrors.length ? feedErrors.join('; ') : null,
+  });
+  console.log(
+    `Sync: ${result.calendars} cals, ${result.events} events, ${result.tasks} tasks, ${result.changed} changed`,
+  );
   return result;
 }
 
@@ -158,8 +175,8 @@ async function syncIncremental() {
 async function syncTasksIncremental(tasksUrl, sourceName, now) {
   const serverEtags = await withRetry(() => listTaskEtags(tasksUrl));
   // Only consider cached tasks that belong to this source
-  const cached = store.getTasks().filter(t => !t.source || t.source === tasksUrl);
-  const serverMap = new Map(serverEtags.map(e => [e.href, e.etag]));
+  const cached = store.getTasks().filter((t) => !t.source || t.source === tasksUrl);
+  const serverMap = new Map(serverEtags.map((e) => [e.href, e.etag]));
   let changed = 0;
 
   const toDelete = [];
@@ -169,7 +186,7 @@ async function syncTasksIncremental(tasksUrl, sourceName, now) {
 
   const toFetch = [];
   for (const { href, etag } of serverEtags) {
-    const local = cached.find(t => t.href === href);
+    const local = cached.find((t) => t.href === href);
     if (!local || local.etag !== etag) {
       syncLog(`etag mismatch (task): href=${href} local=${local?.etag || 'none'} server=${etag}`);
       toFetch.push(href);
@@ -192,7 +209,9 @@ async function syncTasksIncremental(tasksUrl, sourceName, now) {
   for (const task of fetched) {
     const existing = store.getTask(task.uid);
     if (existing?.localModifiedAt) {
-      syncLog(`server overwrites local edit (task): uid=${task.uid} localModifiedAt=${existing.localModifiedAt}`);
+      syncLog(
+        `server overwrites local edit (task): uid=${task.uid} localModifiedAt=${existing.localModifiedAt}`,
+      );
     }
     syncLog(`fetched remote change (task): uid=${task.uid}`);
     store.setTaskSilent({ ...task, source: tasksUrl, sourceName, lastSyncedAt: now.toISOString() });
@@ -234,7 +253,10 @@ async function syncIcsFeed(feed, now) {
 /** Order-independent content signature for a feed's events (change detection). */
 function feedSignature(events) {
   return events
-    .map(e => `${e.uid}|${e.start}|${e.end}|${e.allDay}|${e.title}|${e.rrule || ''}|${e.location || ''}|${e.description || ''}`)
+    .map(
+      (e) =>
+        `${e.uid}|${e.start}|${e.end}|${e.allDay}|${e.title}|${e.rrule || ''}|${e.location || ''}|${e.description || ''}`,
+    )
     .sort()
     .join('\n');
 }

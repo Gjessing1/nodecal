@@ -11,9 +11,30 @@ import { state } from './state.js';
 // two-profile mode that shows the navbar switcher. The active profile id alone
 // decides the mode — no separate flag.
 const DEFAULT_PROFILES = {
-  single:   { name: 'Single',   hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultEventCalendar: '', defaultView: '' },
-  personal: { name: 'Personal', hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultEventCalendar: '', defaultView: '' },
-  work:     { name: 'Work',     hiddenCalendars: [], accentColor: '', defaultTaskSource: '', defaultEventCalendar: '', defaultView: '' },
+  single: {
+    name: 'Single',
+    hiddenCalendars: [],
+    accentColor: '',
+    defaultTaskSource: '',
+    defaultEventCalendar: '',
+    defaultView: '',
+  },
+  personal: {
+    name: 'Personal',
+    hiddenCalendars: [],
+    accentColor: '',
+    defaultTaskSource: '',
+    defaultEventCalendar: '',
+    defaultView: '',
+  },
+  work: {
+    name: 'Work',
+    hiddenCalendars: [],
+    accentColor: '',
+    defaultTaskSource: '',
+    defaultEventCalendar: '',
+    defaultView: '',
+  },
 };
 
 // Display order for the built-ins and the two ids that form the switcher pair.
@@ -39,7 +60,7 @@ export function getProfiles() {
 // Built-ins first (in canonical order), then any user-defined extras.
 export function profileIds() {
   const all = Object.keys(getProfiles());
-  const extras = all.filter(id => !PROFILE_ORDER.includes(id));
+  const extras = all.filter((id) => !PROFILE_ORDER.includes(id));
   return [...PROFILE_ORDER, ...extras];
 }
 
@@ -95,8 +116,8 @@ export function registerProfileTaskSources() {
   const cals = state.calendars || [];
   for (const id of profileIds()) {
     const url = getProfiles()[id].defaultTaskSource;
-    if (!url || sources.some(s => s.url === url)) continue;
-    const cal = cals.find(c => c.id === url);
+    if (!url || sources.some((s) => s.url === url)) continue;
+    const cal = cals.find((c) => c.id === url);
     sources.push({ url, name: cal ? cal.name : url });
   }
 }
@@ -124,5 +145,7 @@ export async function persistProfiles() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ profiles: getProfiles(), activeProfile: activeProfileId() }),
     });
-  } catch { /* offline — the profile stays applied locally until next sync */ }
+  } catch {
+    /* offline — the profile stays applied locally until next sync */
+  }
 }

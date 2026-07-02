@@ -2,7 +2,12 @@ import { state } from '../app/state.js';
 import { getAllCategories, visibleCategories } from '../app/taskUtils.js';
 import { esc } from '../app/utils.js';
 import { buildRecurrenceEditor } from './recurrenceUI.js';
-import { buildDatePickerButton, mountLocationUrlSection, mountCollapsibleToggle, wireCategoryUI } from './modalHelpers.js';
+import {
+  buildDatePickerButton,
+  mountLocationUrlSection,
+  mountCollapsibleToggle,
+  wireCategoryUI,
+} from './modalHelpers.js';
 
 export function openTaskModal(task, { onSave, onDelete }) {
   const overlay = document.getElementById('modal-overlay');
@@ -13,7 +18,7 @@ export function openTaskModal(task, { onSave, onDelete }) {
   const isCompleted = task.status === 'COMPLETED';
 
   const hidden = state.config.hiddenCategories || [];
-  const existingCats = getAllCategories(state.tasks).filter(c => !hidden.includes(c));
+  const existingCats = getAllCategories(state.tasks).filter((c) => !hidden.includes(c));
   const taskCats = visibleCategories(task.categories || [], hidden);
 
   sheet.innerHTML = `
@@ -63,10 +68,10 @@ export function openTaskModal(task, { onSave, onDelete }) {
             <div class="rec-after-row">
               Every
               <input type="number" id="tm-after-n" class="rec-interval-input" min="1" max="999"
-                     value="${esc(task.recurringInterval?.replace(/[dw]$/,'') || '1')}">
+                     value="${esc(task.recurringInterval?.replace(/[dw]$/, '') || '1')}">
               <select id="tm-after-unit" class="rec-freq-sel">
-                <option value="d"${/d$/.test(task.recurringInterval||'') ? ' selected':''}>day(s)</option>
-                <option value="w"${/w$/.test(task.recurringInterval||'') ? ' selected':''}>week(s)</option>
+                <option value="d"${/d$/.test(task.recurringInterval || '') ? ' selected' : ''}>day(s)</option>
+                <option value="w"${/w$/.test(task.recurringInterval || '') ? ' selected' : ''}>week(s)</option>
               </select>
               after completion
             </div>
@@ -76,10 +81,10 @@ export function openTaskModal(task, { onSave, onDelete }) {
           <label>Reminder</label>
           <select id="tm-reminder">
             <option value="none"           ${!task.taskReminder || task.taskReminder === 'none' ? 'selected' : ''}>None</option>
-            <option value="on-due"         ${task.taskReminder === 'on-due'          ? 'selected' : ''}>Morning on due</option>
-            <option value="evening-due"    ${task.taskReminder === 'evening-due'     ? 'selected' : ''}>Evening on due</option>
-            <option value="morning-before" ${task.taskReminder === 'morning-before'  ? 'selected' : ''}>Morning before</option>
-            <option value="evening-before" ${task.taskReminder === 'evening-before'  ? 'selected' : ''}>Evening before</option>
+            <option value="on-due"         ${task.taskReminder === 'on-due' ? 'selected' : ''}>Morning on due</option>
+            <option value="evening-due"    ${task.taskReminder === 'evening-due' ? 'selected' : ''}>Evening on due</option>
+            <option value="morning-before" ${task.taskReminder === 'morning-before' ? 'selected' : ''}>Morning before</option>
+            <option value="evening-before" ${task.taskReminder === 'evening-before' ? 'selected' : ''}>Evening before</option>
             <option value="custom"         ${task.taskReminder?.startsWith('custom') ? 'selected' : ''}>Custom…</option>
           </select>
         </div>
@@ -88,11 +93,11 @@ export function openTaskModal(task, { onSave, onDelete }) {
 
     <div class="modal-field" id="tm-reminder-custom-row" style="${task.taskReminder?.startsWith('custom') ? '' : 'display:none'}">
       <label>Hours before morning time on due date</label>
-      <input type="number" id="tm-reminder-custom-hours" value="${task.taskReminder?.startsWith('custom') ? task.taskReminder.replace('custom-','').replace('h','') : ''}" min="1" max="720" placeholder="e.g. 4">
+      <input type="number" id="tm-reminder-custom-hours" value="${task.taskReminder?.startsWith('custom') ? task.taskReminder.replace('custom-', '').replace('h', '') : ''}" min="1" max="720" placeholder="e.g. 4">
     </div>
 
     <div id="tm-rec-fixed" style="${isRecAfterCompletion ? 'display:none' : ''}"
-         data-rrule="${esc(isRecRrule ? (task.rrule || '') : '')}"></div>
+         data-rrule="${esc(isRecRrule ? task.rrule || '' : '')}"></div>
 
     <div class="modal-field modal-field-checkbox tm-completed-row">
       <label>
@@ -109,27 +114,32 @@ export function openTaskModal(task, { onSave, onDelete }) {
   `;
 
   // ── Due date picker button ─────────────────────────────────────────────────
-  buildDatePickerButton(sheet.querySelector('#tm-due'), sheet.querySelector('#tm-due-wrap'), { emptyLabel: 'No due date' });
+  buildDatePickerButton(sheet.querySelector('#tm-due'), sheet.querySelector('#tm-due-wrap'), {
+    emptyLabel: 'No due date',
+  });
 
   // ── Location / URL (collapsible) ─────────────────────────────────────────
   mountLocationUrlSection(sheet.querySelector('#tm-location-url-wrap'), {
-    locId: 'tm-location', urlId: 'tm-url',
-    initLoc: task.location || '', initUrl: task.url || '',
+    locId: 'tm-location',
+    urlId: 'tm-url',
+    initLoc: task.location || '',
+    initUrl: task.url || '',
   });
 
   // ── Reminder / Repeat collapse when unused ────────────────────────────────
-  mountCollapsibleToggle(
-    sheet.querySelector('#tm-rr-toggle'),
-    sheet.querySelector('#tm-rr-body'),
-    { label: '+ Reminder / Repeat', hasContent: !!(task.taskReminder && task.taskReminder !== 'none') || !!(isRecRrule || isRecAfterCompletion) }
-  );
+  mountCollapsibleToggle(sheet.querySelector('#tm-rr-toggle'), sheet.querySelector('#tm-rr-body'), {
+    label: '+ Reminder / Repeat',
+    hasContent:
+      !!(task.taskReminder && task.taskReminder !== 'none') ||
+      !!(isRecRrule || isRecAfterCompletion),
+  });
 
   // ── Categories (collapsible) ──────────────────────────────────────────────
   const modalCats = [...taskCats];
   mountCollapsibleToggle(
     sheet.querySelector('#tm-cat-toggle'),
     sheet.querySelector('#tm-cat-body'),
-    { label: 'Categories', hasContent: taskCats.length > 0 }
+    { label: 'Categories', hasContent: taskCats.length > 0 },
   );
 
   const catCtrl = wireCategoryUI(
@@ -138,13 +148,13 @@ export function openTaskModal(task, { onSave, onDelete }) {
     sheet.querySelector('#tm-cat-add'),
     sheet.querySelector('.tm-cat-autocomplete'),
     modalCats,
-    existingCats
+    existingCats,
   );
 
   // ── Recurrence mode toggle + editor ──────────────────────────────────────
   const fixedContainer = sheet.querySelector('#tm-rec-fixed');
   const afterContainer = sheet.querySelector('#tm-rec-after');
-  const presetTarget   = sheet.querySelector('#tm-rec-preset-target');
+  const presetTarget = sheet.querySelector('#tm-rec-preset-target');
   let recMode = isRecAfterCompletion ? 'after' : 'fixed';
 
   if (fixedContainer && presetTarget) {
@@ -153,40 +163,50 @@ export function openTaskModal(task, { onSave, onDelete }) {
     // presetContainer receives the preset select; returned root is the sub-UI
     const recSubRoot = buildRecurrenceEditor(
       dueDate,
-      isRecRrule ? (task.rrule || null) : null,
-      (newRrule) => { fixedContainer.dataset.rrule = newRrule || ''; },
-      { hideWeekdays: true, presetContainer: presetTarget }
+      isRecRrule ? task.rrule || null : null,
+      (newRrule) => {
+        fixedContainer.dataset.rrule = newRrule || '';
+      },
+      { hideWeekdays: true, presetContainer: presetTarget },
     );
     fixedContainer.appendChild(recSubRoot);
   }
 
-  sheet.querySelectorAll('.rec-mode-btn').forEach(btn => {
+  sheet.querySelectorAll('.rec-mode-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       recMode = btn.dataset.mode;
-      sheet.querySelectorAll('.rec-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === recMode));
+      sheet
+        .querySelectorAll('.rec-mode-btn')
+        .forEach((b) => b.classList.toggle('active', b.dataset.mode === recMode));
       if (presetTarget) presetTarget.style.display = recMode === 'fixed' ? '' : 'none';
       if (fixedContainer) fixedContainer.style.display = recMode === 'fixed' ? '' : 'none';
       if (afterContainer) afterContainer.style.display = recMode === 'after' ? '' : 'none';
     });
   });
 
-  sheet.querySelector('#tm-reminder').addEventListener('change', e => {
-    sheet.querySelector('#tm-reminder-custom-row').style.display = e.target.value === 'custom' ? '' : 'none';
+  sheet.querySelector('#tm-reminder').addEventListener('change', (e) => {
+    sheet.querySelector('#tm-reminder-custom-row').style.display =
+      e.target.value === 'custom' ? '' : 'none';
   });
 
   sheet.querySelector('#tm-save').addEventListener('click', () => {
     const title = sheet.querySelector('#tm-title').value.trim();
-    if (!title) { alert('Title is required'); return; }
+    if (!title) {
+      alert('Title is required');
+      return;
+    }
 
-    let rrule = null, xRecurringType = null, xRecurringInterval = null;
+    let rrule = null,
+      xRecurringType = null,
+      xRecurringInterval = null;
     if (recMode === 'after') {
-      const n    = parseInt(sheet.querySelector('#tm-after-n')?.value) || 1;
+      const n = parseInt(sheet.querySelector('#tm-after-n')?.value) || 1;
       const unit = sheet.querySelector('#tm-after-unit')?.value || 'd';
       xRecurringType = 'after-completion';
       xRecurringInterval = `${n}${unit}`;
     } else {
       const fixedCont = sheet.querySelector('#tm-rec-fixed');
-      rrule = fixedCont ? (fixedCont.dataset.rrule || null) : null;
+      rrule = fixedCont ? fixedCont.dataset.rrule || null : null;
     }
 
     const completedChecked = sheet.querySelector('#tm-completed').checked;
@@ -194,19 +214,21 @@ export function openTaskModal(task, { onSave, onDelete }) {
 
     onSave({
       title,
-      due:         sheet.querySelector('#tm-due').value || null,
-      location:    sheet.querySelector('#tm-location-url-wrap #tm-location')?.value.trim() || '',
-      url:         sheet.querySelector('#tm-location-url-wrap #tm-url')?.value.trim() || '',
+      due: sheet.querySelector('#tm-due').value || null,
+      location: sheet.querySelector('#tm-location-url-wrap #tm-location')?.value.trim() || '',
+      url: sheet.querySelector('#tm-location-url-wrap #tm-url')?.value.trim() || '',
       description: sheet.querySelector('#tm-desc').value.trim(),
-      categories:  finalCats,
-      status:      completedChecked ? 'COMPLETED' : 'NEEDS-ACTION',
-      completed:   completedChecked ? new Date().toISOString() : null,
+      categories: finalCats,
+      status: completedChecked ? 'COMPLETED' : 'NEEDS-ACTION',
+      completed: completedChecked ? new Date().toISOString() : null,
       // Carry the source the modal was opened with so new tasks land in the
       // profile's task source (passed in by the caller) instead of the
       // server's sources[0] fallback. Harmless for edits — the PUT path keys
       // off the existing task's source, not this field.
-      source:      task.source || undefined,
-      rrule, xRecurringType, xRecurringInterval,
+      source: task.source || undefined,
+      rrule,
+      xRecurringType,
+      xRecurringInterval,
       taskReminder: (() => {
         const v = sheet.querySelector('#tm-reminder')?.value || 'none';
         if (v === 'custom') {
@@ -221,12 +243,21 @@ export function openTaskModal(task, { onSave, onDelete }) {
 
   if (task.uid) {
     sheet.querySelector('#tm-delete').addEventListener('click', () => {
-      if (confirm('Delete this task?')) { onDelete(task); closeTaskModal(); }
+      if (confirm('Delete this task?')) {
+        onDelete(task);
+        closeTaskModal();
+      }
     });
   }
   sheet.querySelector('#tm-cancel').addEventListener('click', closeTaskModal);
   overlay.classList.remove('hidden');
-  overlay.addEventListener('click', e => { if (e.target === overlay) closeTaskModal(); }, { once: true });
+  overlay.addEventListener(
+    'click',
+    (e) => {
+      if (e.target === overlay) closeTaskModal();
+    },
+    { once: true },
+  );
 }
 
 export function closeTaskModal() {

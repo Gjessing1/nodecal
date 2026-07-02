@@ -17,11 +17,11 @@ function loadFromDisk() {
     const raw = fs.readFileSync(CACHE_FILE, 'utf8');
     const data = JSON.parse(raw);
     // Handle plain array (oldest format), {events, ctags}, and {events, tasks, ctags}
-    const evList = Array.isArray(data) ? data : (data.events || []);
+    const evList = Array.isArray(data) ? data : data.events || [];
     for (const ev of evList) events.set(ev.uid, ev);
     if (!Array.isArray(data)) {
       calendarCtags = data.ctags || {};
-      for (const t of (data.tasks || [])) tasks.set(t.uid, t);
+      for (const t of data.tasks || []) tasks.set(t.uid, t);
     }
     console.log(`Loaded ${events.size} events, ${tasks.size} tasks from cache`);
   } catch {
@@ -35,8 +35,8 @@ function flushToDisk() {
     fs.mkdirSync(dir, { recursive: true });
     const payload = JSON.stringify({
       events: Array.from(events.values()),
-      tasks:  Array.from(tasks.values()),
-      ctags:  calendarCtags,
+      tasks: Array.from(tasks.values()),
+      ctags: calendarCtags,
     });
     const tmp = CACHE_FILE + '.tmp';
     fs.writeFileSync(tmp, payload, 'utf8');
@@ -47,16 +47,28 @@ function flushToDisk() {
 }
 
 // ── Calendars ─────────────────────────────────────────────
-function getCalendars() { return calendars; }
-function setCalendars(cals) { calendars = cals; }
+function getCalendars() {
+  return calendars;
+}
+function setCalendars(cals) {
+  calendars = cals;
+}
 
 // ── Ctags ─────────────────────────────────────────────────
-function getCalendarCtag(calendarId) { return calendarCtags[calendarId] || null; }
-function setCalendarCtag(calendarId, ctag) { calendarCtags[calendarId] = ctag; }
+function getCalendarCtag(calendarId) {
+  return calendarCtags[calendarId] || null;
+}
+function setCalendarCtag(calendarId, ctag) {
+  calendarCtags[calendarId] = ctag;
+}
 
 // ── Events ────────────────────────────────────────────────
-function getEvent(uid) { return events.get(uid) || null; }
-function getEventCount() { return events.size; }
+function getEvent(uid) {
+  return events.get(uid) || null;
+}
+function getEventCount() {
+  return events.size;
+}
 
 function getEventsInRange(from, to) {
   const result = [];
@@ -75,13 +87,15 @@ function getNonRecurringInRange(from, to) {
 }
 
 function getRecurringBases() {
-  return Array.from(events.values()).filter(ev => ev.rrule);
+  return Array.from(events.values()).filter((ev) => ev.rrule);
 }
 
-function getAllEvents() { return Array.from(events.values()); }
+function getAllEvents() {
+  return Array.from(events.values());
+}
 
 function getEventsByCalendar(calendarId) {
-  return Array.from(events.values()).filter(ev => ev.calendarId === calendarId);
+  return Array.from(events.values()).filter((ev) => ev.calendarId === calendarId);
 }
 
 function getEventByHref(href) {
@@ -91,16 +105,34 @@ function getEventByHref(href) {
   return null;
 }
 
-function setEvent(event) { events.set(event.uid, event); flushToDisk(); }
-function removeEvent(uid) { events.delete(uid); flushToDisk(); }
-function setEventSilent(event) { events.set(event.uid, event); }
-function removeEventSilent(uid) { events.delete(uid); }
-function clearEvents() { events.clear(); }
+function setEvent(event) {
+  events.set(event.uid, event);
+  flushToDisk();
+}
+function removeEvent(uid) {
+  events.delete(uid);
+  flushToDisk();
+}
+function setEventSilent(event) {
+  events.set(event.uid, event);
+}
+function removeEventSilent(uid) {
+  events.delete(uid);
+}
+function clearEvents() {
+  events.clear();
+}
 
 // ── Tasks ─────────────────────────────────────────────────
-function getTasks() { return Array.from(tasks.values()); }
-function getTask(uid) { return tasks.get(uid) || null; }
-function getTaskCount() { return tasks.size; }
+function getTasks() {
+  return Array.from(tasks.values());
+}
+function getTask(uid) {
+  return tasks.get(uid) || null;
+}
+function getTaskCount() {
+  return tasks.size;
+}
 
 function getTaskByHref(href) {
   for (const t of tasks.values()) {
@@ -109,14 +141,28 @@ function getTaskByHref(href) {
   return null;
 }
 
-function setTask(task) { tasks.set(task.uid, task); flushToDisk(); }
-function removeTask(uid) { tasks.delete(uid); flushToDisk(); }
-function setTaskSilent(task) { tasks.set(task.uid, task); }
-function removeTaskSilent(uid) { tasks.delete(uid); }
+function setTask(task) {
+  tasks.set(task.uid, task);
+  flushToDisk();
+}
+function removeTask(uid) {
+  tasks.delete(uid);
+  flushToDisk();
+}
+function setTaskSilent(task) {
+  tasks.set(task.uid, task);
+}
+function removeTaskSilent(uid) {
+  tasks.delete(uid);
+}
 
 // ── Sync state ────────────────────────────────────────────
-function getSyncState() { return syncState; }
-function setSyncState(state) { syncState = { ...syncState, ...state }; }
+function getSyncState() {
+  return syncState;
+}
+function setSyncState(state) {
+  syncState = { ...syncState, ...state };
+}
 
 loadFromDisk();
 
@@ -128,20 +174,41 @@ function clearAll() {
   calendars = [];
   syncState = { lastSync: null, error: null };
   // Remove the disk cache so it doesn't re-seed stale data on next restart
-  try { fs.unlinkSync(CACHE_FILE); } catch { /* file may not exist */ }
+  try {
+    fs.unlinkSync(CACHE_FILE);
+  } catch {
+    /* file may not exist */
+  }
 }
 
 module.exports = {
-  getCalendars, setCalendars,
-  getCalendarCtag, setCalendarCtag,
-  getEvent, getEventCount, getAllEvents,
-  getEventsInRange, getNonRecurringInRange, getRecurringBases,
-  getEventsByCalendar, getEventByHref,
-  setEvent, removeEvent, clearEvents,
-  setEventSilent, removeEventSilent, flushToDisk,
-  getTasks, getTask, getTaskCount, getTaskByHref,
-  setTask, removeTask,
-  setTaskSilent, removeTaskSilent,
-  getSyncState, setSyncState,
+  getCalendars,
+  setCalendars,
+  getCalendarCtag,
+  setCalendarCtag,
+  getEvent,
+  getEventCount,
+  getAllEvents,
+  getEventsInRange,
+  getNonRecurringInRange,
+  getRecurringBases,
+  getEventsByCalendar,
+  getEventByHref,
+  setEvent,
+  removeEvent,
+  clearEvents,
+  setEventSilent,
+  removeEventSilent,
+  flushToDisk,
+  getTasks,
+  getTask,
+  getTaskCount,
+  getTaskByHref,
+  setTask,
+  removeTask,
+  setTaskSilent,
+  removeTaskSilent,
+  getSyncState,
+  setSyncState,
   clearAll,
 };

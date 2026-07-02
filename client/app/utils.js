@@ -6,13 +6,21 @@
  */
 export function formatTime(date, format = '24h', timezone = 'UTC') {
   if (format === '12h') {
-    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: timezone });
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: timezone,
+    });
   }
   const parts = new Intl.DateTimeFormat('en-US', {
-    hour: '2-digit', minute: '2-digit', hour12: false, timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: timezone,
   }).formatToParts(date);
-  const h = parts.find(p => p.type === 'hour').value;
-  const m = parts.find(p => p.type === 'minute').value;
+  const h = parts.find((p) => p.type === 'hour').value;
+  const m = parts.find((p) => p.type === 'minute').value;
   return `${h === '24' ? '00' : h}:${m}`;
 }
 
@@ -36,11 +44,14 @@ export function localDateStr(date) {
  */
 export function toDateInputValue(date, timezone = 'UTC') {
   const parts = new Intl.DateTimeFormat('en-US', {
-    year: 'numeric', month: '2-digit', day: '2-digit', timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: timezone,
   }).formatToParts(date);
-  const y = parts.find(p => p.type === 'year').value;
-  const mo = parts.find(p => p.type === 'month').value;
-  const d = parts.find(p => p.type === 'day').value;
+  const y = parts.find((p) => p.type === 'year').value;
+  const mo = parts.find((p) => p.type === 'month').value;
+  const d = parts.find((p) => p.type === 'day').value;
   return `${y}-${mo}-${d}`;
 }
 
@@ -52,10 +63,13 @@ export function toDateInputValue(date, timezone = 'UTC') {
  */
 export function toTimeInputValue(date, timezone = 'UTC') {
   const parts = new Intl.DateTimeFormat('en-US', {
-    hour: '2-digit', minute: '2-digit', hour12: false, timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: timezone,
   }).formatToParts(date);
-  const h = parts.find(p => p.type === 'hour').value;
-  const m = parts.find(p => p.type === 'minute').value;
+  const h = parts.find((p) => p.type === 'hour').value;
+  const m = parts.find((p) => p.type === 'minute').value;
   return `${h === '24' ? '00' : h}:${m}`;
 }
 
@@ -75,9 +89,9 @@ export function toTimeInputValue(date, timezone = 'UTC') {
  * @returns {string}  e.g. "10 May", "May 10", "05-10"
  */
 export function formatShortDate(date, format = 'dmy', includeYear = false) {
-  const d  = date.getDate();
-  const m  = date.getMonth() + 1;
-  const y  = date.getFullYear();
+  const d = date.getDate();
+  const m = date.getMonth() + 1;
+  const y = date.getFullYear();
   const mm = String(m).padStart(2, '0');
   const dd = String(d).padStart(2, '0');
   const monthName = date.toLocaleDateString('en-US', { month: 'short' });
@@ -102,7 +116,7 @@ export function formatShortDate(date, format = 'dmy', includeYear = false) {
 function weatherForDate(dateStr, weather, maxDays = 6) {
   if (!weather?.daily?.[dateStr]) return null;
   const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   const diffDays = (new Date(dateStr + 'T00:00:00') - new Date(todayStr + 'T00:00:00')) / 86400000;
   if (diffDays < 0 || diffDays >= maxDays) return null;
   return weather.daily[dateStr];
@@ -156,7 +170,11 @@ export function getTimezone(cfg) {
 }
 
 export function esc(str) {
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 export function localToUTC(dateStr, timeStr, timezone) {
@@ -165,11 +183,18 @@ export function localToUTC(dateStr, timeStr, timezone) {
   const parts = {};
   for (const p of new Intl.DateTimeFormat('en-US', {
     timeZone: timezone,
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
     hour12: false,
-  }).formatToParts(naive)) parts[p.type] = p.value;
+  }).formatToParts(naive))
+    parts[p.type] = p.value;
   const h = parts.hour === '24' ? '00' : parts.hour;
-  const asUtc = new Date(`${parts.year}-${parts.month}-${parts.day}T${h}:${parts.minute}:${parts.second}Z`);
+  const asUtc = new Date(
+    `${parts.year}-${parts.month}-${parts.day}T${h}:${parts.minute}:${parts.second}Z`,
+  );
   return new Date(naive.getTime() + (naive.getTime() - asUtc.getTime()));
 }

@@ -19,7 +19,9 @@ app.get('/service-worker.js', (req, res) => {
   const { buildId, assets } = getBuildInfo();
   res.type('application/javascript');
   res.set('Cache-Control', 'no-cache');
-  res.send(`self.__BUILD__ = ${JSON.stringify(buildId)};\nself.__ASSETS__ = ${JSON.stringify(assets)};\n${swTemplate}`);
+  res.send(
+    `self.__BUILD__ = ${JSON.stringify(buildId)};\nself.__ASSETS__ = ${JSON.stringify(assets)};\n${swTemplate}`,
+  );
 });
 
 // index.html must always be revalidated so browsers without the service worker
@@ -48,7 +50,12 @@ app.use(require('./routes/tasks'));
 app.use(require('./routes/weather'));
 
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', version: process.env.npm_package_version, build: getBuildInfo().buildId, ...store.getSyncState() });
+  res.json({
+    status: 'ok',
+    version: process.env.npm_package_version,
+    build: getBuildInfo().buildId,
+    ...store.getSyncState(),
+  });
 });
 
 const SETTINGS_FILE = '/config/settings.json';
@@ -57,7 +64,9 @@ function getSyncIntervalMs() {
     const s = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
     const min = parseInt(s.syncIntervalMinutes);
     if (min >= 1) return min * 60 * 1000;
-  } catch { /* use default */ }
+  } catch {
+    /* use default */
+  }
   return 2 * 60 * 1000; // default 2 minutes
 }
 

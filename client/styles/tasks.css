@@ -1,5 +1,7 @@
 /* ── Tasks view ──────────────────────────────────────────── */
-#view-container:has(.tasks-view) { overflow-y: hidden; }
+#view-container:has(.tasks-view) {
+  overflow-y: hidden;
+}
 .tasks-view {
   display: flex;
   flex-direction: column;
@@ -76,7 +78,9 @@
   transition: background 0.1s;
 }
 
-.task-item:active { background: var(--color-surface); }
+.task-item:active {
+  background: var(--color-surface);
+}
 
 .task-item.task-done .task-title {
   text-decoration: line-through;
@@ -93,7 +97,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: border-color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
 }
 
 .task-check:active,
@@ -177,10 +183,15 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   white-space: nowrap;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
   align-self: center;
 }
-.task-snooze:hover { color: var(--color-accent); border-color: var(--color-accent); }
+.task-snooze:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
 
 /* Star */
 .task-star {
@@ -196,8 +207,12 @@
   align-self: center;
 }
 
-.task-star.starred { color: #f59e0b; }
-.task-star:hover   { color: #f59e0b; }
+.task-star.starred {
+  color: #f59e0b;
+}
+.task-star:hover {
+  color: #f59e0b;
+}
 
 /* ── Quick-add bar ────────────────────────────────────────── */
 .tasks-quickadd {
@@ -255,7 +270,9 @@
   border: 1px solid var(--color-border);
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 }
 
 .tasks-date-shortcut.active {
@@ -304,7 +321,9 @@
   flex-shrink: 0;
   scrollbar-width: none;
 }
-.tasks-cat-filter-row:empty { display: none; }
+.tasks-cat-filter-row:empty {
+  display: none;
+}
 .tasks-cat-filter-label {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
@@ -318,7 +337,9 @@
   color: var(--color-text-muted);
   white-space: nowrap;
   flex-shrink: 0;
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 }
 .tasks-cat-chip-filter.active {
   background: var(--color-accent-light);
@@ -385,7 +406,7 @@
   max-height: 180px;
   overflow-y: auto;
   z-index: 100;
-  box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
 }
 .tasks-autocomplete li {
   padding: var(--space-sm) var(--space-md);
@@ -455,9 +476,16 @@
   user-select: none;
   padding: var(--space-md) var(--space-md) 0;
 }
-.settings-collapse-header:hover { color: var(--color-accent); }
-.settings-collapse-arrow { font-size: 10px; margin-right: 2px; }
-.settings-collapse-body { padding: 0 var(--space-md); }
+.settings-collapse-header:hover {
+  color: var(--color-accent);
+}
+.settings-collapse-arrow {
+  font-size: 10px;
+  margin-right: 2px;
+}
+.settings-collapse-body {
+  padding: 0 var(--space-md);
+}
 
 /* ── Quick-add + button (opens full task modal) ──────────── */
 .tasks-quickadd-new {
@@ -474,7 +502,9 @@
   flex-shrink: 0;
   line-height: 1;
 }
-.tasks-quickadd-new:hover { background: var(--color-accent-light); }
+.tasks-quickadd-new:hover {
+  background: var(--color-accent-light);
+}
 
 /* ── Inline category tag-input (task modal) ──────────────── */
 .tm-cats-combined {
@@ -489,8 +519,12 @@
   position: relative;
   cursor: text;
 }
-.tm-cats-combined:focus-within { border-color: var(--color-accent); }
-.tm-cats-chips-inline { display: contents; }
+.tm-cats-combined:focus-within {
+  border-color: var(--color-accent);
+}
+.tm-cats-chips-inline {
+  display: contents;
+}
 .tm-cats-combined input {
   flex: 1;
   min-width: 80px;
@@ -524,7 +558,9 @@
   min-width: 0;
   margin-bottom: 0 !important;
 }
-.tm-repeat-field select { width: 100%; }
+.tm-repeat-field select {
+  width: 100%;
+}
 .tm-complete-col {
   flex-shrink: 0;
   margin-bottom: 0 !important;

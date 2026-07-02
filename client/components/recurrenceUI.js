@@ -1,9 +1,13 @@
 import { state } from '../app/state.js';
-import { esc } from '../app/utils.js';
 import { showDatePicker } from './datePicker.js';
 import {
-  ALL_DAY_CODES, DAY_LONG, JS_DOW_TO_CODE, WEEKDAYS_SET, ordinal,
-  parseRrule, serializeConfig, humanReadable,
+  DAY_LONG,
+  JS_DOW_TO_CODE,
+  WEEKDAYS_SET,
+  ordinal,
+  parseRrule,
+  serializeConfig,
+  humanReadable,
 } from './rruleParser.js';
 import { getOccurrences, buildMiniCal } from './recurrencePreview.js';
 
@@ -29,7 +33,12 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
   function cfgToPreset(c) {
     if (!c) return 'none';
     if (c.freq === 'daily' && !c.byWeekdays && !c.byMonthDay && c.interval === 1) return 'daily';
-    if (c.freq === 'weekly' && c.byWeekdays?.length === 5 && c.byWeekdays.every(d => WEEKDAYS_SET.has(d))) return 'weekdays';
+    if (
+      c.freq === 'weekly' &&
+      c.byWeekdays?.length === 5 &&
+      c.byWeekdays.every((d) => WEEKDAYS_SET.has(d))
+    )
+      return 'weekdays';
     if (c.freq === 'weekly') return 'weekly';
     if (c.freq === 'monthly') return 'monthly';
     if (c.freq === 'yearly') return 'yearly';
@@ -39,18 +48,19 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
 
   const dow = JS_DOW_TO_CODE[startDate.getDay()];
   const dom = startDate.getDate();
-  const daysInMonth = new Date(startDate.getFullYear(), startDate.getMonth()+1, 0).getDate();
+  const daysInMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate();
   const isLastWeek = dom + 7 > daysInMonth;
   const weekOrdinal = isLastWeek ? -1 : Math.ceil(dom / 7);
-  let monthlyMode = (cfg?.bySetPos !== null && cfg?.bySetPos !== undefined) ? 'nth' : 'dom';
+  let monthlyMode = cfg?.bySetPos !== null && cfg?.bySetPos !== undefined ? 'nth' : 'dom';
   let monthlyModeExplicit = false;
 
-  let endMode = cfg?.until ? 'date' : (cfg?.count ? 'count' : 'never');
+  let endMode = cfg?.until ? 'date' : cfg?.count ? 'count' : 'never';
   let endDate = cfg?.until || null;
   let endCount = cfg?.count || 10;
 
   const defaultWeeklyDays = () => [dow];
-  let weeklyDays = (cfg?.freq === 'weekly' && cfg.byWeekdays) ? [...cfg.byWeekdays] : defaultWeeklyDays();
+  let weeklyDays =
+    cfg?.freq === 'weekly' && cfg.byWeekdays ? [...cfg.byWeekdays] : defaultWeeklyDays();
   let weeklyInterval = (cfg?.freq === 'weekly' ? cfg.interval : null) || 1;
 
   let customInterval = cfg?.interval || 1;
@@ -58,22 +68,41 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
 
   // ── Build current RRULE from state ─────────────────────────────────────────
   function buildRrule() {
-    if (rawMode) return rawTouched ? (rawRrule || null) : (isComplex ? currentRrule : null);
+    if (rawMode) return rawTouched ? rawRrule || null : isComplex ? currentRrule : null;
     if (preset === 'none') return null;
     const c = { freq: 'daily', interval: 1 };
-    if (preset === 'daily') { c.freq = 'daily'; c.interval = 1; }
-    else if (preset === 'weekdays') { c.freq = 'weekly'; c.interval = 1; c.byWeekdays = ['MO','TU','WE','TH','FR']; }
-    else if (preset === 'weekly') {
+    if (preset === 'daily') {
+      c.freq = 'daily';
+      c.interval = 1;
+    } else if (preset === 'weekdays') {
+      c.freq = 'weekly';
+      c.interval = 1;
+      c.byWeekdays = ['MO', 'TU', 'WE', 'TH', 'FR'];
+    } else if (preset === 'weekly') {
       c.freq = 'weekly';
       c.interval = weeklyInterval;
       c.byWeekdays = weeklyDays.length ? [...weeklyDays] : [dow];
     } else if (preset === 'monthly') {
-      c.freq = 'monthly'; c.interval = 1;
-      if (monthlyMode === 'nth') { c.bySetPos = weekOrdinal; c.byWeekdays = [dow]; }
-      else { c.byMonthDay = dom; }
-    } else if (preset === 'yearly') { c.freq = 'yearly'; c.interval = 1; }
-    else if (preset === 'custom') {
-      c.freq = customFreq === 'day' ? 'daily' : customFreq === 'week' ? 'weekly' : customFreq === 'month' ? 'monthly' : 'yearly';
+      c.freq = 'monthly';
+      c.interval = 1;
+      if (monthlyMode === 'nth') {
+        c.bySetPos = weekOrdinal;
+        c.byWeekdays = [dow];
+      } else {
+        c.byMonthDay = dom;
+      }
+    } else if (preset === 'yearly') {
+      c.freq = 'yearly';
+      c.interval = 1;
+    } else if (preset === 'custom') {
+      c.freq =
+        customFreq === 'day'
+          ? 'daily'
+          : customFreq === 'week'
+            ? 'weekly'
+            : customFreq === 'month'
+              ? 'monthly'
+              : 'yearly';
       c.interval = customInterval;
     }
     if (endMode === 'date' && endDate) c.until = endDate;
@@ -98,13 +127,18 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
   inlineExtra.className = 'rec-inline-extra';
 
   const presetOptions = [
-    ['none','None'], ['daily','Daily'],
-    ...(!opts.hideWeekdays ? [['weekdays','Weekdays']] : []),
-    ['weekly','Weekly'], ['monthly','Monthly'], ['yearly','Yearly'], ['custom','Custom…'],
+    ['none', 'None'],
+    ['daily', 'Daily'],
+    ...(!opts.hideWeekdays ? [['weekdays', 'Weekdays']] : []),
+    ['weekly', 'Weekly'],
+    ['monthly', 'Monthly'],
+    ['yearly', 'Yearly'],
+    ['custom', 'Custom…'],
   ];
   for (const [v, l] of presetOptions) {
     const o = document.createElement('option');
-    o.value = v; o.textContent = l;
+    o.value = v;
+    o.textContent = l;
     if (v === preset) o.selected = true;
     presetSel.appendChild(o);
   }
@@ -114,36 +148,58 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
     if (preset === 'weekly') {
       inlineExtra.appendChild(document.createTextNode(' every '));
       const iInput = document.createElement('input');
-      iInput.type = 'number'; iInput.min = '1'; iInput.max = '99';
+      iInput.type = 'number';
+      iInput.min = '1';
+      iInput.max = '99';
       iInput.className = 'rec-interval-input rec-interval-inline';
       iInput.value = weeklyInterval;
-      iInput.addEventListener('input', () => { weeklyInterval = Math.max(1, parseInt(iInput.value) || 1); notify(); });
+      iInput.addEventListener('input', () => {
+        weeklyInterval = Math.max(1, parseInt(iInput.value) || 1);
+        notify();
+      });
       inlineExtra.appendChild(iInput);
       inlineExtra.appendChild(document.createTextNode(' wk'));
     } else if (preset === 'custom') {
       // Custom extras go on a new line at full width, matching the preset select width
       inlineExtra.className = 'rec-custom-sub';
       const iInput = document.createElement('input');
-      iInput.type = 'number'; iInput.min = '1'; iInput.max = '99';
+      iInput.type = 'number';
+      iInput.min = '1';
+      iInput.max = '99';
       iInput.className = 'rec-interval-input';
       iInput.value = customInterval;
-      iInput.addEventListener('input', () => { customInterval = Math.max(1, parseInt(iInput.value) || 1); notify(); });
+      iInput.addEventListener('input', () => {
+        customInterval = Math.max(1, parseInt(iInput.value) || 1);
+        notify();
+      });
       const fSel = document.createElement('select');
-      for (const [v, l] of [['day','day'],['week','week'],['month','month'],['year','year']]) {
+      for (const [v, l] of [
+        ['day', 'day'],
+        ['week', 'week'],
+        ['month', 'month'],
+        ['year', 'year'],
+      ]) {
         const o = document.createElement('option');
-        o.value = v; o.textContent = l;
+        o.value = v;
+        o.textContent = l;
         if (v === customFreq) o.selected = true;
         fSel.appendChild(o);
       }
-      fSel.addEventListener('change', () => { customFreq = fSel.value; notify(); });
+      fSel.addEventListener('change', () => {
+        customFreq = fSel.value;
+        notify();
+      });
       inlineExtra.append(iInput, fSel);
     }
   }
 
   presetSel.addEventListener('change', () => {
-    preset = presetSel.value; rawMode = false;
+    preset = presetSel.value;
+    rawMode = false;
     if (preset === 'weekly' && !weeklyDays.length) weeklyDays = defaultWeeklyDays();
-    refreshInlineExtra(); notify(); renderSub();
+    refreshInlineExtra();
+    notify();
+    renderSub();
   });
   presetWrap.append(presetSel, inlineExtra);
 
@@ -155,12 +211,12 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
     root.appendChild(presetWrap);
   }
 
-  const subWrap  = document.createElement('div');
-  const endWrap  = document.createElement('div');
+  const subWrap = document.createElement('div');
+  const endWrap = document.createElement('div');
   endWrap.className = 'rec-section';
   const previewWrap = document.createElement('div');
   previewWrap.className = 'rec-preview';
-  const advWrap  = document.createElement('div');
+  const advWrap = document.createElement('div');
   advWrap.className = 'rec-section';
   root.append(subWrap, endWrap, previewWrap, advWrap);
 
@@ -168,27 +224,33 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
 
   // ── Sub-UI ──────────────────────────────────────────────────────────────────
   function renderSub() {
-    subWrap.innerHTML = ''; endWrap.innerHTML = ''; advWrap.innerHTML = '';
+    subWrap.innerHTML = '';
+    endWrap.innerHTML = '';
+    advWrap.innerHTML = '';
     if (preset === 'none' && !rawMode) {
       previewWrap.innerHTML = '';
       // Remove borders so empty sections don't steal space
-      endWrap.className = ''; advWrap.className = '';
+      endWrap.className = '';
+      advWrap.className = '';
       return;
     }
-    endWrap.className = 'rec-section'; advWrap.className = 'rec-section';
-    if (preset === 'weekly')       renderWeekly();
+    endWrap.className = 'rec-section';
+    advWrap.className = 'rec-section';
+    if (preset === 'weekly') renderWeekly();
     else if (preset === 'monthly') renderMonthly();
-    else if (preset === 'custom')  renderCustom();
-    renderEndConditions(); renderAdvanced();
+    else if (preset === 'custom') renderCustom();
+    renderEndConditions();
+    renderAdvanced();
   }
 
   function renderWeekly() {
     const chipsRow = document.createElement('div');
     chipsRow.className = 'rec-chips-row';
-    const dayOrder = state.config.weekStart !== 'sunday'
-      ? ['MO','TU','WE','TH','FR','SA','SU']
-      : ['SU','MO','TU','WE','TH','FR','SA'];
-    const shortLabel = { MO:'Mo',TU:'Tu',WE:'We',TH:'Th',FR:'Fr',SA:'Sa',SU:'Su' };
+    const dayOrder =
+      state.config.weekStart !== 'sunday'
+        ? ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU']
+        : ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+    const shortLabel = { MO: 'Mo', TU: 'Tu', WE: 'We', TH: 'Th', FR: 'Fr', SA: 'Sa', SU: 'Su' };
     for (const code of dayOrder) {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -196,7 +258,7 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
       btn.textContent = shortLabel[code];
       btn.addEventListener('click', () => {
         if (weeklyDays.includes(code)) {
-          if (weeklyDays.length > 1) weeklyDays = weeklyDays.filter(d => d !== code);
+          if (weeklyDays.length > 1) weeklyDays = weeklyDays.filter((d) => d !== code);
         } else {
           weeklyDays = [...weeklyDays, code];
         }
@@ -209,16 +271,25 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
   }
 
   function renderMonthly() {
-    const ordLabels = { 1:'First',2:'Second',3:'Third',4:'Fourth','-1':'Last' };
+    const ordLabels = { 1: 'First', 2: 'Second', 3: 'Third', 4: 'Fourth', '-1': 'Last' };
     const posLabel = ordLabels[String(weekOrdinal)] || ordinal(weekOrdinal);
 
-    for (const [val, text] of [['dom', ` Day ${dom} of every month`], ['nth', ` ${posLabel} ${DAY_LONG[dow]} of every month`]]) {
+    for (const [val, text] of [
+      ['dom', ` Day ${dom} of every month`],
+      ['nth', ` ${posLabel} ${DAY_LONG[dow]} of every month`],
+    ]) {
       const row = document.createElement('label');
       row.className = 'rec-radio-row';
       const r = document.createElement('input');
-      r.type = 'radio'; r.name = 'monthly-mode'; r.value = val;
+      r.type = 'radio';
+      r.name = 'monthly-mode';
+      r.value = val;
       r.checked = monthlyMode === val;
-      r.addEventListener('change', () => { monthlyMode = val; monthlyModeExplicit = true; notify(); });
+      r.addEventListener('change', () => {
+        monthlyMode = val;
+        monthlyModeExplicit = true;
+        notify();
+      });
       row.append(r, document.createTextNode(text));
       subWrap.appendChild(row);
     }
@@ -230,31 +301,54 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
 
   function renderEndConditions() {
     const label = document.createElement('div');
-    label.className = 'rec-label'; label.textContent = 'Ends';
+    label.className = 'rec-label';
+    label.textContent = 'Ends';
     endWrap.appendChild(label);
-    for (const [v, l] of [['never','Never'],['date','On date'],['count','After']]) {
+    for (const [v, l] of [
+      ['never', 'Never'],
+      ['date', 'On date'],
+      ['count', 'After'],
+    ]) {
       const rowEl = document.createElement('label');
       rowEl.className = 'rec-radio-row';
       const r = document.createElement('input');
-      r.type = 'radio'; r.name = 'end-mode'; r.value = v; r.checked = endMode === v;
-      r.addEventListener('change', () => { endMode = v; notify(); renderEndConditions(); });
+      r.type = 'radio';
+      r.name = 'end-mode';
+      r.value = v;
+      r.checked = endMode === v;
+      r.addEventListener('change', () => {
+        endMode = v;
+        notify();
+        renderEndConditions();
+      });
       rowEl.append(r, document.createTextNode(' ' + l));
       if (v === 'date' && endMode === 'date') {
         const dBtn = document.createElement('button');
-        dBtn.type = 'button'; dBtn.className = 'date-picker-btn rec-end-date-btn';
+        dBtn.type = 'button';
+        dBtn.className = 'date-picker-btn rec-end-date-btn';
         dBtn.textContent = endDate
-          ? endDate.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })
+          ? endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
           : 'Pick date';
         dBtn.addEventListener('click', () => {
-          showDatePicker(endDate || new Date(), sel => { endDate = sel; notify(); renderEndConditions(); });
+          showDatePicker(endDate || new Date(), (sel) => {
+            endDate = sel;
+            notify();
+            renderEndConditions();
+          });
         });
         rowEl.append(document.createTextNode(' '), dBtn);
       }
       if (v === 'count' && endMode === 'count') {
         const cInput = document.createElement('input');
-        cInput.type = 'number'; cInput.min = '1'; cInput.max = '999';
-        cInput.className = 'rec-interval-input'; cInput.value = endCount;
-        cInput.addEventListener('input', () => { endCount = Math.max(1, parseInt(cInput.value) || 1); notify(); });
+        cInput.type = 'number';
+        cInput.min = '1';
+        cInput.max = '999';
+        cInput.className = 'rec-interval-input';
+        cInput.value = endCount;
+        cInput.addEventListener('input', () => {
+          endCount = Math.max(1, parseInt(cInput.value) || 1);
+          notify();
+        });
         rowEl.append(document.createTextNode(' '), cInput, document.createTextNode(' occurrences'));
       }
       endWrap.appendChild(rowEl);
@@ -263,7 +357,8 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
 
   function renderAdvanced() {
     const toggle = document.createElement('button');
-    toggle.type = 'button'; toggle.className = 'rec-advanced-toggle';
+    toggle.type = 'button';
+    toggle.className = 'rec-advanced-toggle';
     const body = document.createElement('div');
     body.className = 'rec-advanced-body hidden';
     let open = rawMode;
@@ -274,11 +369,13 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
       body.classList.toggle('hidden', !open);
     });
     const rawLabel = document.createElement('div');
-    rawLabel.className = 'rec-label'; rawLabel.textContent = 'Custom RRULE';
+    rawLabel.className = 'rec-label';
+    rawLabel.textContent = 'Custom RRULE';
     const rawInput = document.createElement('input');
-    rawInput.type = 'text'; rawInput.className = 'rec-raw-input';
+    rawInput.type = 'text';
+    rawInput.className = 'rec-raw-input';
     rawInput.placeholder = 'e.g. FREQ=WEEKLY;BYDAY=MO,WE';
-    rawInput.value = rawMode ? (currentRrule || '') : (buildRrule() || '');
+    rawInput.value = rawMode ? currentRrule || '' : buildRrule() || '';
     if (rawMode && isComplex) {
       const notice = document.createElement('div');
       notice.className = 'rec-complex-notice';
@@ -286,8 +383,12 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
       body.appendChild(notice);
     }
     rawInput.addEventListener('input', () => {
-      rawMode = true; rawRrule = rawInput.value.trim(); rawTouched = true;
-      presetSel.value = 'none'; preset = 'none'; notify();
+      rawMode = true;
+      rawRrule = rawInput.value.trim();
+      rawTouched = true;
+      presetSel.value = 'none';
+      preset = 'none';
+      notify();
     });
     body.append(rawLabel, rawInput);
     body.classList.toggle('hidden', !open);
@@ -303,15 +404,18 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
     summary.className = 'rec-summary';
     summary.textContent = humanReadable(cfg) || rruleStr;
     previewWrap.appendChild(summary);
-    getOccurrences(rruleStr, startDate).then(dates => {
+    getOccurrences(rruleStr, startDate).then((dates) => {
       if (!dates.length) return;
       if (previewWrap.contains(summary)) previewWrap.appendChild(buildMiniCal(dates));
     });
   }
 
   // ── Start date change hook ──────────────────────────────────────────────────
-  root.onStartDateChange = (newDate) => {
-    if (!monthlyModeExplicit && preset === 'monthly') { notify(); renderSub(); }
+  root.onStartDateChange = (_newDate) => {
+    if (!monthlyModeExplicit && preset === 'monthly') {
+      notify();
+      renderSub();
+    }
     refreshPreview();
   };
 

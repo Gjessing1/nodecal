@@ -6,10 +6,13 @@
  */
 export function parseTagsFromTitle(raw) {
   const tags = [];
-  const cleaned = raw.replace(/#(\S+)/g, (_, tag) => {
-    tags.push(tag.toLowerCase());
-    return '';
-  }).replace(/\s+/g, ' ').trim();
+  const cleaned = raw
+    .replace(/#(\S+)/g, (_, tag) => {
+      tags.push(tag.toLowerCase());
+      return '';
+    })
+    .replace(/\s+/g, ' ')
+    .trim();
   return { title: cleaned, tags };
 }
 
@@ -32,7 +35,7 @@ export function taskSourceVisible(task, hiddenCalendars) {
 export function getAllCategories(tasks) {
   const cats = new Set();
   for (const t of tasks) {
-    for (const c of (t.categories || [])) {
+    for (const c of t.categories || []) {
       if (c !== 'important') cats.add(c);
     }
   }
@@ -46,7 +49,7 @@ export function getAllCategories(tasks) {
  * @returns {string[]}
  */
 export function visibleCategories(cats, hiddenCategories = []) {
-  return (cats || []).filter(c => c !== 'important' && !hiddenCategories.includes(c));
+  return (cats || []).filter((c) => c !== 'important' && !hiddenCategories.includes(c));
 }
 
 /**
@@ -66,7 +69,7 @@ export function groupTasksByCategory(tasks, hiddenCategories = []) {
   }
   // Sort: named categories first (alpha), uncategorized last
   const sorted = new Map();
-  for (const k of [...groups.keys()].filter(k => k).sort()) sorted.set(k, groups.get(k));
+  for (const k of [...groups.keys()].filter((k) => k).sort()) sorted.set(k, groups.get(k));
   if (groups.has('')) sorted.set('', groups.get(''));
   return sorted;
 }

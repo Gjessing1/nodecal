@@ -7,7 +7,8 @@ let deferredPrompt = null;
  */
 export function initInstallPrompt() {
   // Already installed — nothing to do
-  if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) return;
+  if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone)
+    return;
 
   const banner = document.getElementById('install-banner');
   const installBtn = document.getElementById('install-btn');
@@ -17,7 +18,7 @@ export function initInstallPrompt() {
   const dismissed = localStorage.getItem('install-dismissed');
   if (dismissed) return;
 
-  window.addEventListener('beforeinstallprompt', e => {
+  window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
     banner.classList.remove('hidden');

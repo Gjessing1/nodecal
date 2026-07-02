@@ -9,11 +9,19 @@
  * @property {number}  [count]
  */
 
-export const ALL_DAY_CODES = ['MO','TU','WE','TH','FR','SA','SU'];
-export const DAY_LONG = { MO:'Monday',TU:'Tuesday',WE:'Wednesday',TH:'Thursday',FR:'Friday',SA:'Saturday',SU:'Sunday' };
+export const ALL_DAY_CODES = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+export const DAY_LONG = {
+  MO: 'Monday',
+  TU: 'Tuesday',
+  WE: 'Wednesday',
+  TH: 'Thursday',
+  FR: 'Friday',
+  SA: 'Saturday',
+  SU: 'Sunday',
+};
 // JS getDay() (0=Sun) → RRULE day code
-export const JS_DOW_TO_CODE = ['SU','MO','TU','WE','TH','FR','SA'];
-export const WEEKDAYS_SET = new Set(['MO','TU','WE','TH','FR']);
+export const JS_DOW_TO_CODE = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+export const WEEKDAYS_SET = new Set(['MO', 'TU', 'WE', 'TH', 'FR']);
 
 export function ordinal(n) {
   const abs = Math.abs(n);
@@ -36,10 +44,10 @@ export function parseRrule(str) {
   }
 
   const freq = parts.FREQ?.toLowerCase();
-  if (!['daily','weekly','monthly','yearly'].includes(freq)) return null;
+  if (!['daily', 'weekly', 'monthly', 'yearly'].includes(freq)) return null;
 
-  const known = new Set(['FREQ','INTERVAL','BYDAY','BYMONTHDAY','BYSETPOS','UNTIL','COUNT']);
-  if (Object.keys(parts).some(k => !known.has(k))) return null;
+  const known = new Set(['FREQ', 'INTERVAL', 'BYDAY', 'BYMONTHDAY', 'BYSETPOS', 'UNTIL', 'COUNT']);
+  if (Object.keys(parts).some((k) => !known.has(k))) return null;
 
   const interval = parseInt(parts.INTERVAL) || 1;
 
@@ -51,7 +59,7 @@ export function parseRrule(str) {
     if (posMatch) {
       bySetPos = parseInt(posMatch[1]);
       byWeekdays = [posMatch[2]];
-    } else if (days.every(d => ALL_DAY_CODES.includes(d))) {
+    } else if (days.every((d) => ALL_DAY_CODES.includes(d))) {
       byWeekdays = days;
     } else {
       return null;
@@ -68,8 +76,8 @@ export function parseRrule(str) {
 
   let until = null;
   if (parts.UNTIL) {
-    const u = parts.UNTIL.replace(/[TZ]/g,'');
-    until = new Date(`${u.slice(0,4)}-${u.slice(4,6)}-${u.slice(6,8)}T00:00:00`);
+    const u = parts.UNTIL.replace(/[TZ]/g, '');
+    until = new Date(`${u.slice(0, 4)}-${u.slice(4, 6)}-${u.slice(6, 8)}T00:00:00`);
   }
   const count = parts.COUNT ? parseInt(parts.COUNT) : null;
 
@@ -95,8 +103,8 @@ export function serializeConfig(cfg) {
   if (cfg.until) {
     const u = cfg.until;
     const y = u.getFullYear();
-    const mo = String(u.getMonth()+1).padStart(2,'0');
-    const d  = String(u.getDate()).padStart(2,'0');
+    const mo = String(u.getMonth() + 1).padStart(2, '0');
+    const d = String(u.getDate()).padStart(2, '0');
     parts.push(`UNTIL=${y}${mo}${d}T000000Z`);
   }
   if (cfg.count) parts.push(`COUNT=${cfg.count}`);
@@ -115,11 +123,11 @@ export function humanReadable(cfg) {
   if (cfg.freq === 'daily') {
     base = cfg.interval === 1 ? 'Repeats daily' : `Repeats every ${cfg.interval} days`;
   } else if (cfg.freq === 'weekly') {
-    if (days.length === 5 && days.every(d => WEEKDAYS_SET.has(d))) {
+    if (days.length === 5 && days.every((d) => WEEKDAYS_SET.has(d))) {
       base = 'Repeats every weekday (Mon–Fri)';
     } else {
       const n = cfg.interval === 1 ? 'every week' : `every ${cfg.interval} weeks`;
-      const dayStr = days.map(d => DAY_LONG[d]).join(' and ');
+      const dayStr = days.map((d) => DAY_LONG[d]).join(' and ');
       base = dayStr ? `Repeats ${n} on ${dayStr}` : `Repeats ${n}`;
     }
   } else if (cfg.freq === 'monthly') {
@@ -137,7 +145,7 @@ export function humanReadable(cfg) {
   const suffix = cfg.count
     ? `Ends after ${cfg.count} occurrence${cfg.count === 1 ? '' : 's'}`
     : cfg.until
-      ? `Ends on ${cfg.until.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })}`
+      ? `Ends on ${cfg.until.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
       : '';
   return suffix ? `${base} · ${suffix}` : base;
 }

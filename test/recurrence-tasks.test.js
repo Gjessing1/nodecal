@@ -63,7 +63,7 @@ describe('computeNextDue with X-RECURRING', () => {
 
   it('clock resets from completion, not from due date', () => {
     const task = {
-      due: '2026-05-01',  // Monday
+      due: '2026-05-01', // Monday
       xRecurringType: 'after-completion',
       xRecurringInterval: '3d',
       rrule: null,
@@ -95,7 +95,7 @@ describe('computeNextDue with RRULE', () => {
 
   it('preserves weekly schedule even when completed late', () => {
     const task = {
-      due: '2026-05-04',  // Monday
+      due: '2026-05-04', // Monday
       rrule: 'FREQ=WEEKLY;BYDAY=MO',
       xRecurringType: null,
       xRecurringInterval: null,

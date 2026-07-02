@@ -1,8 +1,7 @@
 const { Router } = require('express');
-const { RRule } = require('rrule');
 const { putEvent, putEventAtHref, deleteEvent } = require('../caldav/client');
 const { serializeEvent, formatIcsDate } = require('../caldav/parser');
-const { expandRecurring, setRruleUntil, parseExdate, rrulestr } = require('../caldav/recurrence');
+const { expandRecurring, setRruleUntil, rrulestr } = require('../caldav/recurrence');
 const store = require('../cache/store');
 
 const router = Router();
@@ -11,7 +10,7 @@ const router = Router();
 
 router.get('/events', (req, res) => {
   const from = req.query.from ? new Date(req.query.from) : new Date(Date.now() - 30 * 86400000);
-  const to   = req.query.to   ? new Date(req.query.to)   : new Date(Date.now() + 90 * 86400000);
+  const to = req.query.to ? new Date(req.query.to) : new Date(Date.now() + 90 * 86400000);
 
   const result = [];
   for (const ev of store.getNonRecurringInRange(from, to)) {
@@ -30,15 +29,38 @@ router.get('/events', (req, res) => {
 
 router.post('/events', async (req, res) => {
   try {
-    const { calendarId, title, start, end, allDay, description, location, url, rrule, alarmMinutes, categories } = req.body;
-    if (!calendarId || !title || !start) return res.status(400).json({ error: 'calendarId, title, start required' });
+    const {
+      calendarId,
+      title,
+      start,
+      end,
+      allDay,
+      description,
+      location,
+      url,
+      rrule,
+      alarmMinutes,
+      categories,
+    } = req.body;
+    if (!calendarId || !title || !start)
+      return res.status(400).json({ error: 'calendarId, title, start required' });
 
     const uid = crypto.randomUUID();
     const now = new Date().toISOString();
-    const event = { uid, calendarId, title, start, end: end || start, allDay: !!allDay,
-      description: description || '', location: location || '', url: url || '', rrule: rrule || null,
+    const event = {
+      uid,
+      calendarId,
+      title,
+      start,
+      end: end || start,
+      allDay: !!allDay,
+      description: description || '',
+      location: location || '',
+      url: url || '',
+      rrule: rrule || null,
       alarmMinutes: alarmMinutes != null ? parseInt(alarmMinutes) : null,
-      categories: Array.isArray(categories) ? categories : [] };
+      categories: Array.isArray(categories) ? categories : [],
+    };
     const ics = serializeEvent(event);
     const { href, etag } = await putEvent(calendarId, uid, ics);
     const stored = { ...event, href, etag, localModifiedAt: now, lastSyncedAt: now };
@@ -127,8 +149,19 @@ async function handleSingleOccurrenceEdit(base, changes, occurrenceDate, res) {
   const exdateStr = formatIcsDate(new Date(occurrenceDate), base.allDay);
   const updatedBase = { ...base, exdates: [...(base.exdates || []), exdateStr] };
   const baseIcs = serializeEvent(updatedBase);
-  const { href: bHref, etag: bEtag } = await putEvent(base.calendarId, base.uid, baseIcs, base.etag);
-  store.setEvent({ ...updatedBase, href: bHref, etag: bEtag, localModifiedAt: now, lastSyncedAt: now });
+  const { href: bHref, etag: bEtag } = await putEvent(
+    base.calendarId,
+    base.uid,
+    baseIcs,
+    base.etag,
+  );
+  store.setEvent({
+    ...updatedBase,
+    href: bHref,
+    etag: bEtag,
+    localModifiedAt: now,
+    lastSyncedAt: now,
+  });
 
   // 2. Create a standalone exception event for this occurrence
   const excUid = crypto.randomUUID();
@@ -151,8 +184,19 @@ async function handleFutureEdit(base, changes, occurrenceDate, res) {
   const until = new Date(new Date(occurrenceDate).getTime() - 1000);
   const updatedBase = { ...base, rrule: setRruleUntil(base.rrule, until) };
   const baseIcs = serializeEvent(updatedBase);
-  const { href: bHref, etag: bEtag } = await putEvent(base.calendarId, base.uid, baseIcs, base.etag);
-  store.setEvent({ ...updatedBase, href: bHref, etag: bEtag, localModifiedAt: now, lastSyncedAt: now });
+  const { href: bHref, etag: bEtag } = await putEvent(
+    base.calendarId,
+    base.uid,
+    baseIcs,
+    base.etag,
+  );
+  store.setEvent({
+    ...updatedBase,
+    href: bHref,
+    etag: bEtag,
+    localModifiedAt: now,
+    lastSyncedAt: now,
+  });
 
   // 2. Create a new recurring series from this occurrence onward
   const newUid = crypto.randomUUID();
@@ -173,7 +217,18 @@ async function handleFutureEdit(base, changes, occurrenceDate, res) {
 // ── Helpers ───────────────────────────────────────────────
 
 function filterChanges(changes) {
-  const allowed = ['title', 'start', 'end', 'allDay', 'description', 'location', 'url', 'rrule', 'alarmMinutes', 'categories'];
+  const allowed = [
+    'title',
+    'start',
+    'end',
+    'allDay',
+    'description',
+    'location',
+    'url',
+    'rrule',
+    'alarmMinutes',
+    'categories',
+  ];
   const out = {};
   for (const k of allowed) {
     if (k in changes) out[k] = changes[k];
@@ -206,29 +261,31 @@ function toApiShape(ev) {
 router.post('/events/batch-shift', async (req, res) => {
   try {
     const { category, shiftDays, anchorDate } = req.body;
-    if (!category || !shiftDays) return res.status(400).json({ error: 'category and shiftDays required' });
+    if (!category || !shiftDays)
+      return res.status(400).json({ error: 'category and shiftDays required' });
 
-    const shiftMs   = Math.round(shiftDays) * 86400000;
-    const anchor    = anchorDate ? new Date(anchorDate) : null;
-    const catLower  = category.toLowerCase();
-    const matching  = store.getAllEvents().filter(ev =>
-      (ev.categories || []).some(c => c.toLowerCase() === catLower)
-    );
+    const shiftMs = Math.round(shiftDays) * 86400000;
+    const anchor = anchorDate ? new Date(anchorDate) : null;
+    const catLower = category.toLowerCase();
+    const matching = store
+      .getAllEvents()
+      .filter((ev) => (ev.categories || []).some((c) => c.toLowerCase() === catLower));
 
-    let shifted = 0, skipped = 0;
+    let shifted = 0,
+      skipped = 0;
     const errors = [];
 
     for (const ev of matching) {
       try {
         const evStart = new Date(ev.start);
-        const durMs   = new Date(ev.end) - evStart;
+        const durMs = new Date(ev.end) - evStart;
 
         // ── "Shift all" mode (no anchor) ────────────────────
         if (!anchor) {
           const updated = {
             ...ev,
             start: new Date(evStart.getTime() + shiftMs).toISOString(),
-            end:   new Date(evStart.getTime() + durMs + shiftMs).toISOString(),
+            end: new Date(evStart.getTime() + durMs + shiftMs).toISOString(),
             ...(ev.rrule ? { exdates: null } : {}),
           };
           const { href, etag } = await putEventAtHref(ev.href, serializeEvent(updated), ev.etag);
@@ -240,11 +297,14 @@ router.post('/events/batch-shift', async (req, res) => {
         // ── "Shift future" mode (anchor present) ────────────
         if (!ev.rrule) {
           // Non-recurring: skip events that ended before anchor
-          if (evStart < anchor) { skipped++; continue; }
+          if (evStart < anchor) {
+            skipped++;
+            continue;
+          }
           const updated = {
             ...ev,
             start: new Date(evStart.getTime() + shiftMs).toISOString(),
-            end:   new Date(evStart.getTime() + durMs + shiftMs).toISOString(),
+            end: new Date(evStart.getTime() + durMs + shiftMs).toISOString(),
           };
           const { href, etag } = await putEventAtHref(ev.href, serializeEvent(updated), ev.etag);
           store.setEvent({ ...updated, href, etag });
@@ -254,16 +314,24 @@ router.post('/events/batch-shift', async (req, res) => {
 
         // Recurring: find split point using rrule library
         const dtstart = formatIcsDate(evStart, false);
-        const rule    = rrulestr(`DTSTART:${dtstart}\nRRULE:${ev.rrule}`);
-        const lastBefore    = rule.before(anchor, false); // last occurrence strictly before anchor
-        const firstAtOrAfter = rule.after(anchor, true);  // first occurrence at or after anchor
+        const rule = rrulestr(`DTSTART:${dtstart}\nRRULE:${ev.rrule}`);
+        const lastBefore = rule.before(anchor, false); // last occurrence strictly before anchor
+        const firstAtOrAfter = rule.after(anchor, true); // first occurrence at or after anchor
 
-        if (!firstAtOrAfter) { skipped++; continue; } // series already ended before anchor
+        if (!firstAtOrAfter) {
+          skipped++;
+          continue;
+        } // series already ended before anchor
 
         if (!lastBefore || evStart >= anchor) {
           // Entire series is at or after anchor — just shift DTSTART
           const newStart = new Date(firstAtOrAfter.getTime() + shiftMs);
-          const updated  = { ...ev, start: newStart.toISOString(), end: new Date(newStart.getTime() + durMs).toISOString(), exdates: null };
+          const updated = {
+            ...ev,
+            start: newStart.toISOString(),
+            end: new Date(newStart.getTime() + durMs).toISOString(),
+            exdates: null,
+          };
           const { href, etag } = await putEventAtHref(ev.href, serializeEvent(updated), ev.etag);
           store.setEvent({ ...updated, href, etag });
           shifted++;
@@ -271,19 +339,33 @@ router.post('/events/batch-shift', async (req, res) => {
         }
 
         // Split: cap history series, create new shifted series
-        const cappedRrule  = setRruleUntil(ev.rrule, lastBefore, ev.allDay);
-        const cappedBase   = { ...ev, rrule: cappedRrule };
-        const { href: bHref, etag: bEtag } = await putEventAtHref(ev.href, serializeEvent(cappedBase), ev.etag);
+        const cappedRrule = setRruleUntil(ev.rrule, lastBefore, ev.allDay);
+        const cappedBase = { ...ev, rrule: cappedRrule };
+        const { href: bHref, etag: bEtag } = await putEventAtHref(
+          ev.href,
+          serializeEvent(cappedBase),
+          ev.etag,
+        );
         store.setEvent({ ...cappedBase, href: bHref, etag: bEtag });
 
-        const newUid   = crypto.randomUUID();
+        const newUid = crypto.randomUUID();
         const newStart = new Date(firstAtOrAfter.getTime() + shiftMs);
         const openRrule = ev.rrule.replace(/;?(UNTIL|COUNT)=[^;]*/gi, '').replace(/^;|;$/g, '');
-        const newSeries = { ...ev, uid: newUid, start: newStart.toISOString(), end: new Date(newStart.getTime() + durMs).toISOString(), rrule: openRrule, exdates: null };
-        const { href: nHref, etag: nEtag } = await putEvent(ev.calendarId, newUid, serializeEvent(newSeries));
+        const newSeries = {
+          ...ev,
+          uid: newUid,
+          start: newStart.toISOString(),
+          end: new Date(newStart.getTime() + durMs).toISOString(),
+          rrule: openRrule,
+          exdates: null,
+        };
+        const { href: nHref, etag: nEtag } = await putEvent(
+          ev.calendarId,
+          newUid,
+          serializeEvent(newSeries),
+        );
         store.setEvent({ ...newSeries, href: nHref, etag: nEtag });
         shifted++;
-
       } catch (err) {
         console.error(`[batch-shift] skipped "${ev.title}" (${ev.uid}): ${err.message}`);
         errors.push({ uid: ev.uid, title: ev.title, error: err.message });
