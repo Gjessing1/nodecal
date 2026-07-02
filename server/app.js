@@ -6,6 +6,7 @@ const { syncIncremental } = require('./caldav/sync');
 const store = require('./cache/store');
 const { authMiddleware } = require('./middleware/auth');
 const { getBuildInfo } = require('./buildInfo');
+const { startPushScheduler } = require('./push/scheduler');
 
 const app = express();
 app.use(express.json());
@@ -52,6 +53,7 @@ api.use(require('./routes/settings'));
 api.use(require('./routes/nlp'));
 api.use(require('./routes/tasks'));
 api.use(require('./routes/weather'));
+api.use(require('./routes/push'));
 
 // Canonical namespace like maily's; the client and service worker use /api/*.
 app.use('/api', api);
@@ -106,6 +108,9 @@ async function start() {
     }, getSyncIntervalMs());
   }
   scheduleSync();
+
+  // Web-push reminders — delivered even when every client is closed
+  startPushScheduler();
 }
 
 start();

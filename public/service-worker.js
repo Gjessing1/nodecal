@@ -138,6 +138,25 @@ async function shellCacheFirst(event, request) {
   return res;
 }
 
+// ── Web Push — server-sent reminders arrive with the app closed ────────────
+// Payload shape mirrors server/push/scheduler.js: { title, body, tag }.
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+  let payload;
+  try {
+    payload = event.data.json();
+  } catch {
+    payload = { title: 'Nodecal', body: event.data.text() };
+  }
+  event.waitUntil(
+    self.registration.showNotification(payload.title || 'Nodecal', {
+      body: payload.body || '',
+      icon: '/icons/icon.svg',
+      tag: payload.tag || undefined,
+    }),
+  );
+});
+
 // ── Notification click — focus/open the app ───────────────────────────────
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();

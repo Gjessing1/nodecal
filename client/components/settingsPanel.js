@@ -8,6 +8,7 @@ import {
 } from './settingsHelpers.js';
 import { renderProfilesSection } from './profilesSettings.js';
 import { registerProfileTaskSources } from '../app/profiles.js';
+import { pushSupported, getPushSubscription, enablePush, disablePush } from '../app/pushClient.js';
 
 const ALL_VIEWS = [
   { id: 'agenda', label: 'Agenda' },
@@ -148,6 +149,13 @@ function renderForm() {
         <span id="s-notif-status" style="font-size:var(--text-sm);color:var(--color-text-muted);flex:1"></span>
         <button type="button" id="s-notif-test" class="btn btn-ghost" style="font-size:var(--text-sm);padding:2px 12px">Test notification</button>
       </div>
+    </div>
+    <div class="modal-field">
+      <label class="settings-toggle">
+        <input type="checkbox" id="s-push-enable">
+        <span>Push reminders on this device (works with the app closed)</span>
+      </label>
+      <div id="s-push-status" style="font-size:var(--text-sm);color:var(--color-text-muted);margin-top:var(--spacing-xs)"></div>
     </div>
     <div class="modal-row">
       <div class="modal-field">
@@ -367,6 +375,39 @@ function renderForm() {
     }
   }
   updateNotifStatus();
+
+  // ── Web-push per-device toggle ─────────────────────────────────────────────
+  const pushCheck = /** @type {HTMLInputElement} */ (sheet.querySelector('#s-push-enable'));
+  const pushStatus = sheet.querySelector('#s-push-status');
+  if (pushCheck) {
+    if (!pushSupported()) {
+      pushCheck.disabled = true;
+      if (pushStatus) pushStatus.textContent = 'Not supported by this browser';
+    } else {
+      getPushSubscription()
+        .then((s) => {
+          pushCheck.checked = !!s;
+        })
+        .catch(() => {});
+      pushCheck.addEventListener('change', async () => {
+        pushCheck.disabled = true;
+        try {
+          if (pushCheck.checked) {
+            await enablePush();
+            if (pushStatus) pushStatus.textContent = '✓ This device receives push reminders';
+          } else {
+            await disablePush();
+            if (pushStatus) pushStatus.textContent = '';
+          }
+        } catch (err) {
+          pushCheck.checked = !pushCheck.checked;
+          if (pushStatus) pushStatus.textContent = '✗ ' + err.message;
+        } finally {
+          pushCheck.disabled = false;
+        }
+      });
+    }
+  }
 
   if (notifCheck) {
     notifCheck.addEventListener('change', async () => {

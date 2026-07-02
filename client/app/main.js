@@ -26,6 +26,7 @@ import { showSnackbar } from '../components/snackbar.js';
 import { initSettingsPanel, openSettings } from '../components/settingsPanel.js';
 import { initInstallPrompt } from './installPrompt.js';
 import { initSwUpdate } from './swUpdate.js';
+import { pushEnabled } from './pushClient.js';
 import { initTheme } from './theme.js';
 import {
   applyProfile,
@@ -346,6 +347,8 @@ function taskAlarmDatetime(dueStr, reminderType, cfg) {
 function scheduleNotifications(events) {
   while (_notifTimers.length) clearTimeout(_notifTimers.pop());
   if (!state.config.enableNotifications) return;
+  // Server-side push covers this device — in-page timers would double-notify.
+  if (pushEnabled()) return;
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
   const now = Date.now();
