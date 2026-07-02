@@ -564,7 +564,7 @@ function renderForm(event, defaultDate, explicitTime = false) {
               const anchorDate = event?.occurrenceDate || event?.start || null;
               if (anchorDate) body.anchorDate = anchorDate;
             }
-            const r = await fetch('/events/batch-shift', {
+            const r = await fetch('/api/events/batch-shift', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(body),
@@ -721,7 +721,7 @@ async function applyNlp(text) {
   }
   const reqId = ++_nlpReqId;
   try {
-    const res = await fetch('/nlp/parse', {
+    const res = await fetch('/api/nlp/parse', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text }),

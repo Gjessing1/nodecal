@@ -86,7 +86,8 @@ function isAuthenticated(req) {
 
 function authMiddleware(req, res, next) {
   if (!authActive()) return next();
-  if (req.path === '/login' || req.path === '/logout') return next();
+  const exempt = ['/login', '/logout', '/api/login', '/api/logout'];
+  if (exempt.includes(req.path)) return next();
   if (!isAuthenticated(req)) return res.status(401).json({ error: 'Unauthorized' });
   next();
 }

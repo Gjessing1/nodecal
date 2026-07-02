@@ -101,7 +101,7 @@ function buildQuickAdd(callbacks) {
     clearTimeout(nlpTimer);
     nlpTimer = setTimeout(async () => {
       try {
-        const res = await fetch('/nlp/parse-task', {
+        const res = await fetch('/api/nlp/parse-task', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: raw }),
@@ -286,7 +286,7 @@ function buildQuickAdd(callbacks) {
 
     // Run NLP to extract date and recurrence from the title
     try {
-      const res = await fetch('/nlp/parse-task', {
+      const res = await fetch('/api/nlp/parse-task', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: rawTitle }),

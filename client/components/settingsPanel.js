@@ -298,7 +298,7 @@ function renderForm() {
   `;
 
   // Running build id — lets you verify a deploy actually reached this device.
-  fetch('/health')
+  fetch('/api/health')
     .then((res) => res.json())
     .then((h) => {
       const about = sheet.querySelector('#s-about');
@@ -457,7 +457,7 @@ function renderForm() {
     btn.textContent = '↻ Syncing…';
     btn.disabled = true;
     try {
-      const res = await fetch('/sync/clear', { method: 'POST' });
+      const res = await fetch('/api/sync/clear', { method: 'POST' });
       const data = await res.json();
       if (data.ok) {
         closeSettings();
@@ -478,7 +478,7 @@ function renderForm() {
 }
 
 async function handleLogout() {
-  await fetch('/logout', { method: 'POST' });
+  await fetch('/api/logout', { method: 'POST' });
   window.location.reload();
 }
 
@@ -585,7 +585,7 @@ async function handleSave() {
   if (defaultCalRaw) payload.defaultCalendar = defaultCalRaw;
 
   try {
-    const res = await fetch('/settings', {
+    const res = await fetch('/api/settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

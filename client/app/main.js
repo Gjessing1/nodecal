@@ -222,11 +222,11 @@ async function loadAll() {
   // Falls back to the /settings status code if /auth/status is unavailable.
   let authenticated;
   try {
-    const authRes = await fetch('/auth/status');
+    const authRes = await fetch('/api/auth/status');
     if (authRes.ok) {
       authenticated = (await authRes.json()).authenticated;
     } else {
-      const s = await fetch('/settings');
+      const s = await fetch('/api/settings');
       if (s.status === 401) {
         showLogin();
         return false;
@@ -234,7 +234,7 @@ async function loadAll() {
       authenticated = true;
     }
   } catch {
-    const s = await fetch('/settings');
+    const s = await fetch('/api/settings');
     if (s.status === 401) {
       showLogin();
       return false;
@@ -247,11 +247,11 @@ async function loadAll() {
   }
 
   const [settingsRes, calRes, evRes, tasksRes, sourcesRes] = await Promise.all([
-    fetch('/settings'),
-    fetch('/calendars'),
-    fetch(`/events?from=${rangeFrom()}&to=${rangeTo()}`),
-    fetch('/tasks'),
-    fetch('/task-sources'),
+    fetch('/api/settings'),
+    fetch('/api/calendars'),
+    fetch(`/api/events?from=${rangeFrom()}&to=${rangeTo()}`),
+    fetch('/api/tasks'),
+    fetch('/api/task-sources'),
   ]);
   const settings = await settingsRes.json();
   setConfig(settings);
@@ -281,14 +281,14 @@ async function loadAll() {
 }
 
 async function loadEvents() {
-  const res = await fetch(`/events?from=${rangeFrom()}&to=${rangeTo()}`);
+  const res = await fetch(`/api/events?from=${rangeFrom()}&to=${rangeTo()}`);
   const events = await res.json();
   setEvents(events);
   scheduleNotifications(events);
 }
 
 async function loadCalendars() {
-  const res = await fetch('/calendars');
+  const res = await fetch('/api/calendars');
   if (res.ok) setCalendars(await res.json());
 }
 
@@ -426,7 +426,10 @@ async function refreshOnWake() {
 }
 
 async function loadTasks() {
-  const [tasksRes, sourcesRes] = await Promise.all([fetch('/tasks'), fetch('/task-sources')]);
+  const [tasksRes, sourcesRes] = await Promise.all([
+    fetch('/api/tasks'),
+    fetch('/api/task-sources'),
+  ]);
   if (tasksRes.ok) setTasks(await tasksRes.json());
   if (sourcesRes.ok) setTaskSources(await sourcesRes.json());
   scheduleNotifications(); // re-run after tasks update to catch task reminders
@@ -437,7 +440,7 @@ async function loadWeather() {
   const lon = state.config.weatherLon;
   if (!lat || !lon) return;
   try {
-    const res = await fetch(`/weather?lat=${lat}&lon=${lon}`);
+    const res = await fetch(`/api/weather?lat=${lat}&lon=${lon}`);
     if (res.ok) setWeather(await res.json());
   } catch {
     /* weather is optional */
@@ -454,7 +457,7 @@ function detectAndLoadWeather() {
       const lat = pos.coords.latitude.toFixed(4);
       const lon = pos.coords.longitude.toFixed(4);
       setConfig({ weatherLat: lat, weatherLon: lon });
-      fetch('/settings', {
+      fetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ weatherLat: lat, weatherLon: lon }),
@@ -475,7 +478,7 @@ async function handleSync() {
   syncBtn.classList.add('syncing');
   syncError.classList.add('hidden');
   try {
-    const res = await fetch('/sync', { method: 'POST' });
+    const res = await fetch('/api/sync', { method: 'POST' });
     if (res.status === 401) {
       showLogin();
       return;
@@ -630,14 +633,14 @@ function undoEventDelete(ev) {
 async function handleTaskComplete(task) {
   try {
     if (task.status === 'COMPLETED') {
-      const res = await fetch(`/tasks/${task.id}`, {
+      const res = await fetch(`/api/tasks/${task.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'NEEDS-ACTION', completed: null }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
     } else {
-      const res = await fetch(`/tasks/${task.id}/complete`, { method: 'POST' });
+      const res = await fetch(`/api/tasks/${task.id}/complete`, { method: 'POST' });
       if (!res.ok) throw new Error((await res.json()).error);
     }
     await loadTasks();
@@ -652,7 +655,7 @@ async function handleTaskStar(task) {
     ? (task.categories || []).filter((c) => c !== 'important')
     : [...(task.categories || []), 'important'];
   try {
-    const res = await fetch(`/tasks/${task.id}`, {
+    const res = await fetch(`/api/tasks/${task.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ categories }),
@@ -688,7 +691,7 @@ async function handleTaskAdd({
     if (xRecurringInterval) body.xRecurringInterval = xRecurringInterval;
     if (description) body.description = description;
     if (taskReminder && taskReminder !== 'none') body.taskReminder = taskReminder;
-    const res = await fetch('/tasks', {
+    const res = await fetch('/api/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -717,7 +720,7 @@ function handleNewTaskForDay(day) {
 
 async function saveTask(id, data) {
   try {
-    const res = await fetch(`/tasks/${id}`, {
+    const res = await fetch(`/api/tasks/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -736,7 +739,7 @@ async function handleTaskSnooze(task) {
   const next = new Date(y, m - 1, d + 1);
   const nextStr = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`;
   try {
-    const res = await fetch(`/tasks/${task.id}`, {
+    const res = await fetch(`/api/tasks/${task.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ due: nextStr }),
@@ -840,7 +843,7 @@ function runSearch(query) {
 
 async function handleTaskDelete(task) {
   try {
-    const res = await fetch(`/tasks/${task.id}`, { method: 'DELETE' });
+    const res = await fetch(`/api/tasks/${task.id}`, { method: 'DELETE' });
     if (!res.ok && res.status !== 204) throw new Error('Delete failed');
     await loadTasks();
     render();
@@ -880,7 +883,7 @@ function initLogin() {
     const password = /** @type {HTMLInputElement} */ (document.getElementById('login-password'))
       .value;
     try {
-      const res = await fetch('/login', {
+      const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
@@ -1057,7 +1060,7 @@ async function init() {
     }
     calNlpTimer = setTimeout(async () => {
       try {
-        const res = await fetch('/nlp/parse', {
+        const res = await fetch('/api/nlp/parse', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text }),
@@ -1114,7 +1117,7 @@ async function init() {
     calQuickAddFb.classList.add('hidden');
     clearTimeout(calNlpTimer);
     try {
-      const res = await fetch('/nlp/parse', {
+      const res = await fetch('/api/nlp/parse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),

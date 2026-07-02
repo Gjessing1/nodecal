@@ -140,7 +140,7 @@ export function applyAccent(color) {
 
 export async function persistProfiles() {
   try {
-    await fetch('/settings', {
+    await fetch('/api/settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ profiles: getProfiles(), activeProfile: activeProfileId() }),

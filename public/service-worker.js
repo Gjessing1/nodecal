@@ -6,16 +6,37 @@
 // version bumps, no reinstalling the PWA.
 const BUILD = self.__BUILD__ || 'dev';
 const SHELL_CACHE = 'nodecal-shell-' + BUILD;
-// Unversioned on purpose: offline data snapshots stay valid across deploys.
-const DATA_CACHE = 'nodecal-data-v1';
+// Survives deploys on purpose; v2 = cache keys moved to /api/* pathnames.
+const DATA_CACHE = 'nodecal-data-v2';
 const SHELL_ASSETS = self.__ASSETS__ || ['/'];
 
 // API reads cached for offline use (cache key normalised to pathname, no query
 // params — offline always shows the last fetched snapshot).
-const DATA_PATHS = ['/events', '/calendars', '/settings', '/tasks', '/task-sources'];
+const DATA_PATHS = [
+  '/api/events',
+  '/api/calendars',
+  '/api/settings',
+  '/api/tasks',
+  '/api/task-sources',
+];
 
-// Endpoints that must never be cached — always hit the network.
-const NEVER_CACHE = ['/sync', '/nlp', '/auth', '/login', '/logout', '/health', '/weather'];
+// Pre-/api root paths. A stale tab can briefly pair with this worker during
+// the update handoff — pass its API calls straight to the network so JSON can
+// never leak into the shell cache.
+const LEGACY_API = [
+  '/events',
+  '/calendars',
+  '/settings',
+  '/tasks',
+  '/task-sources',
+  '/sync',
+  '/nlp',
+  '/auth',
+  '/login',
+  '/logout',
+  '/health',
+  '/weather',
+];
 
 // ── Install: precache the new shell into a build-versioned cache ──────────
 // cache:'reload' bypasses the HTTP cache so the precache holds exactly what
@@ -63,12 +84,15 @@ self.addEventListener('fetch', (event) => {
   // Update checks must always reach the server, never a cached copy.
   if (url.pathname === '/service-worker.js') return;
 
-  if (DATA_PATHS.includes(url.pathname)) {
-    event.respondWith(networkFirstData(event, url.pathname, request));
+  if (url.pathname.startsWith('/api/')) {
+    if (DATA_PATHS.includes(url.pathname)) {
+      event.respondWith(networkFirstData(event, url.pathname, request));
+    }
+    // Every other API endpoint always hits the network uncached.
     return;
   }
 
-  if (NEVER_CACHE.some((p) => url.pathname.startsWith(p))) return;
+  if (LEGACY_API.some((p) => url.pathname.startsWith(p))) return;
 
   event.respondWith(shellCacheFirst(event, request));
 });

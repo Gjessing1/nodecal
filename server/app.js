@@ -36,27 +36,38 @@ app.use('/rrule', express.static(path.join(__dirname, '../node_modules/rrule/dis
 
 // Auth status — no auth required, used by client to gate API calls without 401 noise
 const { isAuthenticated } = require('./middleware/auth');
-app.get('/auth/status', (req, res) => res.json({ authenticated: isAuthenticated(req) }));
+app.get(['/auth/status', '/api/auth/status'], (req, res) =>
+  res.json({ authenticated: isAuthenticated(req) }),
+);
 
 // Auth middleware runs after static files so the login form always loads
 app.use(authMiddleware);
-app.use(require('./routes/auth'));
-app.use(require('./routes/events'));
-app.use(require('./routes/calendars'));
-app.use(require('./routes/sync'));
-app.use(require('./routes/settings'));
-app.use(require('./routes/nlp'));
-app.use(require('./routes/tasks'));
-app.use(require('./routes/weather'));
 
-app.get('/health', (req, res) => {
+const api = express.Router();
+api.use(require('./routes/auth'));
+api.use(require('./routes/events'));
+api.use(require('./routes/calendars'));
+api.use(require('./routes/sync'));
+api.use(require('./routes/settings'));
+api.use(require('./routes/nlp'));
+api.use(require('./routes/tasks'));
+api.use(require('./routes/weather'));
+
+// Canonical namespace like maily's; the client and service worker use /api/*.
+app.use('/api', api);
+// Legacy root mount — installed PWAs run the pre-/api shell until their next
+// update cycle. Remove once nothing hits the root paths anymore.
+app.use(api);
+
+function healthHandler(req, res) {
   res.json({
     status: 'ok',
     version: process.env.npm_package_version,
     build: getBuildInfo().buildId,
     ...store.getSyncState(),
   });
-});
+}
+app.get(['/health', '/api/health'], healthHandler);
 
 const SETTINGS_FILE = '/config/settings.json';
 function getSyncIntervalMs() {

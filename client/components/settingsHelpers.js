@@ -297,7 +297,7 @@ function buildCollapsibleCatSection(sheet, title, cats, configKey, cfg) {
       const current = state.config[configKey] || [];
       const next = isHidden ? current.filter((c) => c !== cat) : [...current, cat];
       try {
-        const res = await fetch('/settings', {
+        const res = await fetch('/api/settings', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ [configKey]: next }),
