@@ -45,11 +45,12 @@ Read these before working on a feature. This file holds only the rules Claude mu
 - After each task: brief summary of what changed, what was left alone, any risks.
 - Keep files small and focused. Split when a file exceeds ~150 lines.
 - Use Conventional Commits: `feat:`, `fix:`, `chore:`, `refactor:`
-- Do not add npm dependencies without flagging it first.
-- **Current approved deps (server):** `express`, `rrule`, `chrono-node`, `dotenv`, `node-fetch` (or built-in fetch), CalDAV via custom HTTP client.
-- **rrule ESM** is served to the client at `/rrule` via a static route in `server/app.js` — no bundling needed.
-- Plain CSS only — no Tailwind, no CSS-in-JS, no preprocessors.
-- No TypeScript. Plain JS with JSDoc where types matter.
+- npm dependencies and a build/bundling step are allowed when they close the gap with maily or replace hand-rolled complexity — keep the count low and mention new deps in the task summary.
+- **Current approved deps (server):** `express`, `rrule`, `chrono-node`, `dotenv`, `web-push`, `node-fetch` (or built-in fetch), CalDAV via custom HTTP client. Dev: `typescript` (checkJs only), `eslint`, `prettier`.
+- **rrule ESM** is served to the client at `/rrule` via a static route in `server/app.js` — no bundling needed for it today.
+- Code is plain JS with JSDoc types, checked by `npm run typecheck` (tsc `--checkJs`); keep new code passing it. A full TypeScript port is an approved future direction (see docs/ROADMAP.md — maily convergence), but don't mix .ts files in before that phase starts.
+- CSS is plain CSS built on the design tokens in `client/styles/tokens.css` (Tailwind v4 `@theme`-compatible naming: `--color-*`, `--spacing-*`, `--text-*`, `--radius-*`). Always style through tokens, never hard-coded values. A later Tailwind migration is approved; until it starts, no utility frameworks.
+- `npm run lint` / `npm run format` (ESLint + Prettier, configs mirror maily) must pass; both are enforced in the Docker build.
 - The `RecurrenceConfig` typedef lives in `client/components/rruleParser.js`.
 - Event categories are separate from task categories — never mix them in the same UI or utility function.
 
