@@ -19,8 +19,8 @@
   justify-content: center;
   gap: 2px;
   color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-  padding: var(--space-xs) 0;
+  font-size: var(--text-sm);
+  padding: var(--spacing-xs) 0;
 }
 .nav-btn.active {
   color: var(--color-accent);
@@ -35,8 +35,8 @@
 .view-nav {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
   border-bottom: 1px solid var(--color-border);
   background: var(--color-bg);
   position: sticky;
@@ -46,7 +46,7 @@
 .nav-arrow {
   font-size: 22px;
   color: var(--color-accent);
-  padding: var(--space-xs) var(--space-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: var(--radius-sm);
   line-height: 1;
 }
@@ -54,15 +54,15 @@
   flex: 1;
   text-align: center;
   font-weight: 600;
-  font-size: var(--font-size-md);
+  font-size: var(--text-md);
 }
 .clickable-title {
   cursor: pointer;
 }
 .nav-today-btn {
-  font-size: var(--font-size-sm);
+  font-size: var(--text-sm);
   color: var(--color-accent);
-  padding: var(--space-xs) var(--space-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
   border: 1px solid var(--color-accent);
   border-radius: var(--radius-sm);
 }
@@ -71,8 +71,8 @@
 .allday-strip {
   display: flex;
   flex-wrap: nowrap;
-  gap: var(--space-xs);
-  padding: var(--space-xs) var(--space-md);
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-md);
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
   overflow-x: auto;
@@ -82,9 +82,9 @@
   display: none;
 }
 .allday-chip {
-  font-size: var(--font-size-sm);
+  font-size: var(--text-sm);
   color: #fff;
-  padding: 2px var(--space-sm);
+  padding: 2px var(--spacing-sm);
   border-radius: var(--radius-sm);
   cursor: pointer;
   white-space: nowrap;
@@ -126,7 +126,7 @@
 }
 .hour-label {
   position: absolute;
-  right: var(--space-xs);
+  right: var(--spacing-xs);
   font-size: 10px;
   color: var(--color-text-muted);
   transform: translateY(-50%);
@@ -180,7 +180,7 @@
   left: 2px;
   right: 2px;
   border-radius: var(--radius-sm);
-  padding: 2px var(--space-xs);
+  padding: 2px var(--spacing-xs);
   cursor: pointer;
   overflow: hidden;
   opacity: 0.9;
@@ -220,7 +220,7 @@
   white-space: nowrap;
 }
 .event-block-title {
-  font-size: var(--font-size-sm);
+  font-size: var(--text-sm);
   color: #fff;
   font-weight: 500;
   overflow-wrap: break-word;
@@ -268,8 +268,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: var(--space-xs) 0;
-  font-size: var(--font-size-sm);
+  padding: var(--spacing-xs) 0;
+  font-size: var(--text-sm);
 }
 .week-day-header.today .wdh-date {
   background: var(--color-accent);
@@ -288,7 +288,7 @@
 }
 .wdh-date {
   font-weight: 600;
-  font-size: var(--font-size-md);
+  font-size: var(--text-md);
 }
 .wdh-dot {
   width: 4px;
@@ -356,18 +356,18 @@
   width: min(280px, 85vw);
   background: var(--color-bg);
   overflow-y: auto;
-  padding: var(--space-lg) var(--space-md);
+  padding: var(--spacing-lg) var(--spacing-md);
   box-shadow: 4px 0 16px rgba(0, 0, 0, 0.15);
 }
 .cal-drawer h2 {
-  font-size: var(--font-size-lg);
-  margin-bottom: var(--space-md);
+  font-size: var(--text-lg);
+  margin-bottom: var(--spacing-md);
 }
 .cal-item {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) 0;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) 0;
   cursor: pointer;
   border-bottom: 1px solid var(--color-border);
 }
@@ -379,7 +379,7 @@
 }
 .cal-name {
   flex: 1;
-  font-size: var(--font-size-md);
+  font-size: var(--text-md);
 }
 .cal-checkbox {
   width: 18px;
@@ -390,7 +390,7 @@
 
 /* ── Header hamburger button ────────────────────────────── */
 .icon-btn {
-  padding: var(--space-sm);
+  padding: var(--spacing-sm);
   border-radius: var(--radius-sm);
   font-size: 18px;
   color: var(--color-text-muted);

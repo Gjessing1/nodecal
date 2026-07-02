@@ -25,7 +25,7 @@ export function renderProfilesSection(sheet, _cfg) {
 
   const intro = document.createElement('p');
   intro.style.cssText =
-    'font-size:var(--font-size-sm);color:var(--color-text-muted);margin:4px 0 0;padding:0 var(--space-md)';
+    'font-size:var(--text-sm);color:var(--color-text-muted);margin:4px 0 0;padding:0 var(--spacing-md)';
   intro.textContent =
     'Per-profile overrides of the global settings above — calendar visibility, accent, task source and default view.';
   section.appendChild(intro);
@@ -47,7 +47,7 @@ export function renderProfilesSection(sheet, _cfg) {
   activeField.appendChild(activeSel);
   const hint = document.createElement('span');
   hint.style.cssText =
-    'font-size:var(--font-size-sm);color:var(--color-text-muted);display:block;margin-top:4px';
+    'font-size:var(--text-sm);color:var(--color-text-muted);display:block;margin-top:4px';
   hint.textContent = 'Single hides the navbar switcher. Personal / Work shows it.';
   activeField.appendChild(hint);
   section.appendChild(activeField);
@@ -133,7 +133,7 @@ function buildCalendarsField(profile) {
   const hidden = new Set(profile.hiddenCalendars || []);
   if (!state.calendars.length) {
     const note = document.createElement('span');
-    note.style.cssText = 'font-size:var(--font-size-sm);color:var(--color-text-muted)';
+    note.style.cssText = 'font-size:var(--text-sm);color:var(--color-text-muted)';
     note.textContent = 'Sync first to list calendars.';
     field.appendChild(note);
   }
@@ -169,7 +169,7 @@ function buildTaskSourceField(profile) {
   const cals = (state.calendars || []).filter((c) => !c.readOnly);
   if (!cals.length) {
     const note = document.createElement('span');
-    note.style.cssText = 'font-size:var(--font-size-sm);color:var(--color-text-muted)';
+    note.style.cssText = 'font-size:var(--text-sm);color:var(--color-text-muted)';
     note.textContent = 'Sync first to list calendars.';
     field.appendChild(note);
     return field;
@@ -198,7 +198,7 @@ function buildTaskSourceField(profile) {
   field.appendChild(sel);
   const hint = document.createElement('span');
   hint.style.cssText =
-    'font-size:var(--font-size-sm);color:var(--color-text-muted);display:block;margin-top:4px';
+    'font-size:var(--text-sm);color:var(--color-text-muted);display:block;margin-top:4px';
   hint.textContent =
     'Each profile can use a different calendar — it is registered as a task source automatically.';
   field.appendChild(hint);
@@ -215,7 +215,7 @@ function buildEventCalendarField(profile) {
   const cals = (state.calendars || []).filter((c) => !c.readOnly);
   if (!cals.length) {
     const note = document.createElement('span');
-    note.style.cssText = 'font-size:var(--font-size-sm);color:var(--color-text-muted)';
+    note.style.cssText = 'font-size:var(--text-sm);color:var(--color-text-muted)';
     note.textContent = 'Sync first to list calendars.';
     field.appendChild(note);
     return field;

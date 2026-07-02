@@ -144,9 +144,9 @@ function renderForm() {
         <input type="checkbox" id="s-notif-enable" ${cfg.enableNotifications ? 'checked' : ''}>
         <span>Enable event reminders (browser notifications)</span>
       </label>
-      <div style="display:flex;gap:var(--space-sm);margin-top:var(--space-xs)">
-        <span id="s-notif-status" style="font-size:var(--font-size-sm);color:var(--color-text-muted);flex:1"></span>
-        <button type="button" id="s-notif-test" class="btn btn-ghost" style="font-size:var(--font-size-sm);padding:2px 12px">Test notification</button>
+      <div style="display:flex;gap:var(--spacing-sm);margin-top:var(--spacing-xs)">
+        <span id="s-notif-status" style="font-size:var(--text-sm);color:var(--color-text-muted);flex:1"></span>
+        <button type="button" id="s-notif-test" class="btn btn-ghost" style="font-size:var(--text-sm);padding:2px 12px">Test notification</button>
       </div>
     </div>
     <div class="modal-row">
@@ -260,7 +260,7 @@ function renderForm() {
     <div class="modal-section-label">Weather</div>
     <div class="modal-field">
       <label>Location for weather (met.no)</label>
-      <div style="display:flex;gap:var(--space-sm);align-items:flex-end">
+      <div style="display:flex;gap:var(--spacing-sm);align-items:flex-end">
         <div style="flex:0 0 auto">
           <div style="font-size:11px;color:var(--color-text-muted);margin-bottom:3px">Latitude</div>
           <input type="text" id="s-weather-lat" value="${esc(cfg.weatherLat || '')}" placeholder="59.91" style="width:80px">
@@ -269,20 +269,20 @@ function renderForm() {
           <div style="font-size:11px;color:var(--color-text-muted);margin-bottom:3px">Longitude</div>
           <input type="text" id="s-weather-lon" value="${esc(cfg.weatherLon || '')}" placeholder="10.75" style="width:80px">
         </div>
-        <button type="button" id="s-weather-detect" class="btn btn-ghost" style="font-size:var(--font-size-sm);flex-shrink:0;white-space:nowrap;padding:8px 10px">📍 Detect</button>
+        <button type="button" id="s-weather-detect" class="btn btn-ghost" style="font-size:var(--text-sm);flex-shrink:0;white-space:nowrap;padding:8px 10px">📍 Detect</button>
       </div>
     </div>
-    <div style="display:flex;gap:var(--space-sm);margin-bottom:var(--space-md)">
-      <div style="display:flex;flex-direction:column;gap:var(--space-xs)">
-        <label style="font-size:var(--font-size-sm);color:var(--color-text-muted);font-weight:500">Week (days)</label>
+    <div style="display:flex;gap:var(--spacing-sm);margin-bottom:var(--spacing-md)">
+      <div style="display:flex;flex-direction:column;gap:var(--spacing-xs)">
+        <label style="font-size:var(--text-sm);color:var(--color-text-muted);font-weight:500">Week (days)</label>
         <input type="number" id="s-weather-days-week" value="${cfg.weatherDaysWeek ?? 9}" min="1" max="14" step="1" style="width:70px">
       </div>
-      <div style="display:flex;flex-direction:column;gap:var(--space-xs)">
-        <label style="font-size:var(--font-size-sm);color:var(--color-text-muted);font-weight:500">Month (days)</label>
+      <div style="display:flex;flex-direction:column;gap:var(--spacing-xs)">
+        <label style="font-size:var(--text-sm);color:var(--color-text-muted);font-weight:500">Month (days)</label>
         <input type="number" id="s-weather-days-month" value="${cfg.weatherDaysMonth ?? 4}" min="1" max="14" step="1" style="width:70px">
       </div>
-      <div style="display:flex;flex-direction:column;gap:var(--space-xs)">
-        <label style="font-size:var(--font-size-sm);color:var(--color-text-muted);font-weight:500">Agenda (days)</label>
+      <div style="display:flex;flex-direction:column;gap:var(--spacing-xs)">
+        <label style="font-size:var(--text-sm);color:var(--color-text-muted);font-weight:500">Agenda (days)</label>
         <input type="number" id="s-weather-days-agenda" value="${cfg.weatherDaysAgenda ?? 1}" min="1" max="9" step="1" style="width:70px">
       </div>
     </div>
@@ -294,7 +294,7 @@ function renderForm() {
       <button class="btn btn-primary" id="s-save">Save</button>
       <button class="btn btn-ghost" id="s-cancel">Cancel</button>
     </div>
-    <div id="s-about" style="margin-top:var(--space-md);font-size:var(--font-size-sm);color:var(--color-text-muted);text-align:center"></div>
+    <div id="s-about" style="margin-top:var(--spacing-md);font-size:var(--text-sm);color:var(--color-text-muted);text-align:center"></div>
   `;
 
   // Running build id — lets you verify a deploy actually reached this device.

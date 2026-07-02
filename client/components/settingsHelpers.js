@@ -86,7 +86,7 @@ export function renderTaskSourcesSection(sheet, cfg) {
     removeBtn.type = 'button';
     removeBtn.className = 'btn btn-ghost';
     removeBtn.style.cssText =
-      'padding:4px 8px;font-size:var(--font-size-sm);color:var(--color-danger);flex-shrink:0;margin-top:2px';
+      'padding:4px 8px;font-size:var(--text-sm);color:var(--color-danger);flex-shrink:0;margin-top:2px';
     removeBtn.textContent = '×';
     removeBtn.addEventListener('click', () => {
       sources.splice(idx, 1);
@@ -116,7 +116,7 @@ export function renderTaskSourcesSection(sheet, cfg) {
   addBtn.type = 'button';
   addBtn.className = 'btn btn-ghost';
   addBtn.style.cssText =
-    'font-size:var(--font-size-sm);padding:4px 12px;margin-bottom:var(--space-md)';
+    'font-size:var(--text-sm);padding:4px 12px;margin-bottom:var(--spacing-md)';
   addBtn.textContent = '+ Add task source';
   addBtn.addEventListener('click', () => {
     const firstCal = calOptions[0];
@@ -195,7 +195,7 @@ export function renderIcsFeedsSection(sheet, cfg) {
     removeBtn.type = 'button';
     removeBtn.className = 'btn btn-ghost';
     removeBtn.style.cssText =
-      'padding:4px 8px;font-size:var(--font-size-sm);color:var(--color-danger);flex-shrink:0';
+      'padding:4px 8px;font-size:var(--text-sm);color:var(--color-danger);flex-shrink:0';
     removeBtn.textContent = '×';
     removeBtn.addEventListener('click', () => {
       feeds.splice(idx, 1);
@@ -213,7 +213,7 @@ export function renderIcsFeedsSection(sheet, cfg) {
   addBtn.type = 'button';
   addBtn.className = 'btn btn-ghost';
   addBtn.style.cssText =
-    'font-size:var(--font-size-sm);padding:4px 12px;margin-bottom:var(--space-md)';
+    'font-size:var(--text-sm);padding:4px 12px;margin-bottom:var(--spacing-md)';
   addBtn.textContent = '+ Add subscribed calendar';
   addBtn.addEventListener('click', () => {
     const id =
@@ -289,7 +289,7 @@ function buildCollapsibleCatSection(sheet, title, cats, configKey, cfg) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'btn btn-ghost';
-    btn.style.cssText = 'padding:2px 10px;font-size:var(--font-size-sm)';
+    btn.style.cssText = 'padding:2px 10px;font-size:var(--text-sm)';
     btn.textContent = isHidden ? 'Unhide' : 'Hide';
     btn.style.color = isHidden ? 'var(--color-accent)' : 'var(--color-text-muted)';
 

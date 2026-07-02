@@ -102,7 +102,7 @@ export function mountLocationUrlSection(wrap, opts) {
       hdr.type = 'button';
       hdr.className = 'add-field-btn';
       hdr.textContent = '− Location / URL';
-      hdr.style.marginBottom = 'var(--space-xs)';
+      hdr.style.marginBottom = 'var(--spacing-xs)';
       hdr.addEventListener('click', () => {
         // Persist current input values as initLoc/initUrl before collapsing
         const locEl = /** @type {HTMLInputElement|null} */ (wrap.querySelector(`#${locId}`));
