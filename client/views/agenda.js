@@ -5,6 +5,11 @@ import { getAllEventCategories } from '../app/eventUtils.js';
 import { taskSourceVisible } from '../app/taskUtils.js';
 
 const DAY_MS = 86400000;
+const PAST_CHUNK_DAYS = 7;
+
+// The scroll listener lives on the view container, which survives re-renders —
+// keep a handle so each render can detach the previous one.
+let scrollHandler = null;
 
 /**
  * Render the agenda view into the given container element.
@@ -16,10 +21,16 @@ const DAY_MS = 86400000;
  */
 export function renderAgenda(container, onEventClick, onTaskClick, onTaskComplete, onLongPress) {
   container.innerHTML = '';
+  if (scrollHandler) {
+    container.removeEventListener('scroll', scrollHandler);
+    scrollHandler = null;
+  }
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const agendaDays = state.config.agendaDays ?? 90;
+  // How many days before today are shown; grows in chunks via the "Earlier" button.
+  let pastDays = 0;
 
   // ── Category filter ──────────────────────────────────────
   let activeCategoryFilter = '';
@@ -64,13 +75,66 @@ export function renderAgenda(container, onEventClick, onTaskClick, onTaskComplet
   buildCatFilter();
   container.appendChild(filterBar);
 
+  // ── Past days ────────────────────────────────────────────
+  const earlierBtn = document.createElement('button');
+  earlierBtn.type = 'button';
+  earlierBtn.className = 'agenda-earlier-btn';
+  earlierBtn.textContent = '↑ Earlier';
+  earlierBtn.addEventListener('click', loadEarlier);
+  container.appendChild(earlierBtn);
+
   // ── Day groups ───────────────────────────────────────────
   const dayContainer = document.createElement('div');
   container.appendChild(dayContainer);
 
+  const todayChip = document.createElement('button');
+  todayChip.type = 'button';
+  todayChip.className = 'agenda-today-chip hidden';
+  todayChip.textContent = 'Today';
+  todayChip.addEventListener('click', scrollToToday);
+  container.appendChild(todayChip);
+
+  function todayEl() {
+    return dayContainer.querySelector('.agenda-group.is-today');
+  }
+
+  // Prepending days shifts everything down — keep today's group visually still.
+  function loadEarlier() {
+    const before = todayEl()?.getBoundingClientRect().top ?? 0;
+    pastDays += PAST_CHUNK_DAYS;
+    renderDays();
+    const after = todayEl()?.getBoundingClientRect().top ?? 0;
+    container.scrollTop += after - before;
+    updateTodayChip();
+  }
+
+  function scrollToToday() {
+    const el = todayEl();
+    if (!el) return;
+    const delta = el.getBoundingClientRect().top - container.getBoundingClientRect().top;
+    container.scrollTo({ top: container.scrollTop + delta, behavior: 'smooth' });
+  }
+
+  function updateTodayChip() {
+    const el = todayEl();
+    if (!el) {
+      todayChip.classList.add('hidden');
+      return;
+    }
+    const view = container.getBoundingClientRect();
+    const rect = el.getBoundingClientRect();
+    const above = rect.bottom < view.top;
+    const below = rect.top > view.bottom;
+    todayChip.textContent = above ? '↑ Today' : '↓ Today';
+    todayChip.classList.toggle('hidden', !above && !below);
+  }
+
+  scrollHandler = updateTodayChip;
+  container.addEventListener('scroll', scrollHandler, { passive: true });
+
   function renderDays() {
     const fragments = [];
-    for (let i = 0; i < agendaDays; i++) {
+    for (let i = -pastDays; i < agendaDays; i++) {
       const raw = new Date(today.getTime() + i * DAY_MS);
       const day = new Date(raw.getFullYear(), raw.getMonth(), raw.getDate());
       const dayEnd = new Date(day.getTime() + DAY_MS);
@@ -95,7 +159,7 @@ export function renderAgenda(container, onEventClick, onTaskClick, onTaskComplet
 
       const isToday = i === 0;
       const header = document.createElement('div');
-      header.className = 'agenda-group';
+      header.className = 'agenda-group' + (isToday ? ' is-today' : '') + (i < 0 ? ' is-past' : '');
 
       const dateEl = document.createElement('div');
       dateEl.className = 'agenda-date-header' + (isToday ? ' today' : '');
@@ -208,5 +272,7 @@ function formatDayHeader(date, isToday) {
   if (isToday) return 'Today — ' + long + wn + wxTag;
   const tomorrow = new Date(Date.now() + DAY_MS);
   if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow — ' + long + wn + wxTag;
+  const yesterday = new Date(Date.now() - DAY_MS);
+  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday — ' + long + wn + wxTag;
   return long + wn + wxTag;
 }

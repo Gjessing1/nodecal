@@ -31,6 +31,9 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
   let rawMode = isComplex;
   let rawRrule = isComplex ? currentRrule : '';
   let rawTouched = false;
+  // The occurrence mini-calendar is collapsed by default — the summary line is
+  // enough at a glance. Kept across re-renders so it stays open once expanded.
+  let previewCalOpen = false;
 
   function cfgToPreset(c) {
     if (!c) return 'none';
@@ -409,9 +412,29 @@ export function buildRecurrenceEditor(startDate, currentRrule, onChange, opts = 
     summary.className = 'rec-summary';
     summary.textContent = humanReadable(cfg) || rruleStr;
     previewWrap.appendChild(summary);
+
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'add-field-btn rec-preview-toggle hidden';
+    const calWrap = document.createElement('div');
+    calWrap.className = 'rec-preview-cal-wrap';
+
+    function syncToggle() {
+      toggle.textContent = previewCalOpen ? '− Upcoming dates' : '+ Upcoming dates';
+      calWrap.classList.toggle('hidden', !previewCalOpen);
+    }
+    toggle.addEventListener('click', () => {
+      previewCalOpen = !previewCalOpen;
+      syncToggle();
+    });
+    syncToggle();
+    previewWrap.append(toggle, calWrap);
+
     getOccurrences(rruleStr, startDate).then((dates) => {
-      if (!dates.length) return;
-      if (previewWrap.contains(summary)) previewWrap.appendChild(buildMiniCal(dates));
+      // previewWrap may have been rebuilt by a later refresh while we awaited
+      if (!dates.length || !previewWrap.contains(calWrap)) return;
+      toggle.classList.remove('hidden');
+      calWrap.replaceChildren(buildMiniCal(dates));
     });
   }
 

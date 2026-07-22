@@ -276,6 +276,10 @@ function renderForm(event, defaultDate, explicitTime = false) {
         <input type="checkbox" id="f-allday" ${event?.allDay ? 'checked' : ''}>
       </div>
     </div>
+    <div class="modal-field">
+      <label>Description</label>
+      <textarea id="f-desc" rows="4">${esc(event?.description || '')}</textarea>
+    </div>
     <div class="modal-collapsibles-row">
       <div id="f-rr-toggle" class="collapsible-field-wrap"></div>
       <div id="f-location-url-wrap" class="collapsible-field-wrap"></div>
@@ -319,11 +323,6 @@ function renderForm(event, defaultDate, explicitTime = false) {
     </div>`
         : ''
     }
-    <div id="f-categories-section"></div>
-    <div class="modal-field">
-      <label>Description</label>
-      <textarea id="f-desc" rows="5">${esc(event?.description || '')}</textarea>
-    </div>
     <div class="modal-actions">
       <button class="btn btn-primary" id="f-save">Save</button>
       ${!isNew && onDeleteCb ? '<button class="btn btn-danger" id="f-delete">Delete</button>' : ''}
