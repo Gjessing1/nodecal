@@ -9,8 +9,8 @@ import {
   calendarById,
 } from './state.js';
 import { renderAgenda } from '../views/agenda.js';
-import { renderDay, destroyDay } from '../views/day.js';
-import { renderWeek, destroyWeek } from '../views/week.js';
+import { renderDay, destroyDay, resetDayScroll } from '../views/day.js';
+import { renderWeek, destroyWeek, resetWeekScroll } from '../views/week.js';
 import { renderMonth } from '../views/month.js';
 import { renderTasks } from '../views/tasks.js';
 import { openTaskModal } from '../components/taskModal.js';
@@ -124,6 +124,8 @@ function switchView(viewName) {
   if (viewName === state.activeView) {
     if (viewName === 'day' || viewName === 'week' || viewName === 'month') {
       state.selectedDate = new Date();
+      resetDayScroll();
+      resetWeekScroll();
     } else if (viewName === 'agenda') {
       viewContainer.scrollTop = 0;
     }
@@ -165,7 +167,14 @@ const taskCallbacks = {
   onSnooze: handleTaskSnooze,
 };
 
+// Re-rendering the same view (completing a task, starring, snoozing) rebuilds the
+// whole container, which resets scroll. Keep the reading position across those.
+let _lastRenderedView = null;
+
 function render() {
+  const keepScroll = _lastRenderedView === state.activeView;
+  const prevScrollTop = viewContainer.scrollTop;
+  _lastRenderedView = state.activeView;
   destroyDay();
   destroyWeek();
   destroyTaskQuickAdd();
@@ -198,6 +207,9 @@ function render() {
       handleTaskComplete,
       handleLongPressCreate,
     );
+
+  // Browser clamps to the new content height if the list got shorter.
+  if (keepScroll && prevScrollTop) viewContainer.scrollTop = prevScrollTop;
 }
 
 function handleDayClick(date) {

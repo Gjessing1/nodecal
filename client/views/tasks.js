@@ -21,6 +21,8 @@ const _persist = {
  * @param {object} callbacks - { onComplete, onStar, onAdd, onEdit, onDelete }
  */
 export function renderTasks(container, callbacks) {
+  // Completing/starring a task re-renders the whole view — keep the reading position.
+  const prevScrollTop = container.querySelector('.tasks-list')?.scrollTop || 0;
   container.innerHTML = '';
 
   const wrap = document.createElement('div');
@@ -240,6 +242,8 @@ export function renderTasks(container, callbacks) {
   wrap.appendChild(catFilterRow);
   wrap.appendChild(list);
   container.appendChild(wrap);
+  // Browser clamps to the new content height if the list got shorter.
+  if (prevScrollTop) list.scrollTop = prevScrollTop;
 
   mountTaskQuickAdd(callbacks);
 }

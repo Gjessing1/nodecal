@@ -18,6 +18,7 @@ import { taskSourceVisible } from '../app/taskUtils.js';
 
 let timerId = null;
 let _container = null;
+let _lastRenderedWeek = null;
 
 /** Return the Monday of the week containing `date`. */
 function weekStart(date) {
@@ -51,6 +52,13 @@ export function renderWeek(container, callbacks) {
     return d;
   });
   const today = new Date();
+
+  // Re-rendering the same week (completing a task, editing an event) rebuilds the grid;
+  // keep the scroll position instead of snapping back to the current time.
+  const weekKey = localDateStr(wStart);
+  const sameWeek = _lastRenderedWeek === weekKey;
+  const prevScrollTop = container.querySelector('.grid-scroll')?.scrollTop || 0;
+  _lastRenderedWeek = weekKey;
 
   container.innerHTML = '';
 
@@ -178,8 +186,12 @@ export function renderWeek(container, callbacks) {
     });
   }
 
-  // Scroll to current time
+  // Scroll to current time when the week changes
   requestAnimationFrame(() => {
+    if (sameWeek && prevScrollTop) {
+      scroll.scrollTop = prevScrollTop;
+      return;
+    }
     const offset = Math.max(0, timeToTop(today, state.config.timezone) - 128);
     scroll.scrollTop = offset;
   });
@@ -369,6 +381,11 @@ function buildAllDayRow(
     row.appendChild(cell);
   }
   return row;
+}
+
+/** Forget the kept scroll position so the next render snaps to the current time again. */
+export function resetWeekScroll() {
+  _lastRenderedWeek = null;
 }
 
 export function destroyWeek() {

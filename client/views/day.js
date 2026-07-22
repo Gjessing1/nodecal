@@ -17,6 +17,7 @@ import { taskSourceVisible } from '../app/taskUtils.js';
 
 let timerId = null;
 let _container = null;
+let _lastRenderedDay = null;
 
 /**
  * Render the day view into container.
@@ -58,6 +59,12 @@ export function renderDay(container, callbacks) {
             taskSourceVisible(t, state.hiddenCalendars),
         )
       : [];
+
+  // Re-rendering the same day (completing a task, editing an event) rebuilds the grid;
+  // keep the scroll position instead of snapping back to the time target.
+  const sameDay = _lastRenderedDay === dayStr;
+  const prevScrollTop = container.querySelector('.grid-scroll')?.scrollTop || 0;
+  _lastRenderedDay = dayStr;
 
   container.innerHTML = '';
 
@@ -136,8 +143,12 @@ export function renderDay(container, callbacks) {
     });
   }
 
-  // Always scroll to a useful time: current time for today, 8 AM for other days
+  // On a new day, scroll to a useful time: current time for today, 8 AM for other days
   requestAnimationFrame(() => {
+    if (sameDay && prevScrollTop) {
+      scroll.scrollTop = prevScrollTop;
+      return;
+    }
     const scrollTarget = isToday ? new Date() : new Date(dayStart.getTime() + 8 * 3600000);
     scroll.scrollTop = Math.max(0, timeToTop(scrollTarget, tz) - 128);
   });
@@ -226,6 +237,11 @@ function buildAllDayStrip(events, tasks, onEventClick, onTaskClick) {
     strip.appendChild(chip);
   }
   return strip;
+}
+
+/** Forget the kept scroll position so the next render snaps to the time target again. */
+export function resetDayScroll() {
+  _lastRenderedDay = null;
 }
 
 export function destroyDay() {
