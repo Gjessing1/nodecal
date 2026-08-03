@@ -4,7 +4,7 @@ Nodecal is a self-hosted, mobile-first CalDAV calendar client. Single-user focus
 
 - **Repo:** https://github.com/Gjessing1/nodecal
 - **Image:** `ghcr.io/gjessing1/nodecal:latest`
-- **Deploy:** automatic on push to main via the Forgejo `.forgejo/workflows/docker.yml` `deploy` job, which runs `docker compose pull && docker compose up -d --remove-orphans` on the host and pulls the `git.gjessing.io/gjessing1/nodecal` image. Manual fallback: `cd /home/gjessing/docker/nodecal && docker compose pull && docker compose up -d`.
+- **Deploy:** automatic on push to main via the Forgejo `.forgejo/workflows/docker.yml` `build-and-deploy` job, which builds, pushes, then runs `docker compose pull && docker compose up -d --remove-orphans` on the host and verifies `/api/health`. Deploy runs inside the build job on purpose — a separate job queues behind other repos on the single capacity-1 runner and can be auto-cancelled. Manual fallback: `cd /home/gjessing/docker/nodecal && docker compose pull && docker compose up -d`.
 
 ## Documentation
 
