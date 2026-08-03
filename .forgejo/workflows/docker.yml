@@ -1,7 +1,17 @@
 # Forgejo Actions equivalent of .github/workflows/docker.yml.
-# Builds the image and pushes it to Forgejo's container registry. The
-# deployment host then `docker compose pull`s git.gjessing.io/gjessing1/nodecal
-# and restarts.
+# Builds the image, pushes it to Forgejo's container registry, and redeploys the
+# host stack — all in ONE job.
+#
+# Why one job instead of build-and-push + a dependent deploy job: this instance
+# has a single runner with `capacity: 1` shared by every repo, and some repos
+# (atlas) push 30-50 minute builds several times a day. A separate `deploy` job
+# has to queue for a *second* turn on that runner after the build releases it,
+# which regularly means a 30+ minute wait. If another commit lands during that
+# wait, Forgejo auto-cancels the previous run's still-queued job and the deploy
+# is silently lost — run 8 (2026-08-03) was cancelled after waiting 29 minutes
+# behind an atlas build, leaving a 12-day-old container running. Deploying from
+# inside the build job costs no extra queue time and cannot be cancelled by a
+# later push once it is running.
 #
 # Runner specifics (host-Docker-socket model, see torrential docs/forgejo.md):
 # - `runs-on: docker` -> catthehacker/ubuntu:act-latest; build/push run against
@@ -28,19 +38,26 @@ env:
   PUSH_IMAGE: localhost:3000/gjessing1/nodecal
 
 jobs:
-  build-and-push:
+  build-and-deploy:
     runs-on: docker
+    env:
+      # Deploy project (compose file + .env), bind-mounted into the job by the
+      # runner via container.options in runner-config.yml.
+      DEPLOY_DIR: /home/gjessing/docker/nodecal
     steps:
       - uses: actions/checkout@v4
 
       # Written directly instead of `docker login`: login pings the registry
       # from the job container (where localhost:3000 is unreachable), but the
-      # push runs on the host daemon (where it works).
+      # push runs on the host daemon (where it works). Both hostnames are
+      # authed here — pushes go to localhost:3000, the compose pull to
+      # git.gjessing.io.
       - name: Registry auth
         run: |
           mkdir -p ~/.docker
           auth=$(printf 'gjessing1:%s' "${{ secrets.REGISTRY_TOKEN }}" | base64 -w0)
-          printf '{"auths":{"localhost:3000":{"auth":"%s"}}}' "$auth" > ~/.docker/config.json
+          printf '{"auths":{"localhost:3000":{"auth":"%s"},"git.gjessing.io":{"auth":"%s"}}}' \
+            "$auth" "$auth" > ~/.docker/config.json
 
       - name: Build image
         run: |
@@ -55,24 +72,40 @@ jobs:
           docker push "$PUSH_IMAGE:latest"
           docker push "$PUSH_IMAGE:$SHA_TAG"
 
-  # Redeploy on the host after a successful main build. Runs against the host
-  # daemon via the mounted Docker socket; the deploy project (compose file +
-  # .env) is bind-mounted into the job by the runner. Pulls git.gjessing.io/...
-  # :latest — the image this workflow just pushed.
-  deploy:
-    needs: build-and-push
-    if: github.ref == 'refs/heads/main'
-    runs-on: docker
-    env:
-      DEPLOY_DIR: /home/gjessing/docker/nodecal
-    steps:
-      - name: Registry auth
-        run: |
-          mkdir -p ~/.docker
-          auth=$(printf 'gjessing1:%s' "${{ secrets.REGISTRY_TOKEN }}" | base64 -w0)
-          printf '{"auths":{"git.gjessing.io":{"auth":"%s"}}}' "$auth" > ~/.docker/config.json
+      # Redeploy on the host, against the host daemon via the mounted Docker
+      # socket. Pulls git.gjessing.io/...:latest — the image just pushed above.
+      # Guarded on main because workflow_dispatch can fire from any branch.
       - name: Pull and restart
+        if: github.ref == 'refs/heads/main'
         run: |
           cd "$DEPLOY_DIR"
           docker compose pull
           docker compose up -d --remove-orphans
+
+      # Fail loudly if the deploy did not actually take, so a stale container
+      # shows up as a red run instead of a green one. Everything here talks to
+      # the host daemon through the mounted socket — the job container has no
+      # route to the host's published port, and nodecal listens on 3000
+      # internally (published as 3042 on the host).
+      - name: Verify deploy
+        if: github.ref == 'refs/heads/main'
+        run: |
+          running=$(docker inspect --format '{{.Image}}' nodecal)
+          built=$(docker image inspect --format '{{.Id}}' "$IMAGE:latest")
+          if [ "$running" != "$built" ]; then
+            echo "nodecal is still running $running, expected the image just built ($built)" >&2
+            exit 1
+          fi
+
+          for attempt in $(seq 1 20); do
+            if health=$(docker exec nodecal node -e \
+              "fetch('http://localhost:3000/api/health').then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.text()}).then(t=>console.log(t))" 2>/dev/null); then
+              echo "healthy: $health"
+              exit 0
+            fi
+            echo "attempt $attempt: not ready yet"
+            sleep 3
+          done
+          echo "nodecal did not become healthy after deploy" >&2
+          docker logs --tail 50 nodecal >&2 || true
+          exit 1
