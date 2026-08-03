@@ -74,6 +74,51 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// ── SSO-gated deployments ─────────────────────────────────────────────────
+// Nodecal is often fronted by an auth proxy (tinyauth, Authelia, …) with
+// BYPASS_AUTH=true. Once that proxy's session expires it answers every request
+// with a redirect to its login host. A subresource or API fetch can never
+// follow that redirect — it is cross-origin, so CORS rejects it — which used to
+// leave the app painting a cached shell whose modules then failed to load, with
+// no way to sign back in. Only a top-level navigation may follow the redirect,
+// so recovery is always: make the page navigate.
+const AUTH_PROBE_PATH = '/api/auth/status';
+const AUTH_SIGNAL_GAP_MS = 30 * 1000;
+let lastAuthSignal = 0;
+
+function isAuthBounce(res) {
+  if (res.type === 'opaqueredirect') return true;
+  if (res.status === 401 || res.status === 403) return true;
+  return res.redirected && new URL(res.url).origin !== self.location.origin;
+}
+
+// Only a plain same-origin response is the file it claims to be. A redirected
+// or opaque one would be replayed out of the cache as if it were the asset,
+// which is how a login page ends up cached under /client/app/main.js.
+function isCacheable(res) {
+  return res.ok && res.type === 'basic' && !res.redirected;
+}
+
+// A rejected fetch means either "offline" or "bounced to the login host", and
+// the rejection alone cannot tell them apart. redirect:'manual' turns a bounce
+// into an opaqueredirect response instead of a rejection, so this probe can.
+async function probeAuth() {
+  try {
+    const res = await fetch(AUTH_PROBE_PATH, { redirect: 'manual', cache: 'no-store' });
+    if (!isAuthBounce(res)) return;
+  } catch {
+    return; // genuinely offline — the cached snapshot is the right answer
+  }
+  await signalAuthRequired();
+}
+
+async function signalAuthRequired() {
+  if (Date.now() - lastAuthSignal < AUTH_SIGNAL_GAP_MS) return;
+  lastAuthSignal = Date.now();
+  const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  for (const client of windows) client.postMessage({ type: 'AUTH_REQUIRED' });
+}
+
 // ── Fetch ──────────────────────────────────────────────────────────────────
 self.addEventListener('fetch', (event) => {
   const { request } = event;
@@ -94,6 +139,11 @@ self.addEventListener('fetch', (event) => {
 
   if (LEGACY_API.some((p) => url.pathname.startsWith(p))) return;
 
+  if (request.mode === 'navigate') {
+    event.respondWith(shellNavigation(request));
+    return;
+  }
+
   event.respondWith(shellCacheFirst(event, request));
 });
 
@@ -101,7 +151,11 @@ async function networkFirstData(event, pathname, request) {
   const cacheKey = new Request(pathname);
   try {
     const res = await fetch(request);
-    if (res.ok) {
+    if (isAuthBounce(res)) {
+      event.waitUntil(signalAuthRequired());
+      return res;
+    }
+    if (isCacheable(res)) {
       // Clone before returning; waitUntil keeps the worker alive until the
       // write lands, so a terminated worker can't drop the snapshot.
       const clone = res.clone();
@@ -109,11 +163,44 @@ async function networkFirstData(event, pathname, request) {
     }
     return res;
   } catch (err) {
+    // Serving the stale snapshot behind an expired session would look like a
+    // working calendar that silently stopped updating, so check before falling
+    // back and send the page to the login page if that is what happened.
+    event.waitUntil(probeAuth());
     const cache = await caches.open(DATA_CACHE);
     const cached = await cache.match(cacheKey);
     if (cached) return cached;
     throw err;
   }
+}
+
+// Navigations go to the network first. The response may be the auth proxy's
+// redirect to its login page, and passing that through is the only way the user
+// can sign back in — answering from the cache instead is what stranded an
+// expired session on a blank calendar. The timeout keeps a slow or dead
+// connection from delaying launch: the cached shell answers, and a bounce is
+// then caught on the first API call instead.
+const NAV_NETWORK_TIMEOUT_MS = 2500;
+
+function afterTimeout(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms, null));
+}
+
+async function shellNavigation(request) {
+  let res;
+  try {
+    res = await Promise.race([fetch(request), afterTimeout(NAV_NETWORK_TIMEOUT_MS)]);
+  } catch {
+    // offline — fall through to the cached shell
+  }
+  if (res) return res;
+
+  // Any path falls back to the app shell — index.html is the only document
+  // this server serves.
+  const shell = await caches.open(SHELL_CACHE);
+  const home = await shell.match('/');
+  if (home) return home;
+  return fetch(request);
 }
 
 // Cache-first, but only against this build's own cache — matching across all
@@ -124,14 +211,20 @@ async function shellCacheFirst(event, request) {
   const cached = await shell.match(request);
   if (cached) return cached;
 
-  // Offline navigation to any path falls back to the app shell.
-  if (request.mode === 'navigate') {
-    const home = await shell.match('/');
-    if (home) return home;
+  let res;
+  try {
+    res = await fetch(request);
+  } catch (err) {
+    // A module that misses the cache and then gets bounced cross-origin kills
+    // the whole module graph, so the page has to reload into the login flow.
+    event.waitUntil(probeAuth());
+    throw err;
   }
-
-  const res = await fetch(request);
-  if (res.ok) {
+  if (isAuthBounce(res)) {
+    event.waitUntil(signalAuthRequired());
+    return res;
+  }
+  if (isCacheable(res)) {
     const clone = res.clone();
     event.waitUntil(shell.put(request, clone));
   }

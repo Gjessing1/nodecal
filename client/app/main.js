@@ -26,6 +26,7 @@ import { showSnackbar } from '../components/snackbar.js';
 import { initSettingsPanel, openSettings } from '../components/settingsPanel.js';
 import { initInstallPrompt } from './installPrompt.js';
 import { initSwUpdate } from './swUpdate.js';
+import { initAuthReload } from './authReload.js';
 import { pushEnabled } from './pushClient.js';
 import { initTheme } from './theme.js';
 import {
@@ -1008,6 +1009,7 @@ async function init() {
   });
   initInstallPrompt();
   initSwUpdate();
+  initAuthReload();
   initBackButton();
 
   window.addEventListener('offline', () => {
