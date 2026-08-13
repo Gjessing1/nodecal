@@ -13,7 +13,7 @@ import { renderDay, destroyDay, resetDayScroll } from '../views/day.js';
 import { renderWeek, destroyWeek, resetWeekScroll } from '../views/week.js';
 import { renderMonth } from '../views/month.js';
 import { renderTasks } from '../views/tasks.js';
-import { openTaskModal } from '../components/taskModal.js';
+import { openTaskModal, openReadOnlyTaskModal } from '../components/taskModal.js';
 import { destroyTaskQuickAdd } from '../components/taskQuickAdd.js';
 import {
   initModal,
@@ -43,11 +43,12 @@ import {
 import { localDateStr, toDateInputValue, localToUTC } from './utils.js';
 
 const viewContainer = document.getElementById('view-container');
-const syncBtn = document.getElementById('sync-btn');
+const syncBtn = /** @type {HTMLButtonElement} */ (document.getElementById('sync-btn'));
 const syncError = document.getElementById('sync-error');
+const offlineStatus = document.getElementById('offline-status');
 const fab = document.getElementById('fab');
 const calBtn = document.getElementById('cal-btn');
-const settingsBtn = document.getElementById('settings-btn');
+const settingsBtn = /** @type {HTMLButtonElement} */ (document.getElementById('settings-btn'));
 const bottomNav = document.getElementById('bottom-nav');
 const calQuickAdd = document.getElementById('cal-quickadd');
 const calQuickAddInput = /** @type {HTMLInputElement} */ (
@@ -64,6 +65,32 @@ const VIEW_META = {
   month: { icon: '⊟', label: 'Month' },
   tasks: { icon: '✓', label: 'Tasks' },
 };
+
+function setOfflineMode(offline) {
+  const changed = state.isOffline !== offline;
+  state.isOffline = offline;
+  document.getElementById('app').classList.toggle('offline-readonly', offline);
+  offlineStatus.classList.toggle('hidden', !offline);
+  syncBtn.disabled = offline;
+  settingsBtn.disabled = offline;
+  syncBtn.title = offline ? 'Sync unavailable offline' : 'Sync';
+  settingsBtn.title = offline ? 'Settings unavailable offline' : 'Settings';
+
+  // Forms opened while the connection drops must not retain live Save/Delete
+  // controls. Read-only detail sheets can be opened again from the cached view.
+  if (offline && changed) {
+    const modalOverlay = document.getElementById('modal-overlay');
+    if (modalOverlay.querySelector('#f-save, #tm-save')) modalOverlay.classList.add('hidden');
+    document.getElementById('settings-overlay').classList.add('hidden');
+  }
+  if (changed && state._viewInitialized) render();
+}
+
+function offlineWriteBlocked() {
+  if (!state.isOffline) return false;
+  showSnackbar('Offline mode is read-only');
+  return true;
+}
 
 // ── Navigation ────────────────────────────────────────────
 
@@ -107,7 +134,7 @@ function cycleProfile() {
   captureActiveProfile();
   const next = DUAL_IDS[(DUAL_IDS.indexOf(activeProfileId()) + 1) % DUAL_IDS.length];
   applyProfile(next);
-  persistProfiles();
+  if (!state.isOffline) persistProfiles();
   updateProfileSwitcher();
   buildNav();
   render();
@@ -180,33 +207,53 @@ function render() {
   destroyWeek();
   destroyTaskQuickAdd();
   // Show/hide calendar quick-add bar (not shown in tasks view which has its own)
-  const showQuickAdd = state.activeView !== 'tasks';
+  const showQuickAdd = !state.isOffline && state.activeView !== 'tasks';
   calQuickAdd.classList.toggle('hidden', !showQuickAdd);
   document.getElementById('app').classList.toggle('cal-quickadd-visible', showQuickAdd);
   // FAB is hidden in tasks view — tasks view has its own + and ↵ buttons
-  fab.hidden = state.activeView === 'tasks';
-  if (state.activeView === 'tasks') renderTasks(viewContainer, taskCallbacks);
-  else if (state.activeView === 'day') renderDay(viewContainer, viewCallbacks);
-  else if (state.activeView === 'week') renderWeek(viewContainer, viewCallbacks);
+  fab.hidden = state.isOffline || state.activeView === 'tasks';
+  const calendarCallbacks = state.isOffline
+    ? {
+        ...viewCallbacks,
+        onEventMove: null,
+        onEventResize: null,
+        onTaskComplete: null,
+        onNewTask: null,
+        onLongPress: null,
+      }
+    : viewCallbacks;
+  const currentTaskCallbacks = state.isOffline
+    ? {
+        ...taskCallbacks,
+        onComplete: null,
+        onStar: null,
+        onAdd: null,
+        onDelete: null,
+        onSnooze: null,
+      }
+    : taskCallbacks;
+  if (state.activeView === 'tasks') renderTasks(viewContainer, currentTaskCallbacks);
+  else if (state.activeView === 'day') renderDay(viewContainer, calendarCallbacks);
+  else if (state.activeView === 'week') renderWeek(viewContainer, calendarCallbacks);
   else if (state.activeView === 'month')
     renderMonth(
       viewContainer,
       handleEventClick,
       handleDayClick,
-      handleEventMove,
+      calendarCallbacks.onEventMove,
       () => switchView('tasks'),
-      handleLongPressCreate,
-      handleTaskComplete,
+      calendarCallbacks.onLongPress,
+      calendarCallbacks.onTaskComplete,
       handleTaskEdit,
-      handleNewTaskForDay,
+      calendarCallbacks.onNewTask,
     );
   else
     renderAgenda(
       viewContainer,
       handleEventClick,
       handleTaskEdit,
-      handleTaskComplete,
-      handleLongPressCreate,
+      calendarCallbacks.onTaskComplete,
+      calendarCallbacks.onLongPress,
     );
 
   // Browser clamps to the new content height if the list got shorter.
@@ -466,6 +513,7 @@ async function loadWeather() {
 // Geolocation discovery only — called when no coordinates are saved yet.
 // If coordinates are already in config, loadWeather() is called directly in init().
 function detectAndLoadWeather() {
+  if (state.isOffline) return;
   if (state.config.weatherLat && state.config.weatherLon) return;
   if (!navigator.geolocation) return;
   navigator.geolocation.getCurrentPosition(
@@ -491,6 +539,7 @@ function detectAndLoadWeather() {
 // ── Sync ──────────────────────────────────────────────────
 
 async function handleSync() {
+  if (offlineWriteBlocked()) return;
   syncBtn.classList.add('syncing');
   syncError.classList.add('hidden');
   try {
@@ -514,8 +563,8 @@ async function handleSync() {
 // ── Event CRUD ────────────────────────────────────────────
 
 function handleEventClick(event) {
-  // Subscribed (ICS) calendars are read-only — show a non-editable view.
-  if (calendarById(event.calendarId)?.readOnly) {
+  // Subscribed calendars and offline snapshots have no write path.
+  if (state.isOffline || calendarById(event.calendarId)?.readOnly) {
     openReadOnlyEventModal(event);
     return;
   }
@@ -528,10 +577,12 @@ function handleEventClick(event) {
 }
 
 function handleLongPressCreate(date) {
+  if (offlineWriteBlocked()) return;
   openNewEventModal(date, (data) => saveEvent(null, data), { explicitTime: true });
 }
 
 function handleDuplicateEvent(event) {
+  if (offlineWriteBlocked()) return;
   // Open a full edit form pre-populated with all fields; save as a new event (no uid)
   const copy = {
     ...event,
@@ -545,6 +596,7 @@ function handleDuplicateEvent(event) {
 }
 
 function handleEventMove(eventId, day, startMin) {
+  if (offlineWriteBlocked()) return;
   const ev = state.events.find((e) => e.id === eventId);
   if (!ev) return;
   if (calendarById(ev.calendarId)?.readOnly) return; // subscribed calendars can't be edited
@@ -568,6 +620,7 @@ function handleEventMove(eventId, day, startMin) {
 }
 
 function handleEventResize(eventId, endMin) {
+  if (offlineWriteBlocked()) return;
   const ev = state.events.find((e) => e.id === eventId);
   if (!ev) return;
   if (calendarById(ev.calendarId)?.readOnly) return; // subscribed calendars can't be edited
@@ -588,6 +641,7 @@ function handleEventResize(eventId, endMin) {
 }
 
 async function saveEvent(id, data) {
+  if (offlineWriteBlocked()) return;
   const method = id ? 'PUT' : 'POST';
   const url = id ? `/events/${id}` : '/events';
   const body = id ? data : { ...data, calendarId: data.calendarId || state.calendars[0]?.id };
@@ -606,6 +660,7 @@ async function saveEvent(id, data) {
 }
 
 async function deleteEvent(ev, scope) {
+  if (offlineWriteBlocked()) return;
   try {
     const uid = ev.uid || ev.id || ev;
     let url = `/events/${uid}`;
@@ -647,6 +702,7 @@ function undoEventDelete(ev) {
 // ── Task CRUD ─────────────────────────────────────────────
 
 async function handleTaskComplete(task) {
+  if (offlineWriteBlocked()) return;
   try {
     if (task.status === 'COMPLETED') {
       const res = await fetch(`/api/tasks/${task.id}`, {
@@ -667,6 +723,7 @@ async function handleTaskComplete(task) {
 }
 
 async function handleTaskStar(task) {
+  if (offlineWriteBlocked()) return;
   const categories = task.important
     ? (task.categories || []).filter((c) => c !== 'important')
     : [...(task.categories || []), 'important'];
@@ -698,6 +755,7 @@ async function handleTaskAdd({
   description,
   taskReminder,
 }) {
+  if (offlineWriteBlocked()) return;
   try {
     const body = { title, due };
     if (categories?.length) body.categories = categories;
@@ -721,6 +779,10 @@ async function handleTaskAdd({
 }
 
 function handleTaskEdit(task) {
+  if (state.isOffline) {
+    openReadOnlyTaskModal(task);
+    return;
+  }
   openTaskModal(task, {
     onSave: (data) => saveTask(task.id, data),
     onDelete: (t) => handleTaskDelete(t),
@@ -728,6 +790,7 @@ function handleTaskEdit(task) {
 }
 
 function handleNewTaskForDay(day) {
+  if (offlineWriteBlocked()) return;
   const d = day;
   const due = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const source = effectiveTaskSource() || undefined;
@@ -735,6 +798,7 @@ function handleNewTaskForDay(day) {
 }
 
 async function saveTask(id, data) {
+  if (offlineWriteBlocked()) return;
   try {
     const res = await fetch(`/api/tasks/${id}`, {
       method: 'PUT',
@@ -750,6 +814,7 @@ async function saveTask(id, data) {
 }
 
 async function handleTaskSnooze(task) {
+  if (offlineWriteBlocked()) return;
   if (!task.due) return;
   const [y, m, d] = task.due.split('-').map(Number);
   const next = new Date(y, m - 1, d + 1);
@@ -858,6 +923,7 @@ function runSearch(query) {
 }
 
 async function handleTaskDelete(task) {
+  if (offlineWriteBlocked()) return;
   try {
     const res = await fetch(`/api/tasks/${task.id}`, { method: 'DELETE' });
     if (!res.ok && res.status !== 204) throw new Error('Delete failed');
@@ -989,7 +1055,7 @@ async function init() {
   // whenever the drawer toggles a calendar, so it survives reloads and switches.
   initCalendarDrawer(() => {
     captureActiveProfile();
-    persistProfiles();
+    if (!state.isOffline) persistProfiles();
     render();
   });
   initSettingsPanel(() => {
@@ -1013,13 +1079,17 @@ async function init() {
   initBackButton();
 
   window.addEventListener('offline', () => {
-    syncError.textContent = 'Offline — showing cached events';
-    syncError.classList.remove('hidden');
+    setOfflineMode(true);
   });
   window.addEventListener('online', () => {
-    syncError.classList.add('hidden');
+    setOfflineMode(false);
     refreshOnWake();
   });
+  navigator.serviceWorker?.addEventListener('message', (event) => {
+    if (event.data?.type === 'OFFLINE_DATA') setOfflineMode(true);
+    if (event.data?.type === 'FRESH_DATA') setOfflineMode(false);
+  });
+  setOfflineMode(!navigator.onLine);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') refreshOnWake();
   });
@@ -1128,6 +1198,7 @@ async function init() {
   });
 
   async function submitCalQuickAdd() {
+    if (offlineWriteBlocked()) return;
     const text = calQuickAddInput.value.trim();
     if (!text) return;
     calQuickAddInput.value = '';
@@ -1170,6 +1241,7 @@ async function init() {
   document.getElementById('cal-quickadd-submit').addEventListener('click', submitCalQuickAdd);
 
   fab.addEventListener('click', () => {
+    if (offlineWriteBlocked()) return;
     if (state.activeView === 'tasks') {
       const source = effectiveTaskSource() || undefined;
       openTaskModal({ source }, { onSave: (data) => handleTaskAdd(data), onDelete: () => {} });

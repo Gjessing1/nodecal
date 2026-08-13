@@ -93,6 +93,33 @@ test('being offline does not trigger a login reload', async () => {
   assert.deepStrictEqual(posted, []);
 });
 
+test('event range queries share one last-known offline snapshot', async () => {
+  let offline = false;
+  const worker = loadWorker({
+    fetch: async () => {
+      if (offline) throw new TypeError('Failed to fetch');
+      return makeResponse({ body: 'LATEST EVENTS' });
+    },
+  });
+
+  await dispatchFetch(
+    worker,
+    makeRequest('/api/events?from=2026-01-01T00:00:00.000Z&to=2026-12-31T00:00:00.000Z'),
+  );
+  offline = true;
+  const { response, posted } = await dispatchFetch(
+    worker,
+    makeRequest('/api/events?from=2025-01-01T00:00:00.000Z&to=2027-12-31T00:00:00.000Z'),
+  );
+
+  assert.strictEqual(response.body, 'LATEST EVENTS');
+  assert.deepStrictEqual(posted, ['OFFLINE_DATA']);
+
+  offline = false;
+  const recovered = await dispatchFetch(worker, makeRequest('/api/events'));
+  assert.deepStrictEqual(recovered.posted, ['OFFLINE_DATA', 'FRESH_DATA']);
+});
+
 test('a redirected response is never written to the shell cache', async () => {
   const worker = loadWorker({
     fetch: async () => makeResponse({ redirected: true, type: 'cors', url: LOGIN_HOST }),
@@ -126,7 +153,7 @@ test('an offline API read still serves the last cached snapshot', async () => {
   const { response, posted } = await dispatchFetch(worker, makeRequest('/api/events'));
 
   assert.strictEqual(response.body, 'SNAPSHOT');
-  assert.deepStrictEqual(posted, []);
+  assert.deepStrictEqual(posted, ['OFFLINE_DATA']);
 });
 
 test('cross-origin and legacy-root requests are left to the browser', async () => {

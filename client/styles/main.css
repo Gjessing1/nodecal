@@ -654,6 +654,39 @@ select {
 }
 
 /* ── Sync error banner ──────────────────────────────────── */
+.offline-status {
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid #bfdbfe;
+}
+.offline-status.hidden {
+  display: none;
+}
+.offline-readonly .sync-btn,
+.offline-readonly #settings-btn {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.offline-readonly .task-check:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .offline-status {
+    background: #172554;
+    color: #bfdbfe;
+    border-color: #1e3a8a;
+  }
+}
+:root[data-theme='dark'] .offline-status {
+  background: #172554;
+  color: #bfdbfe;
+  border-color: #1e3a8a;
+}
+
 .sync-error {
   background: #fef2f2;
   color: #991b1b;

@@ -143,15 +143,17 @@ export function renderWeek(container, callbacks) {
   container.appendChild(scroll);
 
   // Drag-and-drop
-  initDnd(grid, scroll, {
-    getDayFromX(clientX, gridRect) {
-      const x = clientX - gridRect.left - TIME_COL_WIDTH;
-      const colW = (gridRect.width - TIME_COL_WIDTH) / 7;
-      return days[Math.max(0, Math.min(6, Math.floor(x / colW)))];
-    },
-    onMove: onEventMove,
-    onResize: onEventResize,
-  });
+  if (onEventMove && onEventResize) {
+    initDnd(grid, scroll, {
+      getDayFromX(clientX, gridRect) {
+        const x = clientX - gridRect.left - TIME_COL_WIDTH;
+        const colW = (gridRect.width - TIME_COL_WIDTH) / 7;
+        return days[Math.max(0, Math.min(6, Math.floor(x / colW)))];
+      },
+      onMove: onEventMove,
+      onResize: onEventResize,
+    });
+  }
 
   // Swipe navigation
   initSwipe(

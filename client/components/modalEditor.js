@@ -103,7 +103,7 @@ function renderReadOnly(event) {
     <div class="modal-handle"></div>
     <div class="modal-field">
       <div class="modal-title">${esc(event.title || '(No title)')}</div>
-      <div class="readonly-badge">Read-only · ${esc(cal?.name || 'Subscribed calendar')}</div>
+      <div class="readonly-badge">${state.isOffline ? 'Offline copy · Read-only' : 'Read-only'} · ${esc(cal?.name || 'Calendar')}</div>
     </div>
     <div class="readonly-row"><span class="readonly-when">${esc(formatEventWhen(event))}</span></div>`);
   if (event.location) {

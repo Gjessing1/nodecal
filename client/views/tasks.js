@@ -245,7 +245,7 @@ export function renderTasks(container, callbacks) {
   // Browser clamps to the new content height if the list got shorter.
   if (prevScrollTop) list.scrollTop = prevScrollTop;
 
-  mountTaskQuickAdd(callbacks);
+  if (callbacks.onAdd) mountTaskQuickAdd(callbacks);
 }
 
 // ── List rendering ─────────────────────────────────────────
@@ -389,10 +389,10 @@ function renderGroups(container, groups, callbacks, totalCount, showDue = false)
     for (const task of group.items) {
       ul.appendChild(
         buildTaskItem(task, {
-          onComplete: (t) => callbacks.onComplete(t),
-          onStar: (t) => callbacks.onStar(t),
-          onClick: (t) => callbacks.onEdit(t),
-          onSnooze: (t) => callbacks.onSnooze?.(t),
+          onComplete: callbacks.onComplete ? (t) => callbacks.onComplete(t) : null,
+          onStar: callbacks.onStar ? (t) => callbacks.onStar(t) : null,
+          onClick: callbacks.onEdit ? (t) => callbacks.onEdit(t) : null,
+          onSnooze: callbacks.onSnooze ? (t) => callbacks.onSnooze(t) : null,
           showDue,
         }),
       );

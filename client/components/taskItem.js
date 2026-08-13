@@ -20,15 +20,20 @@ export function buildTaskItem(task, { onComplete, onStar, onClick, onSnooze, sho
     'aria-label',
     task.status === 'COMPLETED' ? 'Mark incomplete' : 'Complete task',
   );
-  check.addEventListener('click', (e) => {
-    e.stopPropagation();
-    onComplete(task);
-  });
+  if (onComplete) {
+    check.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onComplete(task);
+    });
+  } else {
+    check.disabled = true;
+    check.title = 'Unavailable offline';
+  }
 
   // Body
   const body = document.createElement('div');
   body.className = 'task-body';
-  body.addEventListener('click', () => onClick(task));
+  if (onClick) body.addEventListener('click', () => onClick(task));
 
   const title = document.createElement('span');
   title.className = 'task-title';
@@ -104,14 +109,18 @@ export function buildTaskItem(task, { onComplete, onStar, onClick, onSnooze, sho
   }
 
   // Star
-  const star = document.createElement('button');
+  const star = document.createElement(onStar ? 'button' : 'span');
   star.className = 'task-star' + (task.important ? ' starred' : '');
   star.textContent = '★';
-  star.setAttribute('aria-label', task.important ? 'Remove important' : 'Mark important');
-  star.addEventListener('click', (e) => {
-    e.stopPropagation();
-    onStar(task);
-  });
+  if (onStar) {
+    star.setAttribute('aria-label', task.important ? 'Remove important' : 'Mark important');
+    star.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onStar(task);
+    });
+  } else {
+    star.setAttribute('aria-hidden', 'true');
+  }
 
   li.appendChild(star);
   return li;

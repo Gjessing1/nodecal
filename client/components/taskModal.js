@@ -273,6 +273,72 @@ export function openTaskModal(task, { onSave, onDelete }) {
   );
 }
 
+/** Open a cached task without exposing any mutation controls. */
+export function openReadOnlyTaskModal(task) {
+  const overlay = document.getElementById('modal-overlay');
+  const sheet = overlay.querySelector('.modal-sheet');
+  const source = state.taskSources.find((item) => item.url === task.source);
+  const categories = visibleCategories(task.categories || [], state.config.hiddenCategories || []);
+  const due = task.due
+    ? new Date(task.due + 'T00:00:00').toLocaleDateString('en-US', {
+        weekday: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      })
+    : 'No due date';
+
+  const rows = [
+    '<div class="modal-handle"></div>',
+    `<div class="modal-field"><div class="modal-title">${esc(task.title || '(No title)')}</div><div class="readonly-badge">${state.isOffline ? 'Offline copy · ' : ''}Read-only</div></div>`,
+    `<div class="readonly-row"><span class="readonly-label">Due</span> ${esc(due)}</div>`,
+  ];
+  if (task.status === 'COMPLETED') {
+    rows.push(
+      '<div class="readonly-row"><span class="readonly-label">Status</span> Completed</div>',
+    );
+  }
+  if (source || task.source) {
+    rows.push(
+      `<div class="readonly-row"><span class="readonly-label">List</span> ${esc(source?.name || task.source)}</div>`,
+    );
+  }
+  if (categories.length) {
+    rows.push(
+      `<div class="readonly-row"><span class="readonly-label">Categories</span> ${esc(categories.join(', '))}</div>`,
+    );
+  }
+  if (task.location) {
+    rows.push(
+      `<div class="readonly-row"><span class="readonly-label">Location</span> ${esc(task.location)}</div>`,
+    );
+  }
+  if (task.rrule || task.xRecurringType) {
+    rows.push(
+      `<div class="readonly-row"><span class="readonly-label">Repeat</span> ${esc(task.xRecurringType === 'after-completion' ? `After completion${task.xRecurringInterval ? ` · ${task.xRecurringInterval}` : ''}` : task.rrule)}</div>`,
+    );
+  }
+  if (task.taskReminder && task.taskReminder !== 'none') {
+    rows.push(
+      `<div class="readonly-row"><span class="readonly-label">Reminder</span> ${esc(task.taskReminder)}</div>`,
+    );
+  }
+  if (task.description)
+    rows.push(`<div class="readonly-row readonly-desc">${esc(task.description)}</div>`);
+  if (task.url) {
+    rows.push(
+      `<div class="readonly-row"><span class="readonly-label">URL</span> <a href="${esc(task.url)}" target="_blank" rel="noopener">${esc(task.url)}</a></div>`,
+    );
+  }
+  rows.push(
+    '<div class="modal-actions"><button class="btn btn-ghost" id="tm-close">Close</button></div>',
+  );
+  sheet.innerHTML = rows.join('');
+  sheet.querySelector('#tm-close').addEventListener('click', closeTaskModal);
+  sheet.scrollTop = 0;
+  overlay.classList.remove('hidden');
+}
+
 export function closeTaskModal() {
   document.getElementById('modal-overlay').classList.add('hidden');
 }

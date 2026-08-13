@@ -108,11 +108,13 @@ export function renderDay(container, callbacks) {
   container.appendChild(scroll);
 
   // Drag-and-drop
-  initDnd(wrapper, scroll, {
-    getDayFromX: () => dayStart,
-    onMove: onEventMove,
-    onResize: onEventResize,
-  });
+  if (onEventMove && onEventResize) {
+    initDnd(wrapper, scroll, {
+      getDayFromX: () => dayStart,
+      onMove: onEventMove,
+      onResize: onEventResize,
+    });
+  }
 
   // Swipe navigation
   initSwipe(

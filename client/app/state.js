@@ -49,6 +49,8 @@
  */
 
 export const state = {
+  /** True while the app is displaying cached data without a network connection. */
+  isOffline: false,
   /** @type {Calendar[]} */
   calendars: [],
   /** @type {CalEvent[]} */

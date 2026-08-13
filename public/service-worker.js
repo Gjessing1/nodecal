@@ -85,6 +85,7 @@ self.addEventListener('activate', (event) => {
 const AUTH_PROBE_PATH = '/api/auth/status';
 const AUTH_SIGNAL_GAP_MS = 30 * 1000;
 let lastAuthSignal = 0;
+let servingOfflineData = false;
 
 function isAuthBounce(res) {
   if (res.type === 'opaqueredirect') return true;
@@ -117,6 +118,19 @@ async function signalAuthRequired() {
   lastAuthSignal = Date.now();
   const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
   for (const client of windows) client.postMessage({ type: 'AUTH_REQUIRED' });
+}
+
+async function signalOfflineData() {
+  servingOfflineData = true;
+  const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  for (const client of windows) client.postMessage({ type: 'OFFLINE_DATA' });
+}
+
+async function signalFreshData() {
+  if (!servingOfflineData) return;
+  servingOfflineData = false;
+  const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  for (const client of windows) client.postMessage({ type: 'FRESH_DATA' });
 }
 
 // ── Fetch ──────────────────────────────────────────────────────────────────
@@ -159,7 +173,12 @@ async function networkFirstData(event, pathname, request) {
       // Clone before returning; waitUntil keeps the worker alive until the
       // write lands, so a terminated worker can't drop the snapshot.
       const clone = res.clone();
-      event.waitUntil(caches.open(DATA_CACHE).then((cache) => cache.put(cacheKey, clone)));
+      event.waitUntil(
+        Promise.all([
+          caches.open(DATA_CACHE).then((cache) => cache.put(cacheKey, clone)),
+          signalFreshData(),
+        ]),
+      );
     }
     return res;
   } catch (err) {
@@ -169,7 +188,10 @@ async function networkFirstData(event, pathname, request) {
     event.waitUntil(probeAuth());
     const cache = await caches.open(DATA_CACHE);
     const cached = await cache.match(cacheKey);
-    if (cached) return cached;
+    if (cached) {
+      event.waitUntil(signalOfflineData());
+      return cached;
+    }
     throw err;
   }
 }

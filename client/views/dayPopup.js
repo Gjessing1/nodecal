@@ -133,6 +133,8 @@ export function showDayPopup(
     checkbox.type = 'checkbox';
     checkbox.className = 'day-popup-task-check';
     checkbox.checked = task.status === 'COMPLETED';
+    checkbox.disabled = !onTaskComplete;
+    if (!onTaskComplete) checkbox.title = 'Unavailable offline';
     checkbox.addEventListener('click', (e) => {
       e.stopPropagation();
       if (onTaskComplete) onTaskComplete(task);

@@ -242,6 +242,9 @@ function buildTaskCard(task, onTaskClick, onTaskComplete) {
       e.stopPropagation();
       onTaskComplete(task);
     });
+  } else {
+    check.disabled = true;
+    check.title = 'Unavailable offline';
   }
 
   const info = document.createElement('div');
