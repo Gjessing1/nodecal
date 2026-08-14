@@ -39,6 +39,13 @@ public class MainActivity extends BridgeActivity {
         } else if (bridge != null) {
             bridge.getWebView().post(() -> showServerSetup(false));
         }
+        LauncherIconManager.updateAndSchedule(this);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        LauncherIconManager.updateAndSchedule(this);
     }
 
     /**

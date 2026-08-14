@@ -54,8 +54,15 @@ Read these before working on a feature. This file holds only the rules Claude mu
 - The `RecurrenceConfig` typedef lives in `client/components/rruleParser.js`.
 - Event categories are separate from task categories — never mix them in the same UI or utility function.
 
+## Android Release Rule
+
+- Native Android changes include anything under `android/`, native plugins, permissions, launcher icons, or Capacitor configuration. When those changes are meant to ship, increment both `versionCode` and `versionName` in `android/app/build.gradle`.
+- Run `npm run android:release`. This is the required release path: it makes a clean signed release build, publishes it to the live app directory, checks the live version API, downloads the served APK, and verifies its checksum.
+- A Gradle version bump, Git push, successful debug build, or Docker deployment alone does not release an APK. Do not say the Android release is finished until the end-to-end command reports the expected live version.
+- Never publish `app-debug.apk`. If signing credentials, the live app directory, or the verification endpoint are unavailable, report the release as blocked rather than silently leaving the previous APK live.
+
 ## Remember
 
 - Roadmap lives in [docs/ROADMAP.md](docs/ROADMAP.md). Update it each time you finish a phase to track current progress.
-- Comit and push when finished.
+- Commit and push when finished.
 - Don't credit Claude when doing commits.

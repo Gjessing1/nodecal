@@ -6,7 +6,14 @@ set -euo pipefail
 apk="${1:?path to the signed APK}"
 version_code="${2:?Android versionCode (integer)}"
 version_name="${3:?version name, for example 0.2.0}"
-app_dir="${NODECAL_ANDROID_APP_DIR:-/mnt/data/nodecal/config/app}"
+if [[ -n "${NODECAL_ANDROID_APP_DIR:-}" ]]; then
+  app_dir="$NODECAL_ANDROID_APP_DIR"
+elif [[ -d /home/gjessing/docker/nodecal/config ]]; then
+  # This host's live Compose project bind-mounts this directory at /config.
+  app_dir="/home/gjessing/docker/nodecal/config/app"
+else
+  app_dir="/mnt/data/nodecal/config/app"
+fi
 
 if [[ -f /home/gjessing/android-sdk/env.sh && -z "${ANDROID_HOME:-}" ]]; then
   # Host-local convenience; other machines can export ANDROID_HOME.

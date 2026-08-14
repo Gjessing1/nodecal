@@ -59,15 +59,16 @@ export NODECAL_KEY_ALIAS='nodecal'
 export NODECAL_KEY_PASSWORD='...'
 ```
 
-For every native release, increment `versionCode` and update `versionName` in `android/app/build.gradle`, then build and publish:
+For every native release, increment `versionCode` and update `versionName` in `android/app/build.gradle`, then run the end-to-end release command:
 
 ```bash
 npm ci
-./android/build-apk.sh
-./scripts/publish-android.sh android/app/build/outputs/apk/release/app-release.apk 3 0.1.2
+npm run android:release
 ```
 
-The publish script defaults to `/mnt/data/nodecal/config/app`, which is already exposed inside the standard container as `/config/app`. Set `NODECAL_ANDROID_APP_DIR` if the host uses another bind mount. The server exposes public metadata at `/api/app/version` and the current APK at `/api/app/download`.
+This command reads the version from Gradle, makes a clean release-signed build, publishes it, confirms the live `/api/app/version` response, downloads the served APK, and verifies its checksum. It defaults to this host's live Compose config directory when present, with `/mnt/data/nodecal/config/app` as the generic fallback. Set `NODECAL_ANDROID_APP_DIR` and `NODECAL_ANDROID_VERIFY_URL` for another deployment. A native release is not complete until this command succeeds; committing or building a debug APK does not publish an update.
+
+The server exposes public metadata at `/api/app/version` and the current APK at `/api/app/download`.
 
 For local development, build the debug APK with:
 
