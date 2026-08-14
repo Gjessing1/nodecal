@@ -28,6 +28,18 @@ export async function openNativeExternal(url) {
   await plugin.openExternal({ url });
 }
 
+export async function setNativeSystemBarStyle(darkBackground) {
+  const systemBars = globalThis.Capacitor?.Plugins?.SystemBars;
+  if (!systemBars) return;
+
+  try {
+    // Capacitor names styles after the icon color, not the background color.
+    await systemBars.setStyle({ style: darkBackground ? 'DARK' : 'LIGHT' });
+  } catch {
+    // Theme changes should never interrupt the web UI on an older native shell.
+  }
+}
+
 /**
  * Return a newer APK published by this Nodecal server, or null.
  * @param {{versionCode: number} | null} installed

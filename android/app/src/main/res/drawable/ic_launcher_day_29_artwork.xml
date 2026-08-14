@@ -28,22 +28,14 @@
     <path
         android:fillColor="#FFFFFF"
         android:pathData="M37,20 H41 Q43,20 43,22 V34 Q43,36 41,36 H37 Q35,36 35,34 V22 Q35,20 37,20 Z M67,20 H71 Q73,20 73,22 V34 Q73,36 71,36 H67 Q65,36 65,34 V22 Q65,20 67,20 Z" />
-    <group android:translateX="36.5" android:translateY="56">
+    <group android:translateX="36.195" android:translateY="56">
     <path
-        android:fillColor="#00000000"
-        android:pathData="M1,5 C2,1.5 4.5,0 7.5,0 C11.5,0 14,2.5 14,6 C14,9.5 11.5,12 8,15 L1,21 L1,24 L14,24"
-        android:strokeColor="#2563EB"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:strokeWidth="4" />
+        android:fillColor="#1F2937"
+        android:pathData="M5.32,20.46 L15.33,20.46 L15.33,24 L0,24 L0,20.75 Q1.88,18.80 4.88,15.77 Q7.89,12.73 8.65,11.86 Q10.08,10.25 10.62,9.19 Q11.17,8.13 11.17,7.14 Q11.17,5.55 10.05,4.55 Q8.94,3.54 7.09,3.54 Q5.72,3.54 4.18,4.02 Q2.65,4.50 0.15,5.91 L0.15,1.65 Q2.34,0.78 3.99,0.39 Q5.64,0 7.03,0 Q10.72,0 12.96,1.89 Q15.21,3.77 15.21,6.94 Q15.21,8.43 14.66,9.76 Q14.10,11.08 12.67,12.84 Q12.28,13.29 10.24,15.40 Q8.21,17.51 5.32,20.46 Z" />
     </group>
-    <group android:translateX="56.5" android:translateY="56">
+    <group android:translateX="55.525" android:translateY="56">
     <path
-        android:fillColor="#00000000"
-        android:pathData="M13.8,10 C12.5,12 10.5,13.5 7.5,13.5 C3.5,13.5 1,11 1,7 C1,3 3.5,0 7.5,0 C12,0 14.7,4 13.8,12 C13,19 9,23 3,23"
-        android:strokeColor="#2563EB"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:strokeWidth="4" />
+        android:fillColor="#1F2937"
+        android:pathData="M1.43,22.96 L1.43,19.14 Q3.20,19.98 4.30,20.25 Q5.41,20.51 6.47,20.51 Q9.22,20.51 10.67,18.67 Q12.12,16.82 12.30,14.43 Q12.28,14.56 10.85,15.30 Q9.41,16.04 7.69,16.04 Q4.16,16.04 2.08,13.88 Q0,11.72 0,8.03 Q0,4.42 2.16,2.21 Q4.32,0 7.88,0 Q11.99,0 14.14,3.12 Q16.28,6.24 16.28,12.01 Q16.28,17.43 13.66,20.71 Q11.05,24 6.61,24 Q5.43,24 4.23,23.77 Q3.03,23.54 1.43,22.96 Z M7.88,12.74 Q9.69,12.74 10.74,11.50 Q11.80,10.27 11.80,8.03 Q11.80,5.81 10.74,4.58 Q9.69,3.33 7.88,3.33 Q6.08,3.33 5.03,4.58 Q3.98,5.81 3.98,8.03 Q3.98,10.27 5.03,11.50 Q6.08,12.74 7.88,12.74 Z" />
     </group>
 </vector>

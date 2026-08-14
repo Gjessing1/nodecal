@@ -28,22 +28,14 @@
     <path
         android:fillColor="#FFFFFF"
         android:pathData="M37,20 H41 Q43,20 43,22 V34 Q43,36 41,36 H37 Q35,36 35,34 V22 Q35,20 37,20 Z M67,20 H71 Q73,20 73,22 V34 Q73,36 71,36 H67 Q65,36 65,34 V22 Q65,20 67,20 Z" />
-    <group android:translateX="38.5" android:translateY="56">
+    <group android:translateX="36.51" android:translateY="56">
     <path
-        android:fillColor="#00000000"
-        android:pathData="M1,5 L5.5,0 L5.5,24 M1,24 L10,24"
-        android:strokeColor="#2563EB"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:strokeWidth="4" />
+        android:fillColor="#1F2937"
+        android:pathData="M0.45,20.39 L5.53,20.39 L5.53,3.93 L0,5.04 L0,1.20 L5.95,0 L9.60,0 L9.60,20.39 L14.69,20.39 L14.69,24 L0.45,24 Z" />
     </group>
-    <group android:translateX="54.5" android:translateY="56">
+    <group android:translateX="55.2" android:translateY="56">
     <path
-        android:fillColor="#00000000"
-        android:pathData="M13,1 C7,1 2,5 1.2,12 C0.3,20 3,24 7.5,24 C11.5,24 14,21 14,17 C14,13 11.5,10.5 7.5,10.5 C4.5,10.5 2.5,12 1.2,14"
-        android:strokeColor="#2563EB"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:strokeWidth="4" />
+        android:fillColor="#1F2937"
+        android:pathData="M8.41,11.26 Q6.60,11.26 5.55,12.50 Q4.49,13.73 4.49,15.96 Q4.49,18.18 5.55,19.42 Q6.60,20.67 8.41,20.67 Q10.21,20.67 11.26,19.42 Q12.32,18.18 12.32,15.96 Q12.32,13.73 11.26,12.50 Q10.21,11.26 8.41,11.26 Z M14.85,1.03 L14.85,4.86 Q13.08,4.02 11.98,3.75 Q10.88,3.48 9.80,3.48 Q7.06,3.48 5.61,5.34 Q4.16,7.20 3.98,9.55 Q4.01,9.42 5.45,8.68 Q6.88,7.93 8.58,7.93 Q12.14,7.93 14.21,10.11 Q16.29,12.28 16.29,15.96 Q16.29,19.58 14.13,21.79 Q11.97,24 8.41,24 Q4.30,24 2.15,20.88 Q0,17.76 0,12.01 Q0,6.57 2.62,3.29 Q5.25,0 9.68,0 Q10.86,0 12.05,0.23 Q13.24,0.46 14.85,1.03 Z" />
     </group>
 </vector>

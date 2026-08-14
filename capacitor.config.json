@@ -7,5 +7,11 @@
     "appendUserAgent": "NodecalAndroid/1",
     "allowMixedContent": false,
     "resolveServiceWorkerRequests": false
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "css",
+      "style": "LIGHT"
+    }
   }
 }
