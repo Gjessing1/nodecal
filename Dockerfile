@@ -1,4 +1,4 @@
-FROM node:20-alpine AS deps
+FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
 # --no-audit/--no-fund drop network round-trips that add nothing to a CI build
@@ -7,14 +7,14 @@ RUN npm ci --omit=dev --no-audit --no-fund
 # Quality gates that need devDependencies (prettier/eslint) run in a throwaway
 # stage so the final image never ships them. A red check fails `docker build`,
 # so a broken commit can never produce a pushed image.
-FROM node:20-alpine AS check
+FROM node:22-alpine AS check
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
 RUN npm run format:check && npm run lint && npm run typecheck && npm test
 
-FROM node:20-alpine
+FROM node:22-alpine
 WORKDIR /app
 
 # su-exec lets the entrypoint drop from root to nodecal after chowning mounted volumes

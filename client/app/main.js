@@ -30,6 +30,12 @@ import { initAuthReload } from './authReload.js';
 import { pushEnabled } from './pushClient.js';
 import { initTheme } from './theme.js';
 import {
+  findNativeAppUpdate,
+  getNativeAppInfo,
+  nativeDownloadUrl,
+  openNativeExternal,
+} from './nativeAndroid.js';
+import {
   applyProfile,
   captureActiveProfile,
   persistProfiles,
@@ -1265,6 +1271,19 @@ async function init() {
     scheduleNotifications(state.events);
     // Discover location via geolocation if no coordinates are saved yet
     detectAndLoadWeather();
+    getNativeAppInfo()
+      .then(async (info) => ({ info, update: await findNativeAppUpdate(info) }))
+      .then(({ update }) => {
+        if (!update) return;
+        showSnackbar(`Nodecal Android ${update.versionName} is available`, {
+          actionLabel: 'Download',
+          duration: 15000,
+          onAction: () => openNativeExternal(nativeDownloadUrl(update)),
+        });
+      })
+      .catch(() => {
+        /* Browser/PWA or native update check failed — keep startup quiet. */
+      });
     // Refresh weather every hour
     setInterval(
       () => {

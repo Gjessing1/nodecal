@@ -37,6 +37,16 @@
   /* Layout constants — component-scoped, stay out of a future @theme block */
   --nav-height: 56px;
   --header-height: 52px;
+
+  /*
+   * Capacitor supplies the --safe-area-inset-* variables on Android because
+   * WebView's env() values are unreliable before WebView 140. Browsers and
+   * installed PWAs continue to use the standards-based env() fallback.
+   */
+  --app-safe-area-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --app-safe-area-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+  --app-safe-area-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --app-safe-area-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
 }
 
 /* Dark tokens — applied by system preference (unless user forced light) */

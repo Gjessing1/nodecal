@@ -17,6 +17,7 @@ module.exports = {
   },
   app: {
     port: parseInt(process.env.PORT || '3000', 10),
+    androidAppDir: process.env.ANDROID_APP_DIR || '/config/app',
     siteTitle: process.env.SITE_TITLE || 'Nodecal',
     defaultView: process.env.DEFAULT_VIEW || 'day',
     timezone: process.env.TIMEZONE || 'UTC',

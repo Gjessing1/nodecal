@@ -41,15 +41,16 @@ select {
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom));
+  padding-bottom: calc(var(--nav-height) + var(--app-safe-area-bottom));
 }
 
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: var(--header-height);
-  padding: 0 var(--spacing-md);
+  height: calc(var(--header-height) + var(--app-safe-area-top));
+  padding: var(--app-safe-area-top) calc(var(--spacing-md) + var(--app-safe-area-right)) 0
+    calc(var(--spacing-md) + var(--app-safe-area-left));
   background: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
@@ -125,6 +126,7 @@ select {
   max-height: 80dvh;
   display: flex;
   flex-direction: column;
+  padding-top: var(--app-safe-area-top);
 }
 .search-input-row {
   display: flex;
@@ -192,14 +194,15 @@ select {
 /* ── Calendar quick-add bar ─────────────────────────────── */
 .cal-quickadd {
   position: fixed;
-  bottom: calc(var(--nav-height) + env(safe-area-inset-bottom));
+  bottom: calc(var(--nav-height) + var(--app-safe-area-bottom));
   left: 0;
   right: 0;
   z-index: 50;
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-sm) calc(var(--spacing-md) + var(--app-safe-area-right)) var(--spacing-sm)
+    calc(var(--spacing-md) + var(--app-safe-area-left));
   border-top: 1px solid var(--color-border);
   background: var(--color-bg);
 }
@@ -275,7 +278,7 @@ select {
   left: 50%;
   transform: translateX(-50%);
   bottom: calc(
-    var(--nav-height) + var(--spacing-xl) + var(--spacing-lg) + env(safe-area-inset-bottom)
+    var(--nav-height) + var(--spacing-xl) + var(--spacing-lg) + var(--app-safe-area-bottom)
   );
   z-index: 40;
   padding: var(--spacing-xs) var(--spacing-md);
@@ -341,8 +344,8 @@ select {
 
 .fab {
   position: fixed;
-  bottom: calc(var(--nav-height) + var(--spacing-md) + env(safe-area-inset-bottom));
-  right: var(--spacing-lg);
+  bottom: calc(var(--nav-height) + var(--spacing-md) + var(--app-safe-area-bottom));
+  right: calc(var(--spacing-lg) + var(--app-safe-area-right));
   width: 56px;
   height: 56px;
   border-radius: 50%;
@@ -375,7 +378,9 @@ select {
   width: 100%;
   max-height: 90dvh;
   overflow-y: auto;
-  padding: var(--spacing-md) var(--spacing-md) calc(var(--spacing-md) + env(safe-area-inset-bottom));
+  padding: var(--spacing-md) calc(var(--spacing-md) + var(--app-safe-area-right))
+    calc(var(--spacing-md) + var(--app-safe-area-bottom))
+    calc(var(--spacing-md) + var(--app-safe-area-left));
 }
 
 /* On larger screens: centered dialog with max-width */
@@ -1279,9 +1284,9 @@ mark.nlp-match {
 /* ── Install banner ─────────────────────────────────────── */
 .install-banner {
   position: fixed;
-  bottom: calc(var(--nav-height) + var(--spacing-sm) + env(safe-area-inset-bottom));
-  left: var(--spacing-md);
-  right: var(--spacing-md);
+  bottom: calc(var(--nav-height) + var(--spacing-sm) + var(--app-safe-area-bottom));
+  left: calc(var(--spacing-md) + var(--app-safe-area-left));
+  right: calc(var(--spacing-md) + var(--app-safe-area-right));
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -1350,6 +1355,10 @@ mark.nlp-match {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: calc(var(--spacing-md) + var(--app-safe-area-top))
+    calc(var(--spacing-md) + var(--app-safe-area-right))
+    calc(var(--spacing-md) + var(--app-safe-area-bottom))
+    calc(var(--spacing-md) + var(--app-safe-area-left));
   z-index: 200;
   animation: fadeIn 0.2s ease;
 }
@@ -1385,7 +1394,10 @@ mark.nlp-match {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--spacing-md);
+  padding: calc(var(--spacing-md) + var(--app-safe-area-top))
+    calc(var(--spacing-md) + var(--app-safe-area-right))
+    calc(var(--spacing-md) + var(--app-safe-area-bottom))
+    calc(var(--spacing-md) + var(--app-safe-area-left));
 }
 .mini-cal-panel {
   background: var(--color-bg);
@@ -1467,7 +1479,7 @@ mark.nlp-match {
 .snackbar {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--nav-height) + var(--spacing-md) + env(safe-area-inset-bottom));
+  bottom: calc(var(--nav-height) + var(--spacing-md) + var(--app-safe-area-bottom));
   transform: translate(-50%, 16px);
   z-index: 500;
   display: flex;

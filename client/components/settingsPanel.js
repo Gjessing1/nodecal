@@ -9,6 +9,14 @@ import {
 import { renderProfilesSection } from './profilesSettings.js';
 import { registerProfileTaskSources } from '../app/profiles.js';
 import { pushSupported, getPushSubscription, enablePush, disablePush } from '../app/pushClient.js';
+import {
+  configureNativeServer,
+  findNativeAppUpdate,
+  getNativeAppInfo,
+  isNativeAndroid,
+  nativeDownloadUrl,
+  openNativeExternal,
+} from '../app/nativeAndroid.js';
 
 const ALL_VIEWS = [
   { id: 'agenda', label: 'Agenda' },
@@ -295,6 +303,21 @@ function renderForm() {
       </div>
     </div>
 
+    ${
+      isNativeAndroid()
+        ? `<div class="modal-section-label settings-section-divider">Android app</div>
+    <div class="modal-field" id="s-native-app">
+      <label for="s-native-server">Nodecal server URL</label>
+      <div class="native-server-row">
+        <input type="url" id="s-native-server" inputmode="url" autocomplete="url" placeholder="https://calendar.example.com">
+        <button type="button" id="s-native-server-save" class="btn btn-ghost">Apply</button>
+      </div>
+      <div id="s-native-status" class="settings-help">Loading Android app information…</div>
+      <button type="button" id="s-native-update" class="btn btn-primary hidden">Download update</button>
+    </div>`
+        : ''
+    }
+
     <div class="modal-section-label settings-section-divider">Profiles</div>
     <div id="s-profiles-section"></div>
 
@@ -319,6 +342,8 @@ function renderForm() {
     .catch(() => {
       /* offline — leave the footer empty */
     });
+
+  if (isNativeAndroid()) initNativeSettings(sheet);
 
   // ── Time pickers (replace native <input type="time">) ──────────────────────
   sheet
@@ -516,6 +541,46 @@ function renderForm() {
   if (cfg.authEnabled) {
     sheet.querySelector('#s-logout').addEventListener('click', handleLogout);
   }
+}
+
+async function initNativeSettings(sheet) {
+  const input = /** @type {HTMLInputElement} */ (sheet.querySelector('#s-native-server'));
+  const apply = /** @type {HTMLButtonElement} */ (sheet.querySelector('#s-native-server-save'));
+  const status = sheet.querySelector('#s-native-status');
+  const updateButton = /** @type {HTMLButtonElement} */ (sheet.querySelector('#s-native-update'));
+  if (!input || !apply || !status || !updateButton) return;
+
+  try {
+    const info = await getNativeAppInfo();
+    if (!info) return;
+    input.value = info.serverUrl;
+    status.textContent = `Installed app ${info.versionName} (${info.versionCode})`;
+
+    const update = await findNativeAppUpdate(info);
+    if (update) {
+      updateButton.textContent = `Download ${update.versionName}`;
+      updateButton.classList.remove('hidden');
+      updateButton.addEventListener('click', () =>
+        openNativeExternal(nativeDownloadUrl(update)).catch((error) => {
+          status.textContent = error.message;
+        }),
+      );
+    }
+  } catch (error) {
+    status.textContent = error.message;
+  }
+
+  apply.addEventListener('click', async () => {
+    apply.disabled = true;
+    status.textContent = 'Saving server URL…';
+    try {
+      await configureNativeServer(input.value);
+      status.textContent = 'Restarting with the new server…';
+    } catch (error) {
+      status.textContent = error.message;
+      apply.disabled = false;
+    }
+  });
 }
 
 async function handleLogout() {

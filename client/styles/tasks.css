@@ -217,13 +217,14 @@
 /* ── Quick-add bar ────────────────────────────────────────── */
 .tasks-quickadd {
   position: fixed;
-  bottom: calc(var(--nav-height) + env(safe-area-inset-bottom));
+  bottom: calc(var(--nav-height) + var(--app-safe-area-bottom));
   left: 0;
   right: 0;
   z-index: 50;
   border-top: 1px solid var(--color-border);
   background: var(--color-bg);
-  padding: var(--spacing-xs) var(--spacing-md) var(--spacing-sm);
+  padding: var(--spacing-xs) calc(var(--spacing-md) + var(--app-safe-area-right)) var(--spacing-sm)
+    calc(var(--spacing-md) + var(--app-safe-area-left));
 }
 
 .tasks-quickadd-row {
@@ -468,6 +469,26 @@
   margin-top: var(--spacing-lg);
   padding-top: var(--spacing-lg);
   border-top: 2px solid var(--color-border);
+}
+
+.native-server-row {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.native-server-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-help {
+  margin-top: var(--spacing-xs);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+#s-native-update {
+  margin-top: var(--spacing-sm);
 }
 
 /* ── Collapsible categories section in settings ──────────── */

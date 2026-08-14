@@ -7,6 +7,7 @@ const store = require('./cache/store');
 const { authMiddleware } = require('./middleware/auth');
 const { getBuildInfo } = require('./buildInfo');
 const { startPushScheduler } = require('./push/scheduler');
+const { registerAppReleaseRoutes } = require('./appRelease');
 
 const app = express();
 app.use(express.json());
@@ -40,6 +41,10 @@ const { isAuthenticated } = require('./middleware/auth');
 app.get(['/auth/status', '/api/auth/status'], (req, res) =>
   res.json({ authenticated: isAuthenticated(req) }),
 );
+
+// APK metadata and download stay public: Android hands the download to the
+// system browser, which does not share the app WebView's login cookie.
+registerAppReleaseRoutes(app, config.app.androidAppDir);
 
 // Auth middleware runs after static files so the login form always loads
 app.use(authMiddleware);

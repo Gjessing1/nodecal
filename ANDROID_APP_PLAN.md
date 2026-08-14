@@ -1,5 +1,20 @@
 # Android App Plan
 
+## Implementation Status
+
+Phase 1 is now implemented as a Capacitor 8 Android project under `android/`:
+
+- [x] Native first-run server setup with a device-persisted HTTPS origin.
+- [x] Runtime server switching under **Settings → Android app** without rebuilding the APK.
+- [x] Same-origin hosted Nodecal UI, cookie authentication, service worker, and external-link isolation.
+- [x] Connection-error recovery with retry or server reconfiguration.
+- [x] Release-signing build script and self-hosted APK publication script.
+- [x] Atlas-style version endpoint, startup update notice, and stable direct-download URL.
+- [x] Adaptive icon and splash artwork derived from the existing Nodecal calendar icon.
+- [ ] Native notification delivery, widget, shortcuts, and calendar integration (Phases 2–3).
+
+Unlike Atlas, Nodecal does not need a separate JavaScript OTA bundle: the Android WebView loads the hosted Nodecal client, so normal server deployment is already its lightweight update channel. The part reused from Atlas is the native update path—monotonic Android `versionCode`, server-published release metadata, and a browser-assisted APK install.
+
 The best fit is a Capacitor Android app that loads the existing hosted Nodecal instance.
 
 Because the APK is private, the server is owned and controlled by the same person, and Nodecal already has strong PWA/offline infrastructure, the recommended first version is the simpler remote-hosted model. This preserves the current same-origin API calls, cookie authentication, service worker, and instant web deployments while providing a real Android container with access to Kotlin and native plugins.
@@ -128,14 +143,15 @@ The current same-origin cookie login can remain. If Nodecal sits behind external
 
 ## Suggested Delivery Phases
 
-### Phase 1: Foundation (approximately 1-2 days)
+### Phase 1: Foundation (implemented)
 
-- Add Capacitor 8 and the Android project.
-- Configure the fixed Nodecal HTTPS URL.
-- Add adaptive icons and a splash screen.
-- Handle the Android back button and system bars.
-- Build and sign a sideloadable release APK.
-- Confirm login, updates, offline shell, geolocation, and all views.
+- Add Capacitor 8 and the Android project. ✓
+- Configure a runtime-selectable Nodecal HTTPS URL. ✓
+- Add adaptive icons and a splash screen. ✓
+- Handle the Android back button and system bars. ✓ (Capacitor/browser history baseline)
+- Add repeatable release-signing and publishing tooling. ✓
+- Sign and publish the first release APK. (Requires the operator's permanent keystore.)
+- Complete credentialed smoke testing of every view and offline behavior.
 
 ### Phase 2: Native notifications (approximately 1-3 days)
 
@@ -154,7 +170,7 @@ The current same-origin cookie login can remain. If Nodecal sits behind external
 
 ## Development Environment
 
-The development machine already has Node 22, which Capacitor 8 requires. Java, Android Studio/SDK, and `adb` were not installed when this review was performed.
+The development machine has Node 22, a JDK, and an Android SDK. Source `/home/gjessing/android-sdk/env.sh` before using SDK commands directly; the provided build script does this automatically when that file exists.
 
 Capacitor currently requires Node 22 and a recent Android Studio. See [Capacitor environment setup](https://capacitorjs.com/docs/getting-started/environment-setup).
 

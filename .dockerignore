@@ -3,3 +3,6 @@ node_modules
 docs
 .claude
 *.md
+android
+mobile
+capacitor.config.json

@@ -1,0 +1,11 @@
+{
+  "appId": "io.gjessing.nodecal",
+  "appName": "Nodecal",
+  "webDir": "mobile",
+  "loggingBehavior": "debug",
+  "android": {
+    "appendUserAgent": "NodecalAndroid/1",
+    "allowMixedContent": false,
+    "resolveServiceWorkerRequests": false
+  }
+}

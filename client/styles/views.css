@@ -6,10 +6,10 @@
   right: 0;
   z-index: 20;
   display: flex;
-  height: var(--nav-height);
+  height: calc(var(--nav-height) + var(--app-safe-area-bottom));
   border-top: 1px solid var(--color-border);
   background: var(--color-bg);
-  padding-bottom: env(safe-area-inset-bottom);
+  padding: 0 var(--app-safe-area-right) var(--app-safe-area-bottom) var(--app-safe-area-left);
 }
 .nav-btn {
   flex: 1;
@@ -356,7 +356,10 @@
   width: min(280px, 85vw);
   background: var(--color-bg);
   overflow-y: auto;
-  padding: var(--spacing-lg) var(--spacing-md);
+  padding: calc(var(--spacing-lg) + var(--app-safe-area-top))
+    calc(var(--spacing-md) + var(--app-safe-area-right))
+    calc(var(--spacing-lg) + var(--app-safe-area-bottom))
+    calc(var(--spacing-md) + var(--app-safe-area-left));
   box-shadow: 4px 0 16px rgba(0, 0, 0, 0.15);
 }
 .cal-drawer h2 {

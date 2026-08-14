@@ -6,6 +6,10 @@
   "scripts": {
     "start": "node server/app.js",
     "dev": "node --watch server/app.js",
+    "android:sync": "cap sync android",
+    "android:open": "cap open android",
+    "android:build:debug": "npm run android:sync && cd android && ./gradlew assembleDebug",
+    "android:build:release": "./android/build-apk.sh",
     "test": "node --test",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -15,15 +19,18 @@
   "dependencies": {
     "chrono-node": "^2.7.0",
     "dotenv": "^16.4.0",
-    "express": "^4.19.0",
+    "express": "^4.22.2",
     "rrule": "^2.8.1",
     "web-push": "^3.6.7"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "license": "MIT",
   "devDependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.1.0",
     "eslint": "^10.6.0",
