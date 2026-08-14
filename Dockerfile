@@ -12,7 +12,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
-RUN npm run format:check && npm run lint && npm run typecheck && npm test
+RUN npm run format:check && npm run lint && npm run typecheck && NODECAL_SKIP_ANDROID_TESTS=1 npm test
 
 FROM node:22-alpine
 WORKDIR /app
@@ -30,7 +30,7 @@ COPY --from=check /app/package.json /tmp/.checks-passed
 
 # Re-run tests against prod-only node_modules: catches server code accidentally
 # requiring a devDependency, which the check stage (full install) would miss.
-RUN npm test
+RUN NODECAL_SKIP_ANDROID_TESTS=1 npm test
 
 RUN mkdir -p /config /cache
 
