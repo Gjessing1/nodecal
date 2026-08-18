@@ -46,6 +46,7 @@ import {
   effectiveEventCalendar,
   effectiveTaskSource,
 } from './profiles.js';
+import { initBackNav, goBack } from './backNav.js';
 import { localDateStr, toDateInputValue, localToUTC } from './utils.js';
 
 const viewContainer = document.getElementById('view-container');
@@ -995,56 +996,28 @@ function initLogin() {
 }
 
 // ── Back-button / PWA history handling ───────────────────
-// Push a state entry each time an overlay opens so the Android/PWA back
-// button closes the overlay instead of exiting the app.
+// Keep one spare history entry so a browser back gesture lands in our handler
+// instead of leaving the app. The native shell calls goBack() directly.
+
+/** @returns {boolean} true when an earlier view was restored */
+function goBackToPreviousView() {
+  if (_viewHistory.length === 0) return false;
+  const previous = _viewHistory.pop();
+  if (previous === state.activeView) return false;
+  state.activeView = previous;
+  buildNav();
+  render();
+  return true;
+}
 
 function initBackButton() {
-  window.addEventListener('popstate', (e) => {
-    // Try to close the topmost open overlay in priority order
-    const monthPopup = document.getElementById('month-day-popup');
-    const modalOverlay = document.getElementById('modal-overlay');
-    const settingsOverlay = document.getElementById('settings-overlay');
-    const calDrawer = document.getElementById('cal-drawer');
-    const searchOv = document.getElementById('search-overlay');
+  initBackNav(goBackToPreviousView);
 
-    if (monthPopup) {
-      monthPopup.remove();
-      history.pushState({ overlay: true }, '');
-      return;
-    }
-    if (modalOverlay && !modalOverlay.classList.contains('hidden')) {
-      modalOverlay.classList.add('hidden');
-      history.pushState({ overlay: true }, '');
-      return;
-    }
-    if (settingsOverlay && !settingsOverlay.classList.contains('hidden')) {
-      settingsOverlay.classList.add('hidden');
-      history.pushState({ overlay: true }, '');
-      return;
-    }
-    if (searchOv && !searchOv.classList.contains('hidden')) {
-      searchOv.classList.add('hidden');
-      history.pushState({ overlay: true }, '');
-      return;
-    }
-    if (calDrawer && !calDrawer.classList.contains('hidden')) {
-      calDrawer.classList.add('hidden');
-      history.pushState({ overlay: true }, '');
-      return;
-    }
-    // No overlay — go back to the previous view if there is one
-    if (_viewHistory.length > 0) {
-      const prev = _viewHistory.pop();
-      if (prev !== state.activeView) {
-        state.activeView = prev;
-        buildNav();
-        render();
-      }
-      history.pushState({ overlay: true }, '');
-      return;
-    }
-    // Nothing to go back to — keep the history entry so we don't exit the PWA
-    if (e.state?.overlay) history.pushState({ overlay: true }, '');
+  window.addEventListener('popstate', () => {
+    goBack();
+    // Whether or not a layer closed, keep a spare entry so the next back
+    // gesture reaches this handler instead of leaving the app.
+    history.pushState({ overlay: true }, '');
   });
 
   // Seed the initial history entry so there's always something to go back from

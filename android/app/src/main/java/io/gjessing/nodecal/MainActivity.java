@@ -34,6 +34,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NodecalNativePlugin.class);
         super.onCreate(savedInstanceState);
         enableWebAuthentication();
+        getOnBackPressedDispatcher().addCallback(this, new NodecalBackNavigation(this));
         if (bridge != null && serverUrl != null) {
             bridge.setWebViewClient(new NodecalWebViewClient(bridge, this));
         } else if (bridge != null) {
