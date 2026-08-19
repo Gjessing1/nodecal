@@ -11,7 +11,8 @@ Phase 1 is now implemented as a Capacitor 8 Android project under `android/`:
 - [x] Release-signing build script and self-hosted APK publication script.
 - [x] Atlas-style version endpoint, startup update notice, and stable direct-download URL.
 - [x] Adaptive icon and splash artwork derived from the existing Nodecal calendar icon.
-- [ ] Native notification delivery, widget, shortcuts, and calendar integration (Phases 2–3).
+- [x] Native notification delivery with Snooze and Complete actions (Phase 2).
+- [ ] Widget, shortcuts, and calendar integration (Phase 3).
 
 Unlike Atlas, Nodecal does not need a separate JavaScript OTA bundle: the Android WebView loads the hosted Nodecal client, so normal server deployment is already its lightweight update channel. The part reused from Atlas is the native update path—monotonic Android `versionCode`, server-published release metadata, and a browser-assisted APK install.
 
@@ -56,7 +57,7 @@ Shared Nodecal web application
             +-- Browser -- PWA manifest + service worker + Web Push
             |
             +-- Capacitor Android container
-                    +-- Native FCM notifications
+                    +-- Native reminders (AlarmManager, no cloud)
                     +-- Android widget
                     +-- Calendar integration
                     +-- Shortcuts and share targets
@@ -83,9 +84,11 @@ Web implementations should remain no-ops or use the existing browser APIs.
 
 ### 1. Native notifications
 
-Keep Web Push unchanged for browsers and PWAs. For Android, register an FCM token and add an FCM delivery adapter beside the existing VAPID delivery code. Capacitor's Android push plugin uses Firebase Cloud Messaging and requires `google-services.json`. See [Capacitor Push Notifications](https://capacitorjs.com/docs/apis/push-notifications).
+Web Push is unchanged for browsers and PWAs. It cannot serve the Android app at all: WebView implements neither the Notifications API nor the Push API, so `PushManager` and `window.Notification` are simply absent there.
 
-Native notifications can later gain **Snooze** and **Complete task** actions.
+Android reminders are therefore delivered natively. The server publishes the window ahead at `GET /api/reminders/upcoming`, and the app arms one exact `AlarmManager` alarm per reminder, re-arming on resume, on each fire, on boot, on a timezone change, and on a twice-daily backstop. Notifications carry **Snooze** and, for tasks, **Complete**.
+
+No Firebase, no `google-services.json`, no Play Services: a push service would put every event title through a third party and contradict Nodecal's "no external cloud dependencies" premise, and it would deliver nothing offline. Local alarms fire with no network at all.
 
 ### 2. Today/agenda home-screen widget
 
@@ -120,11 +123,11 @@ The current service worker deliberately provides read-only cached data. Offline 
 
 ## Notification Strategy
 
-Do not schedule every reminder using Android exact alarms initially. The Nodecal server already knows the authoritative calendar state and runs continuously, so FCM should be the primary native reminder transport.
+The server owns _what_ to remind about — it already holds the synced calendar and computes the same alarms for Web Push — and the device owns _when_. That split keeps one reminder definition (`server/push/reminders.js`) feeding both transports, and it is what lets a reminder fire with no connectivity: once an alarm is armed, nothing needs to reach the server for it to go off.
 
-Exact local notifications have additional Android permission and lifecycle rules, particularly from Android 12 onward. See [Capacitor Local Notifications](https://capacitorjs.com/docs/apis/local-notifications).
+Exact alarms carry permission rules from Android 12 onward. Nodecal declares `USE_EXACT_ALARM`, the install-time grant intended for calendar and alarm apps, so reminders never wait on a settings round trip; `SCHEDULE_EXACT_ALARM` covers API 31–32, and below 31 no permission is needed. `POST_NOTIFICATIONS` is requested at runtime from the Settings toggle rather than on first launch.
 
-A reasonable fallback is to schedule only the next few upcoming reminders locally whenever the app refreshes, while deduplicating them against server pushes.
+The armed schedule is persisted, so a reboot re-arms from the last known list before the network is consulted — a phone that restarts offline still gets the morning's reminders.
 
 ## Security for the Remote-Hosted Model
 
@@ -153,13 +156,13 @@ The current same-origin cookie login can remain. If Nodecal sits behind external
 - Sign and publish the first release APK. (Requires the operator's permanent keystore.)
 - Complete credentialed smoke testing of every view and offline behavior.
 
-### Phase 2: Native notifications (approximately 1-3 days)
+### Phase 2: Native notifications (implemented)
 
-- Create/configure the Firebase project and Android registration.
-- Add the native notification platform adapter.
-- Add server-side FCM subscription storage and delivery.
-- Handle notification clicks and deep links.
-- Preserve Web Push for the PWA.
+- Publish the upcoming-reminder window from the server. ✓
+- Arm and reconcile exact alarms natively. ✓
+- Post notifications with Snooze and Complete actions. ✓
+- Handle notification taps as deep links into the event or task. ✓
+- Preserve Web Push for the PWA. ✓
 
 ### Phase 3: Native value (approximately 2-5 days)
 

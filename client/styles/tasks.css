@@ -453,61 +453,6 @@
   opacity: 0.85;
 }
 
-/* ── Settings ────────────────────────────────────────────── */
-.modal-section-label {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: var(--spacing-md) var(--spacing-md) 0;
-}
-
-/* Stronger break before the per-profile block so it reads as separate from
-   the global settings above it. */
-.settings-section-divider {
-  margin-top: var(--spacing-lg);
-  padding-top: var(--spacing-lg);
-  border-top: 2px solid var(--color-border);
-}
-
-.native-server-row {
-  display: flex;
-  gap: var(--spacing-sm);
-}
-
-.native-server-row input {
-  flex: 1;
-  min-width: 0;
-}
-
-.settings-help {
-  margin-top: var(--spacing-xs);
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-}
-
-#s-native-update {
-  margin-top: var(--spacing-sm);
-}
-
-/* ── Collapsible categories section in settings ──────────── */
-.settings-collapse-header {
-  cursor: pointer;
-  user-select: none;
-  padding: var(--spacing-md) var(--spacing-md) 0;
-}
-.settings-collapse-header:hover {
-  color: var(--color-accent);
-}
-.settings-collapse-arrow {
-  font-size: 10px;
-  margin-right: 2px;
-}
-.settings-collapse-body {
-  padding: 0 var(--spacing-md);
-}
-
 /* ── Quick-add + button (opens full task modal) ──────────── */
 .tasks-quickadd-new {
   width: 44px;

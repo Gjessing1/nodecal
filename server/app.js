@@ -59,6 +59,7 @@ api.use(require('./routes/nlp'));
 api.use(require('./routes/tasks'));
 api.use(require('./routes/weather'));
 api.use(require('./routes/push'));
+api.use(require('./routes/reminders'));
 
 // Canonical namespace like maily's; the client and service worker use /api/*.
 app.use('/api', api);

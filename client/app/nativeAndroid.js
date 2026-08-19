@@ -40,6 +40,41 @@ export async function setNativeSystemBarStyle(darkBackground) {
   }
 }
 
+// ── Reminders ─────────────────────────────────────────────
+//
+// Android WebView implements neither the Notification nor the Push API, so the
+// PWA's reminder paths are dead in the app. The native shell arms local alarms
+// against the schedule the server publishes at /api/reminders/upcoming instead.
+
+/** False on an older shell whose plugin predates reminders. */
+export function nativeRemindersSupported() {
+  return typeof nativePlugin()?.setRemindersEnabled === 'function';
+}
+
+/** @returns {Promise<{enabled: boolean, permissionGranted: boolean, scheduled: number} | null>} */
+export async function getNativeReminderStatus() {
+  const plugin = nativePlugin();
+  if (typeof plugin?.getReminderStatus !== 'function') return null;
+  return plugin.getReminderStatus();
+}
+
+/** @param {boolean} enabled */
+export async function setNativeRemindersEnabled(enabled) {
+  const plugin = nativePlugin();
+  if (typeof plugin?.setRemindersEnabled !== 'function') {
+    throw new Error('This app version cannot schedule reminders — update the APK');
+  }
+  return plugin.setRemindersEnabled({ enabled });
+}
+
+export async function sendNativeTestNotification() {
+  const plugin = nativePlugin();
+  if (typeof plugin?.testReminderNotification !== 'function') {
+    throw new Error('This app version cannot show notifications — update the APK');
+  }
+  await plugin.testReminderNotification();
+}
+
 /**
  * Return a newer APK published by this Nodecal server, or null.
  * @param {{versionCode: number} | null} installed

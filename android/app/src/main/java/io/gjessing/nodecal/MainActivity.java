@@ -4,6 +4,8 @@ import android.content.pm.ApplicationInfo;
 import android.os.Bundle;
 import android.text.InputType;
 import android.util.Log;
+import android.content.Intent;
+import android.webkit.CookieManager;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -16,6 +18,10 @@ import com.getcapacitor.CapConfig;
 
 public class MainActivity extends BridgeActivity {
     private static final String TAG = "Nodecal";
+    // Constructed with the field, not in onCreate: BridgeActivity.load() calls
+    // onNewIntent() from inside super.onCreate(), which is earlier than any
+    // assignment made after it.
+    private final NodecalDeepLink deepLink = new NodecalDeepLink(this);
     private boolean connectionDialogVisible;
     private boolean setupDialogVisible;
 
@@ -40,12 +46,29 @@ public class MainActivity extends BridgeActivity {
         } else if (bridge != null) {
             bridge.getWebView().post(() -> showServerSetup(false));
         }
+        deepLink.accept(getIntent());
+    }
+
+    /** singleTask: a notification tapped while the app is alive lands here. */
+    @Override
+    public void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        deepLink.accept(intent);
+    }
+
+    /** The WebView finished a page load. */
+    void onPageReady() {
+        deepLink.onPageReady();
     }
 
     @Override
     public void onStart() {
         super.onStart();
         LauncherIconManager.onAppVisible(this);
+        // Cheapest moment to re-arm: the calendar the user is looking at is the
+        // one the alarms should match.
+        ReminderScheduler.refreshAsync(this);
     }
 
     @Override
@@ -54,6 +77,10 @@ public class MainActivity extends BridgeActivity {
         // A configuration change is not the user leaving, and the activity is about
         // to come straight back, so it is not a safe moment to switch aliases.
         if (!isChangingConfigurations()) LauncherIconManager.onAppHidden(this);
+        // Reminder actions authenticate with the WebView's cookies from a
+        // background process, which reads them off disk — so make sure they are
+        // on disk before the app stops.
+        CookieManager.getInstance().flush();
     }
 
     /**

@@ -4,6 +4,8 @@
  * goBack(), so a press behaves the same in the PWA and in the native shell.
  */
 
+import { settingsBack } from '../components/settingsPanel.js';
+
 /** Overlays built on demand and removed from the DOM when dismissed. */
 const POPOVER_IDS = ['time-picker-overlay', 'mini-cal-overlay', 'month-day-popup'];
 
@@ -41,6 +43,10 @@ export function goBack() {
       return true;
     }
   }
+
+  // Settings drills into one section at a time; back leaves the section before
+  // it leaves Settings.
+  if (settingsBack()) return true;
 
   // Hiding the overlay is all the components' own close functions do, and the
   // event and task editors share #modal-overlay, so close by element here.

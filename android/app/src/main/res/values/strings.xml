@@ -12,4 +12,10 @@
     <string name="server_unavailable_message">Nodecal could not load %1$s. Check the connection or choose a different server.</string>
     <string name="retry">Retry</string>
     <string name="change_server">Change server</string>
+    <string name="reminder_channel_name">Reminders</string>
+    <string name="reminder_channel_description">Event alarms and task reminders from your calendar.</string>
+    <string name="reminder_snooze">Snooze 10 min</string>
+    <string name="reminder_complete">Complete</string>
+    <string name="reminder_complete_failed">Could not reach Nodecal — the task is still open.</string>
+    <string name="notification_permission_denied">Android is blocking notifications for Nodecal. Allow them in the system app settings.</string>
 </resources>

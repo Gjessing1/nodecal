@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Notification small icon. Android draws it as a silhouette — only the alpha
+    channel survives, so the calendar reads through shape alone: a solid header
+    band over a hollow body, echoing the dated launcher icon.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M8,2 Q9,2 9,3 V6 Q9,7 8,7 Q7,7 7,6 V3 Q7,2 8,2 Z M16,2 Q17,2 17,3 V6 Q17,7 16,7 Q15,7 15,6 V3 Q15,2 16,2 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M5,4 H19 Q21,4 21,6 V20 Q21,22 19,22 H5 Q3,22 3,20 V6 Q3,4 5,4 Z M5,11 V20 H19 V11 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M7,13 H11 V16 H7 Z" />
+</vector>

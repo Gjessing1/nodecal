@@ -15,6 +15,12 @@ final class NodecalWebViewClient extends BridgeWebViewClient {
     }
 
     @Override
+    public void onPageFinished(WebView view, String url) {
+        super.onPageFinished(view, url);
+        activity.onPageReady();
+    }
+
+    @Override
     public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
         super.onReceivedError(view, request, error);
         if (request.isForMainFrame()) activity.showConnectionError();

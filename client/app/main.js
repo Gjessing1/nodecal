@@ -32,9 +32,11 @@ import { initTheme } from './theme.js';
 import {
   findNativeAppUpdate,
   getNativeAppInfo,
+  isNativeAndroid,
   nativeDownloadUrl,
   openNativeExternal,
 } from './nativeAndroid.js';
+import { initDeepLink, retryDeepLink } from './deepLink.js';
 import {
   applyProfile,
   captureActiveProfile,
@@ -353,6 +355,7 @@ async function loadEvents() {
   const events = await res.json();
   setEvents(events);
   scheduleNotifications(events);
+  retryDeepLink();
 }
 
 async function loadCalendars() {
@@ -416,6 +419,10 @@ function scheduleNotifications(events) {
   if (!state.config.enableNotifications) return;
   // Server-side push covers this device — in-page timers would double-notify.
   if (pushEnabled()) return;
+  // The Android shell arms native alarms instead. WebView has no Notification
+  // API for these timers to fire into anyway, but say so rather than relying on
+  // the check below to happen to be false.
+  if (isNativeAndroid()) return;
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
   const now = Date.now();
@@ -503,6 +510,7 @@ async function loadTasks() {
   if (tasksRes.ok) setTasks(await tasksRes.json());
   if (sourcesRes.ok) setTaskSources(await sourcesRes.json());
   scheduleNotifications(); // re-run after tasks update to catch task reminders
+  retryDeepLink();
 }
 
 async function loadWeather() {
@@ -1012,6 +1020,8 @@ function goBackToPreviousView() {
 
 function initBackButton() {
   initBackNav(goBackToPreviousView);
+  // A tapped reminder notification opens what it was about.
+  initDeepLink({ openEvent: handleEventClick, openTask: handleTaskEdit });
 
   window.addEventListener('popstate', () => {
     goBack();

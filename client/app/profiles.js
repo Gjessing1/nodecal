@@ -41,11 +41,13 @@ const DEFAULT_PROFILES = {
 export const PROFILE_ORDER = ['single', 'personal', 'work'];
 export const DUAL_IDS = ['personal', 'work'];
 
-export function getProfiles() {
-  let p = state.config.profiles;
+// `config` defaults to the live settings; the Settings editor passes its draft
+// so edits stay uncommitted until Save.
+export function getProfiles(config = state.config) {
+  let p = config.profiles;
   if (!p || typeof p !== 'object' || !Object.keys(p).length) {
     p = structuredClone(DEFAULT_PROFILES);
-    state.config.profiles = p;
+    config.profiles = p;
     return p;
   }
   // Backfill any built-in profile missing from older saved settings (e.g.
@@ -58,8 +60,8 @@ export function getProfiles() {
 }
 
 // Built-ins first (in canonical order), then any user-defined extras.
-export function profileIds() {
-  const all = Object.keys(getProfiles());
+export function profileIds(config = state.config) {
+  const all = Object.keys(getProfiles(config));
   const extras = all.filter((id) => !PROFILE_ORDER.includes(id));
   return [...PROFILE_ORDER, ...extras];
 }
@@ -69,10 +71,10 @@ export function isSingleMode() {
   return activeProfileId() === 'single';
 }
 
-export function activeProfileId() {
-  const id = state.config.activeProfile;
-  const profiles = getProfiles();
-  return profiles[id] ? id : profileIds()[0];
+export function activeProfileId(config = state.config) {
+  const id = config.activeProfile;
+  const profiles = getProfiles(config);
+  return profiles[id] ? id : profileIds(config)[0];
 }
 
 export function activeProfile() {
@@ -109,13 +111,13 @@ export function effectiveEventCalendar() {
 
 // Ensure every profile's chosen task source is a registered task source so the
 // server actually syncs tasks from it. A profile can point at any writable
-// calendar; this backfills `state.taskSources` with the matching calendar's
-// name. Call before persisting settings.
-export function registerProfileTaskSources() {
-  const sources = state.taskSources || (state.taskSources = []);
+// calendar; this backfills the settings' task source list with the matching
+// calendar's name. Call before persisting settings.
+export function registerProfileTaskSources(config) {
+  const sources = config.taskSources || (config.taskSources = []);
   const cals = state.calendars || [];
-  for (const id of profileIds()) {
-    const url = getProfiles()[id].defaultTaskSource;
+  for (const id of profileIds(config)) {
+    const url = getProfiles(config)[id].defaultTaskSource;
     if (!url || sources.some((s) => s.url === url)) continue;
     const cal = cals.find((c) => c.id === url);
     sources.push({ url, name: cal ? cal.name : url });

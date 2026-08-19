@@ -397,10 +397,6 @@ select {
     padding: var(--spacing-md) var(--spacing-lg) var(--spacing-md);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   }
-  /* Settings panel gets a bit more room */
-  #settings-overlay .modal-sheet {
-    max-width: 600px;
-  }
   .modal-handle {
     display: none;
   }
@@ -984,19 +980,6 @@ select {
 }
 
 /* ── Settings panel toggles ─────────────────────────────── */
-.settings-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--spacing-md);
-}
-.settings-title-row .modal-title {
-  margin-bottom: 0;
-}
-.settings-danger-row {
-  display: flex;
-  gap: var(--spacing-xs);
-}
 .settings-toggle {
   display: flex;
   align-items: center;
