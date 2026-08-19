@@ -46,11 +46,6 @@ export async function setNativeSystemBarStyle(darkBackground) {
 // PWA's reminder paths are dead in the app. The native shell arms local alarms
 // against the schedule the server publishes at /api/reminders/upcoming instead.
 
-/** False on an older shell whose plugin predates reminders. */
-export function nativeRemindersSupported() {
-  return typeof nativePlugin()?.setRemindersEnabled === 'function';
-}
-
 /** @returns {Promise<{enabled: boolean, permissionGranted: boolean, scheduled: number} | null>} */
 export async function getNativeReminderStatus() {
   const plugin = nativePlugin();

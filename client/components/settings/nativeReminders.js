@@ -11,7 +11,6 @@
  */
 import {
   getNativeReminderStatus,
-  nativeRemindersSupported,
   sendNativeTestNotification,
   setNativeRemindersEnabled,
 } from '../../app/nativeAndroid.js';
@@ -57,21 +56,25 @@ export function buildNativeReminders() {
   statusRow.className = 'settings-status-row';
   statusRow.append(status, testBtn);
 
+  // Whether the shell supports reminders can only be settled by asking it.
+  // Capacitor's plugin object answers every property with a callable proxy, so
+  // an older APK's missing method still looks like a function from here — it is
+  // the call that fails, not the lookup.
   const input = /** @type {HTMLInputElement} */ (check.querySelector('input'));
-  if (!nativeRemindersSupported()) {
-    input.disabled = true;
-    testBtn.disabled = true;
-    status.textContent = 'Update the Android app to get reminders';
-    status.dataset.tone = 'muted';
-  } else {
-    getNativeReminderStatus()
-      .then((state) => {
-        if (!state) return;
-        input.checked = state.enabled;
-        paint(status, state);
-      })
-      .catch(() => {});
-  }
+  input.disabled = true;
+  testBtn.disabled = true;
+  getNativeReminderStatus()
+    .then((state) => {
+      if (!state) throw new Error('no reminder support');
+      input.disabled = false;
+      testBtn.disabled = false;
+      input.checked = state.enabled;
+      paint(status, state);
+    })
+    .catch(() => {
+      status.textContent = 'Update the Android app to get reminders';
+      status.dataset.tone = 'muted';
+    });
 
   wrap.append(check, statusRow);
   return wrap;

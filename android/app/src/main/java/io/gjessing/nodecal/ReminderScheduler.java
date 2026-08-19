@@ -37,8 +37,15 @@ final class ReminderScheduler {
         new Thread(() -> refresh(appContext)).start();
     }
 
-    /** Fetch the window ahead and reconcile the armed alarms against it. */
-    static void refresh(Context context) {
+    /**
+     * Fetch the window ahead and reconcile the armed alarms against it.
+     *
+     * Synchronized because two refreshes genuinely race: an alarm firing starts
+     * one while the user opening the app starts another, and interleaving their
+     * read-reconcile-write of the stored schedule could cancel an alarm the
+     * other had just armed.
+     */
+    static synchronized void refresh(Context context) {
         Context appContext = context.getApplicationContext();
         if (!ReminderStore.isEnabled(appContext)) return;
 
