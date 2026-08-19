@@ -40,13 +40,20 @@ public class MainActivity extends BridgeActivity {
         } else if (bridge != null) {
             bridge.getWebView().post(() -> showServerSetup(false));
         }
-        LauncherIconManager.updateAndSchedule(this);
     }
 
     @Override
-    public void onResume() {
-        super.onResume();
-        LauncherIconManager.updateAndSchedule(this);
+    public void onStart() {
+        super.onStart();
+        LauncherIconManager.onAppVisible(this);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        // A configuration change is not the user leaving, and the activity is about
+        // to come straight back, so it is not a safe moment to switch aliases.
+        if (!isChangingConfigurations()) LauncherIconManager.onAppHidden(this);
     }
 
     /**

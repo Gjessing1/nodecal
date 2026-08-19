@@ -16,6 +16,6 @@ public class LauncherIconUpdateReceiver extends BroadcastReceiver {
             && !Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)) {
             return;
         }
-        LauncherIconManager.updateAndSchedule(context);
+        LauncherIconManager.refresh(context);
     }
 }
