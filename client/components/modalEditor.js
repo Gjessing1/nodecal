@@ -8,6 +8,7 @@ import {
   mountLocationUrlSection,
   mountCollapsibleToggle,
   wireCategoryUI,
+  scopeFieldHtml,
 } from './modalHelpers.js';
 import { getAllEventCategories } from '../app/eventUtils.js';
 import { resolveEventCalendar } from '../app/profileTargets.js';
@@ -280,19 +281,7 @@ function renderForm(event, defaultDate, explicitTime = false) {
       </div>
       <div id="f-repeat-container" data-rrule="${esc(event?.rrule || '')}"></div>
     </div>
-    ${
-      event?.recurring
-        ? `
-    <div class="modal-field recurring-scope-field">
-      <label>Edit scope</label>
-      <select id="f-scope">
-        <option value="single">This event only</option>
-        <option value="future" selected>This and following</option>
-        <option value="all">All events in series</option>
-      </select>
-    </div>`
-        : ''
-    }
+    ${scopeFieldHtml(event)}
     <div class="modal-actions">
       <button class="btn btn-primary" id="f-save">Save</button>
       ${!isNew && onDeleteCb ? '<button class="btn btn-danger" id="f-delete">Delete</button>' : ''}
@@ -576,9 +565,15 @@ function handleSave(event) {
     categories,
   };
   if (event?.recurring) {
-    data.recurringScope = sheet.querySelector('#f-scope')?.value || 'single';
+    // An occurrence that already has an override is only ever edited as itself —
+    // there is no scope select to read, and "this and following" would cap the
+    // series at a moved start rather than at the occurrence it replaces.
+    data.recurringScope = event.recurrenceId
+      ? 'single'
+      : sheet.querySelector('#f-scope')?.value || 'single';
     data.uid = event.uid;
     data.occurrenceDate = event.occurrenceDate;
+    data.recurrenceId = event.recurrenceId || null;
   }
 
   closeModal();

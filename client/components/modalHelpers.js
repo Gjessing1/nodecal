@@ -302,3 +302,33 @@ export function wireCategoryUI(
     },
   };
 }
+
+/**
+ * The "Edit scope" field for a recurring event — or, for an occurrence that has
+ * already been edited out of its series, a note in place of it.
+ *
+ * That occurrence is a RECURRENCE-ID override of its own, so the three scopes
+ * do not apply to it: "all" would edit the master it was detached from, and
+ * "this and following" would cap the series at the override's new start, which
+ * may be a different day than the occurrence it replaces.
+ * @param {any} event
+ * @returns {string} HTML
+ */
+export function scopeFieldHtml(event) {
+  if (!event?.recurring) return '';
+  if (event.recurrenceId) {
+    return `
+    <p class="modal-note occurrence-modified-note">
+      This occurrence was edited separately from its series. Changes here apply to it alone.
+    </p>`;
+  }
+  return `
+    <div class="modal-field recurring-scope-field">
+      <label>Edit scope</label>
+      <select id="f-scope">
+        <option value="single">This event only</option>
+        <option value="future" selected>This and following</option>
+        <option value="all">All events in series</option>
+      </select>
+    </div>`;
+}

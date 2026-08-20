@@ -637,6 +637,9 @@ function handleEventMove(eventId, day, startMin) {
     data.uid = ev.uid;
     data.recurringScope = 'single';
     data.occurrenceDate = ev.occurrenceDate;
+    // Already an exception: this names the occurrence it replaces, which is the
+    // only thing that identifies it once its start has moved.
+    data.recurrenceId = ev.recurrenceId || null;
   }
   saveEvent(ev.uid, data);
 }
@@ -658,6 +661,7 @@ function handleEventResize(eventId, endMin) {
     data.uid = ev.uid;
     data.recurringScope = 'single';
     data.occurrenceDate = ev.occurrenceDate;
+    data.recurrenceId = ev.recurrenceId || null;
   }
   saveEvent(ev.uid, data);
 }
@@ -687,7 +691,9 @@ async function deleteEvent(ev, scope) {
     const uid = ev.uid || ev.id || ev;
     let url = `/events/${uid}`;
     if (scope && ev.occurrenceDate) {
-      url += '?' + new URLSearchParams({ scope, occurrenceDate: ev.occurrenceDate });
+      const params = { scope, occurrenceDate: ev.occurrenceDate };
+      if (ev.recurrenceId) params.recurrenceId = ev.recurrenceId;
+      url += '?' + new URLSearchParams(params);
     }
     const res = await fetch(url, { method: 'DELETE' });
     if (!res.ok && res.status !== 204) throw new Error('Delete failed');

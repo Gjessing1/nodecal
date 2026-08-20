@@ -1,5 +1,6 @@
 import { state, calendarById } from '../app/state.js';
 import { taskSourceVisible } from '../app/taskUtils.js';
+import { modifiedTag } from './occurrenceMark.js';
 
 // What a single day holds, and how one line of it is drawn. Shared by the month
 // grid cells, the week/desktop day popup and the mobile day sheet — the three
@@ -61,17 +62,22 @@ export function buildEventRow(ev, onClick) {
   title.className = 'day-popup-title';
   title.textContent = ev.title;
   info.appendChild(title);
+  const meta = document.createElement('div');
+  meta.className = 'day-popup-time';
   if (!ev.allDay) {
-    const time = document.createElement('div');
-    time.className = 'day-popup-time';
-    time.textContent = new Date(ev.start).toLocaleTimeString('en-US', {
+    meta.textContent = new Date(ev.start).toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: state.config.timeFormat === '12h',
       timeZone: state.config.timezone,
     });
-    info.appendChild(time);
   }
+  const edited = modifiedTag(ev);
+  if (edited) {
+    if (meta.textContent) meta.append(' · ');
+    meta.appendChild(edited);
+  }
+  if (meta.textContent || edited) info.appendChild(meta);
 
   row.append(dot, info);
   row.addEventListener('click', () => onClick(ev));

@@ -311,16 +311,39 @@ function formatIcsDate(date, allDay) {
 }
 
 /**
- * Serialize an event object into a full VCALENDAR ICS string.
+ * Serialize one event into a full VCALENDAR ICS string.
  * Supports: rrule, exdates, recurrenceId in addition to base fields.
  * @param {object} event
  * @returns {string}
  */
 function serializeEvent(event) {
+  return serializeEvents([event]);
+}
+
+/**
+ * Serialize a whole CalDAV resource — several VEVENTs in one VCALENDAR.
+ *
+ * A recurring series and the occurrences edited out of it are *one* resource:
+ * the master VEVENT plus one override VEVENT per edited occurrence, sharing the
+ * UID and told apart by RECURRENCE-ID. PUTting a single VEVENT there would drop
+ * every other one, so any change to an exception rewrites the whole set.
+ * @param {Array<object>} events - the master first, then its overrides
+ * @returns {string}
+ */
+function serializeEvents(events) {
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Nodecal//EN'];
+  for (const event of events) lines.push(...veventLines(event));
+  lines.push('END:VCALENDAR');
+  return lines.map(foldLine).join(CRLF) + CRLF;
+}
+
+/**
+ * The BEGIN:VEVENT…END:VEVENT lines for one event.
+ * @param {object} event
+ * @returns {string[]}
+ */
+function veventLines(event) {
   const lines = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Nodecal//EN',
     'BEGIN:VEVENT',
     `UID:${event.uid}`,
     `DTSTAMP:${new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15)}Z`,
@@ -335,7 +358,8 @@ function serializeEvent(event) {
       lines.push(`${event.allDay ? 'EXDATE;VALUE=DATE:' : 'EXDATE:'}${ex}`);
   }
   if (event.recurrenceId) {
-    lines.push(`RECURRENCE-ID:${formatIcsDate(new Date(event.recurrenceId), event.allDay)}`);
+    const rid = formatIcsDate(new Date(event.recurrenceId), event.allDay);
+    lines.push(`RECURRENCE-ID${event.allDay ? ';VALUE=DATE' : ''}:${rid}`);
   }
   if (event.description) lines.push(`DESCRIPTION:${escapeIcsText(event.description)}`);
   if (event.location) lines.push(`LOCATION:${escapeIcsText(event.location)}`);
@@ -356,8 +380,8 @@ function serializeEvent(event) {
       'END:VALARM',
     );
   }
-  lines.push('END:VEVENT', 'END:VCALENDAR');
-  return lines.map(foldLine).join(CRLF) + CRLF;
+  lines.push('END:VEVENT');
+  return lines;
 }
 
 /**
@@ -456,6 +480,7 @@ function serializeTask(task) {
 module.exports = {
   parseIcs,
   serializeEvent,
+  serializeEvents,
   formatIcsDate,
   parseVtodo,
   serializeTask,

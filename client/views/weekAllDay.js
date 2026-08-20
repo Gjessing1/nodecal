@@ -3,6 +3,7 @@ import { localDateStr } from '../app/utils.js';
 import { showDayPopup } from './dayPopup.js';
 import { layoutSpans } from './eventSpans.js';
 import { visibleTasks, taskRowCount, appendTaskChips } from './weekAllDayTasks.js';
+import { markModifiedBlock } from './occurrenceMark.js';
 
 // The all-day strip above the week grid. It is one CSS grid — the time-column
 // spacer plus the seven days — so an event running Monday to Wednesday is a
@@ -107,6 +108,8 @@ function buildSpanBar(span, onEventClick) {
   title.textContent = ev.title;
   bar.appendChild(title);
   if (span.continuesAfter) bar.appendChild(edgeMark('›'));
+
+  markModifiedBlock(bar, ev);
 
   bar.addEventListener('click', (e) => {
     e.stopPropagation();

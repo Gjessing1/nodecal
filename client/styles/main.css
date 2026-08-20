@@ -584,6 +584,59 @@ select {
   border-radius: var(--radius-sm);
   padding: var(--spacing-sm);
 }
+/* ── Modified occurrence ─────────────────────────────────
+   An occurrence edited out of its series. On a chip, a block or an all-day bar
+   there is no width to spare, so it is a folded top-right corner drawn in
+   currentColor: that is #fff on a filled chip and the calendar colour on the
+   outlined month-view one, so the fold shows up either way without a second
+   rule per surface. */
+/* The fold is placed against its chip, so a statically-positioned one needs a
+   containing block. A time-grid block is already absolutely positioned in its
+   column and must keep that — giving it `relative` would drop it to the top of
+   the day. */
+.month-event-chip.occurrence-modified,
+.allday-chip.occurrence-modified {
+  position: relative;
+}
+.occurrence-modified::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  /* A 0×0 box whose top border is a triangle, cut back on the left by a
+     transparent left border — the right angle lands on the corner. */
+  border-top: 7px solid currentColor;
+  border-left: 7px solid transparent;
+  opacity: 0.75;
+  pointer-events: none;
+}
+/* A time-grid block sets no colour of its own — its title does — so currentColor
+   there is the page's text colour rather than the white the block is written in. */
+.event-block.occurrence-modified::after {
+  border-top-color: #fff;
+}
+/* A run of days is one bar, so only its last chip carries the fold — one per
+   cell would read as a row of separate edits, and a fold mid-bar reads as a
+   stray triangle. */
+.occurrence-modified.span-start::after,
+.occurrence-modified.span-middle::after {
+  content: none;
+}
+/* A list row has room for the word. */
+.occurrence-modified-tag {
+  font-size: var(--text-sm);
+  font-style: italic;
+  color: var(--color-accent);
+}
+.occurrence-modified-note {
+  background: var(--color-accent-light);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+
 .url-open-link {
   font-size: var(--text-sm);
   color: var(--color-accent);

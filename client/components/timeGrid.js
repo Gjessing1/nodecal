@@ -1,4 +1,5 @@
 import { state } from '../app/state.js';
+import { markModifiedBlock } from '../views/occurrenceMark.js';
 
 export const HOUR_HEIGHT = 64; // px per hour
 export const TIME_COL_WIDTH = 44; // px for the hour-label column
@@ -120,6 +121,8 @@ export function buildEventBlock(ev, { color, onClick, timezone = 'UTC', segment 
     handle.className = 'resize-handle';
     block.appendChild(handle);
   }
+
+  markModifiedBlock(block, ev);
 
   block.addEventListener('click', (e) => {
     e.stopPropagation();

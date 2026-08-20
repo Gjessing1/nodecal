@@ -3,6 +3,7 @@ import { formatTime, localDateStr, getISOWeek, weatherBadge } from '../app/utils
 import { initLongPressCreate } from '../components/dnd.js';
 import { getAllEventCategories } from '../app/eventUtils.js';
 import { taskSourceVisible } from '../app/taskUtils.js';
+import { modifiedTag } from './occurrenceMark.js';
 
 const DAY_MS = 86400000;
 const PAST_CHUNK_DAYS = 7;
@@ -218,6 +219,9 @@ function buildEventCard(ev, onClick) {
     : formatTime(new Date(ev.start), state.config.timeFormat, state.config.timezone) +
       ' – ' +
       formatTime(new Date(ev.end), state.config.timeFormat, state.config.timezone);
+
+  const edited = modifiedTag(ev);
+  if (edited) time.append(' · ', edited);
 
   info.appendChild(title);
   info.appendChild(time);

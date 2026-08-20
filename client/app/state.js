@@ -23,6 +23,8 @@
  * @property {string} [rrule]
  * @property {boolean} [recurring] - true on expanded occurrences of a series
  * @property {string} [occurrenceDate] - ISO date of this occurrence within its series
+ * @property {string|null} [recurrenceId] - set only on an occurrence edited out of
+ *   its series (RECURRENCE-ID): the instant it would have started at
  * @property {number|null} [alarmMinutes]
  * @property {string[]} [categories]
  *

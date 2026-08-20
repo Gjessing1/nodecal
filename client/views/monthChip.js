@@ -1,6 +1,7 @@
 import { state, calendarById } from '../app/state.js';
 import { toTimeInputValue } from '../app/utils.js';
 import { eventDayRange, spanPosition } from './eventSpans.js';
+import { markModifiedBlock } from './occurrenceMark.js';
 
 // One event chip inside a month cell. A multi-day event still gets a chip per
 // day — the grid's drag-and-drop and its day taps work off real cells, and an
@@ -49,6 +50,8 @@ export function buildChip(ev, dayStr, colIdx, onClick, onSelectDay) {
   // events; the days in between are the bar carrying on.
   const labelled = position === 'single' || position === 'start' || colIdx === 0;
   chip.textContent = labelled ? ev.title : '';
+
+  markModifiedBlock(chip, ev);
 
   chip.addEventListener('click', (e) => {
     e.stopPropagation();

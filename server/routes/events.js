@@ -3,6 +3,15 @@ const { putEvent, putEventAtHref, deleteEvent } = require('../caldav/client');
 const { serializeEvent, formatIcsDate } = require('../caldav/parser');
 const { setRruleUntil, rrulestr } = require('../caldav/recurrence');
 const { indexOverrides, expandSeries, emitOverrides } = require('../caldav/overrides');
+const {
+  overrideAt,
+  buildOverride,
+  mergeOverride,
+  withoutOverride,
+  overridesBefore,
+  withExdate,
+} = require('../caldav/exceptions');
+const { currentOverrides, writeSeries } = require('../caldav/seriesResource');
 const store = require('../cache/store');
 
 const router = Router();
@@ -85,17 +94,18 @@ router.post('/events', async (req, res) => {
 
 router.put('/events/:id', async (req, res) => {
   try {
-    const { recurringScope, occurrenceDate, uid: baseUid, ...changes } = req.body;
+    const { recurringScope, occurrenceDate, recurrenceId, uid: baseUid, ...changes } = req.body;
 
     // For recurring occurrences, the request includes uid (base UID); otherwise use :id
     const existing = store.getEvent(baseUid || req.params.id);
     if (!existing) return res.status(404).json({ error: 'Event not found' });
 
+    const instant = occurrenceInstant(recurrenceId, occurrenceDate);
     if (existing.rrule && recurringScope === 'single') {
-      return handleSingleOccurrenceEdit(existing, changes, occurrenceDate, res);
+      return handleSingleOccurrenceEdit(existing, changes, instant, res);
     }
     if (existing.rrule && recurringScope === 'future') {
-      return handleFutureEdit(existing, changes, occurrenceDate, res);
+      return handleFutureEdit(existing, changes, instant, res);
     }
 
     // Simple update (non-recurring, or 'all' scope on recurring base)
@@ -116,33 +126,34 @@ router.put('/events/:id', async (req, res) => {
 
 router.delete('/events/:id', async (req, res) => {
   try {
-    const { scope, occurrenceDate, uid: baseUid } = req.query;
+    const { scope, occurrenceDate, recurrenceId, uid: baseUid } = req.query;
     const existing = store.getEvent(baseUid || req.params.id);
     if (!existing) return res.status(404).json({ error: 'Event not found' });
 
+    const instant = occurrenceInstant(recurrenceId, occurrenceDate);
     if (existing.rrule && scope === 'single') {
-      // Exclude this one occurrence by adding an EXDATE
-      const exdateStr = formatIcsDate(new Date(occurrenceDate), existing.allDay);
-      const updated = { ...existing, exdates: [...(existing.exdates || []), exdateStr] };
-      const ics = serializeEvent(updated);
-      const { href, etag } = await putEvent(existing.calendarId, existing.uid, ics, existing.etag);
-      store.setEvent({ ...updated, href, etag });
+      // Skip the occurrence with an EXDATE, and drop the override replacing it
+      // if there was one — an EXDATE alone leaves the override standing, so the
+      // occurrence the user just deleted would still be drawn at its edited time.
+      const overrides = withoutOverride(currentOverrides(existing), instant);
+      await writeSeries(withExdate(existing, instant), overrides);
       return res.status(204).end();
     }
 
     if (existing.rrule && scope === 'future') {
       // Trim the series to end just before this occurrence
-      const until = new Date(new Date(occurrenceDate).getTime() - 1000);
+      const until = new Date(new Date(instant).getTime() - 1000);
       const updated = { ...existing, rrule: setRruleUntil(existing.rrule, until) };
-      const ics = serializeEvent(updated);
-      const { href, etag } = await putEvent(existing.calendarId, existing.uid, ics, existing.etag);
-      store.setEvent({ ...updated, href, etag });
+      await writeSeries(updated, overridesBefore(currentOverrides(existing), instant));
       return res.status(204).end();
     }
 
-    // Delete all / non-recurring
+    // Delete all / non-recurring. Clearing by href rather than by UID is what
+    // takes the series' overrides with it: they share the resource, and the
+    // UID-keyed record is only the master.
     await deleteEvent(existing.href, existing.etag);
-    store.removeEvent(existing.uid);
+    if (existing.href) store.removeEventsByHrefSilent(existing.href);
+    store.removeEvent(store.eventKey(existing));
     res.status(204).end();
   } catch (err) {
     console.error('DELETE /events/:id:', err.message);
@@ -152,60 +163,52 @@ router.delete('/events/:id', async (req, res) => {
 
 // ── Recurring helpers ─────────────────────────────────────
 
-async function handleSingleOccurrenceEdit(base, changes, occurrenceDate, res) {
-  const now = new Date().toISOString();
-  // 1. Add EXDATE to the base series so this occurrence is skipped
-  const exdateStr = formatIcsDate(new Date(occurrenceDate), base.allDay);
-  const updatedBase = { ...base, exdates: [...(base.exdates || []), exdateStr] };
-  const baseIcs = serializeEvent(updatedBase);
-  const { href: bHref, etag: bEtag } = await putEvent(
-    base.calendarId,
-    base.uid,
-    baseIcs,
-    base.etag,
+/**
+ * "This event only" — write the occurrence as a RECURRENCE-ID override inside
+ * the series' own resource.
+ *
+ * It used to be an EXDATE on the master plus a standalone event under a fresh
+ * UID. That detached the occurrence: every other CalDAV client saw an unrelated
+ * one-off rather than a modified instance, nothing tied it back to the series,
+ * and editing an occurrence that another client had already overridden left the
+ * old override in place beside the new copy — the same evening twice.
+ * @param {object} base - the master event
+ * @param {object} changes
+ * @param {string} instant - ISO UTC start the occurrence would have had
+ * @param {import('express').Response} res
+ */
+async function handleSingleOccurrenceEdit(base, changes, instant, res) {
+  const overrides = currentOverrides(base);
+  const override = buildOverride(
+    base,
+    overrideAt(overrides, instant),
+    filterChanges(changes),
+    instant,
   );
-  store.setEvent({
-    ...updatedBase,
-    href: bHref,
-    etag: bEtag,
-    localModifiedAt: now,
-    lastSyncedAt: now,
-  });
+  const written = await writeSeries(base, mergeOverride(overrides, override));
+  const stored = written.overrides.find(replacesThisOccurrence) || override;
+  res.status(201).json(toApiShape({ ...stored, ...occurrenceIdentity(stored) }));
 
-  // 2. Create a standalone exception event for this occurrence
-  const excUid = crypto.randomUUID();
-  const exc = {
-    ...filterChanges(changes),
-    uid: excUid,
-    calendarId: base.calendarId,
-    allDay: base.allDay,
-  };
-  const excIcs = serializeEvent(exc);
-  const { href: eHref, etag: eEtag } = await putEvent(base.calendarId, excUid, excIcs);
-  const stored = { ...exc, href: eHref, etag: eEtag, localModifiedAt: now, lastSyncedAt: now };
-  store.setEvent(stored);
-  res.status(201).json(toApiShape(stored));
+  function replacesThisOccurrence(ov) {
+    return ov.recurrenceId === instant;
+  }
 }
 
-async function handleFutureEdit(base, changes, occurrenceDate, res) {
+/**
+ * "This and following" — cap the old series and start a new one here.
+ * @param {object} base - the master event
+ * @param {object} changes
+ * @param {string} instant - ISO UTC start the occurrence would have had
+ * @param {import('express').Response} res
+ */
+async function handleFutureEdit(base, changes, instant, res) {
   const now = new Date().toISOString();
-  // 1. Trim the base series UNTIL to just before this occurrence
-  const until = new Date(new Date(occurrenceDate).getTime() - 1000);
+  // 1. Trim the base series UNTIL to just before this occurrence. Overrides at
+  //    or after the split go with it: they replace occurrences the trimmed
+  //    series no longer has, and the new series below covers those dates.
+  const until = new Date(new Date(instant).getTime() - 1000);
   const updatedBase = { ...base, rrule: setRruleUntil(base.rrule, until) };
-  const baseIcs = serializeEvent(updatedBase);
-  const { href: bHref, etag: bEtag } = await putEvent(
-    base.calendarId,
-    base.uid,
-    baseIcs,
-    base.etag,
-  );
-  store.setEvent({
-    ...updatedBase,
-    href: bHref,
-    etag: bEtag,
-    localModifiedAt: now,
-    lastSyncedAt: now,
-  });
+  await writeSeries(updatedBase, overridesBefore(currentOverrides(base), instant));
 
   // 2. Create a new recurring series from this occurrence onward
   const newUid = crypto.randomUUID();
@@ -224,6 +227,34 @@ async function handleFutureEdit(base, changes, occurrenceDate, res) {
 }
 
 // ── Helpers ───────────────────────────────────────────────
+
+/**
+ * Which occurrence of a series a request is aimed at, as an ISO UTC instant.
+ *
+ * RECURRENCE-ID is what identifies an occurrence, and for one that has already
+ * been edited it is the only thing that does: `occurrenceDate` there is the
+ * override's *new* start, which may be another day entirely. Occurrences that
+ * have never been edited have no recurrenceId and their start is the instant.
+ * @param {string|undefined|null} recurrenceId
+ * @param {string|undefined|null} occurrenceDate
+ * @returns {string}
+ */
+function occurrenceInstant(recurrenceId, occurrenceDate) {
+  return recurrenceId || occurrenceDate;
+}
+
+/**
+ * The id/occurrenceDate an override is served under, so a just-written one
+ * matches what the next GET /events emits for it (see emitOverrides).
+ * @param {object} override
+ */
+function occurrenceIdentity(override) {
+  return {
+    id: `${override.uid}_${override.recurrenceId}`,
+    recurring: true,
+    occurrenceDate: override.start,
+  };
+}
 
 function filterChanges(changes) {
   const allowed = [
@@ -261,6 +292,10 @@ function toApiShape(ev) {
     recurring: ev.recurring || !!ev.rrule,
     rrule: ev.rrule || null,
     occurrenceDate: ev.occurrenceDate || null,
+    // Set only on an occurrence that was edited out of its series — the instant
+    // it would have started at. The views use it to mark the occurrence as
+    // modified, and send it back so an edit lands on the override itself.
+    recurrenceId: ev.recurrenceId || null,
     alarmMinutes: ev.alarmMinutes ?? null,
   };
 }
