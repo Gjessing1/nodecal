@@ -8,6 +8,40 @@ import {
   mountCollapsibleToggle,
   wireCategoryUI,
 } from './modalHelpers.js';
+import { trapFocus } from './focusTrap.js';
+
+/** @type {(() => void)|null} */
+let releaseTrap = null;
+let backdropWired = false;
+
+/**
+ * Close on a backdrop tap. Wired once per page rather than per open: the
+ * overlay element is shared and outlives every individual modal.
+ * @param {HTMLElement} overlay
+ */
+function wireBackdrop(overlay) {
+  if (backdropWired) return;
+  backdropWired = true;
+  overlay.addEventListener('click', function onBackdropClick(e) {
+    if (e.target === overlay) closeTaskModal();
+  });
+}
+
+/**
+ * Reveal the sheet and hand it the keyboard. Focus lands on the sheet itself,
+ * not on the title field, so opening a task on a phone does not raise the
+ * on-screen keyboard over the form.
+ * @param {HTMLElement} overlay
+ * @param {HTMLElement} sheet
+ * @param {string} label - accessible name for the dialog
+ */
+function showSheet(overlay, sheet, label) {
+  wireBackdrop(overlay);
+  sheet.scrollTop = 0;
+  overlay.classList.remove('hidden');
+  if (releaseTrap) releaseTrap();
+  releaseTrap = trapFocus(sheet, { watchEl: overlay, label, onEscape: closeTaskModal });
+}
 
 // Modal fields are inputs/selects; querySelector returns bare Element — cast
 // once here instead of at every read/write site.
@@ -22,7 +56,7 @@ function field(root, sel) {
 
 export function openTaskModal(task, { onSave, onDelete }) {
   const overlay = document.getElementById('modal-overlay');
-  const sheet = overlay.querySelector('.modal-sheet');
+  const sheet = /** @type {HTMLElement} */ (overlay.querySelector('.modal-sheet'));
 
   const isRecAfterCompletion = task.recurringType === 'after-completion';
   const isRecRrule = task.recurringType === 'rrule';
@@ -263,20 +297,13 @@ export function openTaskModal(task, { onSave, onDelete }) {
     });
   }
   sheet.querySelector('#tm-cancel').addEventListener('click', closeTaskModal);
-  overlay.classList.remove('hidden');
-  overlay.addEventListener(
-    'click',
-    (e) => {
-      if (e.target === overlay) closeTaskModal();
-    },
-    { once: true },
-  );
+  showSheet(overlay, sheet, task.uid ? 'Edit task' : 'New task');
 }
 
 /** Open a cached task without exposing any mutation controls. */
 export function openReadOnlyTaskModal(task) {
   const overlay = document.getElementById('modal-overlay');
-  const sheet = overlay.querySelector('.modal-sheet');
+  const sheet = /** @type {HTMLElement} */ (overlay.querySelector('.modal-sheet'));
   const source = state.taskSources.find((item) => item.url === task.source);
   const categories = visibleCategories(task.categories || [], state.config.hiddenCategories || []);
   const due = task.due
@@ -335,10 +362,11 @@ export function openReadOnlyTaskModal(task) {
   );
   sheet.innerHTML = rows.join('');
   sheet.querySelector('#tm-close').addEventListener('click', closeTaskModal);
-  sheet.scrollTop = 0;
-  overlay.classList.remove('hidden');
+  showSheet(overlay, sheet, 'Task details');
 }
 
 export function closeTaskModal() {
   document.getElementById('modal-overlay').classList.add('hidden');
+  if (releaseTrap) releaseTrap();
+  releaseTrap = null;
 }

@@ -21,6 +21,7 @@ export function buildDatePickerButton(inputEl, wrapEl, opts = {}) {
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'date-picker-btn';
+  btn.setAttribute('aria-haspopup', 'dialog');
 
   function refresh() {
     if (inputEl.value) {
@@ -280,7 +281,12 @@ export function wireCategoryUI(
       inputEl.value = '';
       autoListEl.style.display = 'none';
     }
-    if (e.key === 'Escape') autoListEl.style.display = 'none';
+    if (e.key === 'Escape' && autoListEl.style.display !== 'none') {
+      // The modal's focus trap closes the sheet on Escape, so consume the first
+      // press here — it should only dismiss the suggestion list.
+      e.stopPropagation();
+      autoListEl.style.display = 'none';
+    }
   });
   addBtnEl?.addEventListener('click', () => {
     addCategory(inputEl.value);

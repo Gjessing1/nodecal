@@ -11,8 +11,12 @@ import {
 } from './modalHelpers.js';
 import { getAllEventCategories } from '../app/eventUtils.js';
 import { resolveEventCalendar } from '../app/profileTargets.js';
+import { showDeleteScopeDialog } from './deleteScopeDialog.js';
+import { trapFocus } from './focusTrap.js';
 
 let overlay, sheet, onSaveCb, onDeleteCb, onDuplicateCb, onEventsChangedCb;
+/** @type {(() => void)|null} */
+let releaseTrap = null;
 
 /**
  * @param {(message: string) => void} [onEventsChanged] - called when something
@@ -39,8 +43,7 @@ export function openNewEventModal(defaultDate, onSave, { explicitTime = false } 
   onDeleteCb = null;
   onDuplicateCb = null;
   renderForm(null, defaultDate, explicitTime);
-  sheet.scrollTop = 0;
-  overlay.classList.remove('hidden');
+  showSheet('New event');
 }
 
 /**
@@ -55,8 +58,7 @@ export function openEditEventModal(event, onSave, onDelete, onDuplicate) {
   onDeleteCb = onDelete;
   onDuplicateCb = onDuplicate || null;
   renderForm(event, null);
-  sheet.scrollTop = 0;
-  overlay.classList.remove('hidden');
+  showSheet('Edit event');
 }
 
 /**
@@ -69,12 +71,26 @@ export function openReadOnlyEventModal(event) {
   onDeleteCb = null;
   onDuplicateCb = null;
   renderReadOnly(event);
+  showSheet('Event details');
+}
+
+/**
+ * Reveal the sheet and hand it the keyboard. Focus lands on the sheet itself,
+ * not on the title field: this is a phone-first app and focusing a text input
+ * would raise the on-screen keyboard over the form every time a modal opens.
+ * @param {string} label - accessible name for the dialog
+ */
+function showSheet(label) {
   sheet.scrollTop = 0;
   overlay.classList.remove('hidden');
+  if (releaseTrap) releaseTrap();
+  releaseTrap = trapFocus(sheet, { watchEl: overlay, label, onEscape: closeModal });
 }
 
 export function closeModal() {
   overlay.classList.add('hidden');
+  if (releaseTrap) releaseTrap();
+  releaseTrap = null;
 }
 
 function formatEventWhen(event) {
@@ -132,59 +148,6 @@ function renderReadOnly(event) {
     </div>`);
   sheet.innerHTML = rows.join('');
   sheet.querySelector('#f-close').addEventListener('click', closeModal);
-}
-
-/**
- * Ask which occurrences of a recurring event to delete.
- * Resolves with 'single' | 'future' | 'all', or null if cancelled.
- * @returns {Promise<string|null>}
- */
-function showDeleteScopeDialog() {
-  return new Promise((resolve) => {
-    const dlgOverlay = document.createElement('div');
-    dlgOverlay.className = 'modal-overlay delete-scope-overlay';
-
-    const box = document.createElement('div');
-    box.className = 'modal-sheet delete-scope-sheet';
-
-    const title = document.createElement('div');
-    title.className = 'modal-title';
-    title.textContent = 'Delete recurring event';
-
-    const choices = [
-      ['single', 'This event only'],
-      ['future', 'This and following events'],
-      ['all', 'Entire series'],
-    ];
-
-    function finish(value) {
-      dlgOverlay.remove();
-      resolve(value);
-    }
-
-    box.appendChild(title);
-    for (const [value, label] of choices) {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'btn btn-danger delete-scope-btn';
-      btn.textContent = label;
-      btn.addEventListener('click', () => finish(value));
-      box.appendChild(btn);
-    }
-
-    const cancel = document.createElement('button');
-    cancel.type = 'button';
-    cancel.className = 'btn btn-ghost delete-scope-btn';
-    cancel.textContent = 'Cancel';
-    cancel.addEventListener('click', () => finish(null));
-    box.appendChild(cancel);
-
-    dlgOverlay.addEventListener('click', (e) => {
-      if (e.target === dlgOverlay) finish(null);
-    });
-    dlgOverlay.appendChild(box);
-    document.body.appendChild(dlgOverlay);
-  });
 }
 
 function computeDefaultStart(date, tz) {
@@ -545,7 +508,6 @@ function renderForm(event, defaultDate, explicitTime = false) {
       });
     }
   }
-  if (isNew) sheet.querySelector('#f-title').focus();
 }
 
 function handleSave(event) {

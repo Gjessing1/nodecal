@@ -1,4 +1,20 @@
-import { state } from '../app/state.js';
+import { createPickerOverlay } from './pickerOverlay.js';
+import { mountMiniCalGrid } from './miniCalGrid.js';
+
+const MONTH_NAMES = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
 
 /**
  * Show a custom mini-calendar overlay that respects state.config.weekStart.
@@ -9,110 +25,16 @@ import { state } from '../app/state.js';
  * @param {function(Date): void} onSelect - called with the chosen Date
  */
 export function showDatePicker(currentDate, onSelect) {
-  document.getElementById('mini-cal-overlay')?.remove();
+  const picker = createPickerOverlay({ id: 'mini-cal-overlay', label: 'Choose a date' });
 
-  const startOnMonday = state.config.weekStart !== 'sunday';
-  let viewYear = currentDate.getFullYear();
-  let viewMonth = currentDate.getMonth();
-
-  const overlay = document.createElement('div');
-  overlay.id = 'mini-cal-overlay';
-  overlay.className = 'mini-cal-overlay';
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) overlay.remove();
-  });
-
-  const panel = document.createElement('div');
-  panel.className = 'mini-cal-panel';
-  panel.addEventListener('click', (e) => e.stopPropagation());
-
-  function buildCalendar() {
-    panel.innerHTML = '';
-    const today = new Date();
-
-    // ── Navigation ────────────────────────────────────────
-    const nav = document.createElement('div');
-    nav.className = 'mini-cal-nav';
-
-    const prev = document.createElement('button');
-    prev.textContent = '‹';
-    prev.addEventListener('click', () => {
-      if (--viewMonth < 0) {
-        viewMonth = 11;
-        viewYear--;
-      }
-      buildCalendar();
-    });
-
-    const label = document.createElement('span');
-    label.textContent = new Date(viewYear, viewMonth, 1).toLocaleDateString('en-US', {
-      month: 'long',
-      year: 'numeric',
-    });
-
-    const next = document.createElement('button');
-    next.textContent = '›';
-    next.addEventListener('click', () => {
-      if (++viewMonth > 11) {
-        viewMonth = 0;
-        viewYear++;
-      }
-      buildCalendar();
-    });
-
-    nav.appendChild(prev);
-    nav.appendChild(label);
-    nav.appendChild(next);
-    panel.appendChild(nav);
-
-    // ── Weekday header ────────────────────────────────────
-    const dayNames = startOnMonday
-      ? ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
-      : ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-    const header = document.createElement('div');
-    header.className = 'mini-cal-grid';
-    for (const d of dayNames) {
-      const h = document.createElement('div');
-      h.className = 'mini-cal-wday';
-      h.textContent = d;
-      header.appendChild(h);
-    }
-    panel.appendChild(header);
-
-    // ── Day grid ──────────────────────────────────────────
-    const grid = document.createElement('div');
-    grid.className = 'mini-cal-grid';
-
-    const firstDow = new Date(viewYear, viewMonth, 1).getDay(); // 0=Sun
-    const offset = startOnMonday ? (firstDow === 0 ? 6 : firstDow - 1) : firstDow;
-    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-
-    for (let i = 0; i < offset; i++) {
-      const empty = document.createElement('div');
-      empty.className = 'mini-cal-cell';
-      grid.appendChild(empty);
-    }
-
-    for (let d = 1; d <= daysInMonth; d++) {
-      const btn = document.createElement('button');
-      btn.textContent = String(d);
-      btn.className = 'mini-cal-cell';
-      const cell = new Date(viewYear, viewMonth, d);
-      if (cell.toDateString() === today.toDateString()) btn.classList.add('today');
-      if (cell.toDateString() === currentDate.toDateString()) btn.classList.add('selected');
-      btn.addEventListener('click', () => {
-        overlay.remove();
-        onSelect(new Date(viewYear, viewMonth, d));
-      });
-      grid.appendChild(btn);
-    }
-
-    panel.appendChild(grid);
+  /** @param {Date} picked */
+  function pick(picked) {
+    picker.close();
+    onSelect(picked);
   }
 
-  buildCalendar();
-  overlay.appendChild(panel);
-  document.getElementById('app')?.appendChild(overlay);
+  const initialFocus = mountMiniCalGrid(picker.panel, currentDate, pick);
+  picker.mount(initialFocus || undefined);
 }
 
 /**
@@ -122,85 +44,76 @@ export function showDatePicker(currentDate, onSelect) {
  * @param {(year: number, month: number) => void} onSelect
  */
 export function showMonthYearPicker(currentYear, currentMonth, onSelect) {
-  document.getElementById('month-year-picker-overlay')?.remove();
-
+  const picker = createPickerOverlay({ id: 'month-year-picker-overlay', label: 'Choose a month' });
   let viewYear = currentYear;
 
-  const overlay = document.createElement('div');
-  overlay.id = 'month-year-picker-overlay';
-  overlay.className = 'mini-cal-overlay';
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) overlay.remove();
-  });
-
-  const panel = document.createElement('div');
-  panel.className = 'mini-cal-panel';
-  panel.addEventListener('click', (e) => e.stopPropagation());
-
-  const MONTH_NAMES = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-
-  function build() {
-    panel.innerHTML = '';
-
+  function buildNav() {
     const nav = document.createElement('div');
     nav.className = 'mini-cal-nav';
 
     const prev = document.createElement('button');
+    prev.type = 'button';
     prev.textContent = '‹';
-    prev.addEventListener('click', () => {
+    prev.setAttribute('aria-label', 'Previous year');
+    prev.addEventListener('click', function goPrev() {
       viewYear--;
-      build();
+      // build() replaces the arrows, so hand focus to the fresh one.
+      build().prev.focus({ preventScroll: true });
     });
 
     const yearLabel = document.createElement('span');
     yearLabel.textContent = String(viewYear);
     yearLabel.style.fontWeight = '600';
+    yearLabel.setAttribute('aria-live', 'polite');
 
     const next = document.createElement('button');
+    next.type = 'button';
     next.textContent = '›';
-    next.addEventListener('click', () => {
+    next.setAttribute('aria-label', 'Next year');
+    next.addEventListener('click', function goNext() {
       viewYear++;
-      build();
+      build().next.focus({ preventScroll: true });
     });
 
-    nav.appendChild(prev);
-    nav.appendChild(yearLabel);
-    nav.appendChild(next);
-    panel.appendChild(nav);
+    nav.append(prev, yearLabel, next);
+    return { nav, prev, next };
+  }
 
+  function buildMonthGrid() {
     const grid = document.createElement('div');
     grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:8px 4px';
+    /** @type {HTMLButtonElement|null} */
+    let currentBtn = null;
 
     for (let m = 0; m < 12; m++) {
       const btn = document.createElement('button');
+      btn.type = 'button';
       btn.textContent = MONTH_NAMES[m];
       btn.className = 'mini-cal-cell';
       btn.style.cssText = 'padding:8px 4px;border-radius:6px;font-size:13px;text-align:center';
-      if (m === currentMonth && viewYear === currentYear) btn.classList.add('selected');
-      btn.addEventListener('click', () => {
-        overlay.remove();
+      btn.setAttribute('aria-label', `${MONTH_NAMES[m]} ${viewYear}`);
+      if (m === currentMonth && viewYear === currentYear) {
+        btn.classList.add('selected');
+        btn.setAttribute('aria-current', 'date');
+        currentBtn = btn;
+      }
+      btn.addEventListener('click', function pickMonth() {
+        picker.close();
         onSelect(viewYear, m);
       });
       grid.appendChild(btn);
     }
-
-    panel.appendChild(grid);
+    return { grid, currentBtn };
   }
 
-  build();
-  overlay.appendChild(panel);
-  document.getElementById('app')?.appendChild(overlay);
+  function build() {
+    picker.panel.innerHTML = '';
+    const { nav, prev, next } = buildNav();
+    const { grid, currentBtn } = buildMonthGrid();
+    picker.panel.append(nav, grid);
+    return { prev, next, currentBtn };
+  }
+
+  const { currentBtn } = build();
+  picker.mount(currentBtn || undefined);
 }
