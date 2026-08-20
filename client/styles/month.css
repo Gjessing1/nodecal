@@ -23,11 +23,25 @@
 }
 
 .month-grid {
+  /* One week row at its smallest. Lives here rather than on .month-day because
+     the row track and the cell have to agree on the floor — see .month-day. */
+  --month-row-min: 76px;
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  grid-template-rows: repeat(6, 1fr);
+  /* The rows share whatever height is going and never go under the floor. */
+  grid-template-rows: repeat(6, minmax(var(--month-row-min), 1fr));
   flex: 1;
-  overflow: hidden;
+  /* The grid is the scroller. This was `overflow: hidden`, which never stopped
+     six rows overflowing a short viewport — it only stopped the reader reaching
+     them: measured at 412×640 the last row was 36px short and at 412×560 a row
+     and a half was gone, with no scrollbar and nothing to swipe. `auto` keeps
+     the shrink (any overflow but `visible` zeroes a flex item's automatic
+     minimum size, which is why the box gets smaller than its rows either way)
+     and makes what is below the fold reachable. The scroll belongs here rather
+     than on #view-container so the month's nav bar and weekday labels stay put
+     while the weeks move under them, and initSwipe reads this element's
+     scrollTop to tell a swipe from a scroll. */
+  overflow-y: auto;
 }
 .month-grid.with-weeknum {
   grid-template-columns: 28px repeat(7, 1fr);
@@ -65,11 +79,11 @@
   border-right: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
   padding: 2px var(--month-day-pad-x);
-  /* A floor, not a height: the rows are 1fr, so this is what stops them being
-     squashed. Measured rather than guessed — 4px padding, a 24px date row, two
-     16px chip rows and a 16px task line is 76px, and at the old 72px the task
-     pill was the part that fell off the bottom. */
-  min-height: 76px;
+  /* A floor, not a height: the rows share the spare space, so this is what
+     stops them being squashed. Measured rather than guessed — 4px padding, a
+     24px date row, two 16px chip rows and a 16px task line is 76px, and at the
+     old 72px the task pill was the part that fell off the bottom. */
+  min-height: var(--month-row-min);
   overflow: hidden;
 }
 .month-grid:not(.with-weeknum) .month-day:nth-child(7n) {
@@ -331,7 +345,11 @@
   min-height: var(--month-chip-h);
 }
 
-/* Make the month view fill the scrollable area as a column layout */
+/* Make the month view fill the scrollable area as a column layout. The
+   container's bottom padding is left alone deliberately: handing those 40px to
+   the grid does fit six rows into a 640px window without scrolling, but the FAB
+   is fixed 16px above the bottom nav and would then cover most of the last
+   row's Sunday cell instead of the 32px it covers today. */
 #view-container:has(.month-grid) {
   display: flex;
   flex-direction: column;
