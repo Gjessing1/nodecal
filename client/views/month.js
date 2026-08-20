@@ -1,9 +1,10 @@
 import { state } from '../app/state.js';
 import { initDayDnd, initSwipe } from '../components/dnd.js';
 import { getISOWeek, localDateStr } from '../app/utils.js';
-import { showMonthYearPicker } from '../components/datePicker.js';
 import { buildDaySheet, setDaySheetRerender } from './daySheet.js';
 import { buildDayCell } from './monthCell.js';
+import { buildNavBar, buildWeekDayHeader, goToMonth } from './monthNav.js';
+import { layoutWeekRow } from './monthRow.js';
 
 /**
  * The month grid, plus the day sheet docked under it when a day is selected.
@@ -83,71 +84,6 @@ function selectedDayDate(gridStart) {
   return day;
 }
 
-// Changing month drops the selection: its day is no longer in the grid.
-function goToMonth(year, month, rerender) {
-  state.selectedDate = new Date(year, month, 1);
-  state.selectedDay = null;
-  rerender();
-}
-
-function buildNavBar(year, month, rerender) {
-  const nav = document.createElement('div');
-  nav.className = 'view-nav';
-
-  const prev = document.createElement('button');
-  prev.className = 'nav-arrow';
-  prev.textContent = '‹';
-  prev.addEventListener('click', () => goToMonth(year, month - 1, rerender));
-
-  const title = document.createElement('span');
-  title.className = 'view-nav-title clickable-title';
-  title.textContent = new Date(year, month, 1).toLocaleDateString('en-US', {
-    month: 'long',
-    year: 'numeric',
-  });
-  title.addEventListener('click', () => {
-    showMonthYearPicker(year, month, (y, m) => goToMonth(y, m, rerender));
-  });
-
-  const now = new Date();
-  const todayBtn = document.createElement('button');
-  todayBtn.className = 'nav-today-btn';
-  todayBtn.textContent = 'Today';
-  todayBtn.hidden = now.getFullYear() === year && now.getMonth() === month;
-  todayBtn.addEventListener('click', () => {
-    state.selectedDate = new Date();
-    state.selectedDay = null;
-    rerender();
-  });
-
-  const next = document.createElement('button');
-  next.className = 'nav-arrow';
-  next.textContent = '›';
-  next.addEventListener('click', () => goToMonth(year, month + 1, rerender));
-
-  nav.append(prev, title, todayBtn, next);
-  return nav;
-}
-
-function buildWeekDayHeader() {
-  const showWN = state.config.showWeekNumbersMonth ?? state.config.showWeekNumbers;
-  const row = document.createElement('div');
-  row.className = 'month-weekday-row' + (showWN ? ' with-weeknum' : '');
-  if (showWN) {
-    const wn = document.createElement('div');
-    wn.className = 'month-weekday-label month-weeknum-label';
-    wn.textContent = 'W';
-    row.appendChild(wn);
-  }
-  for (const d of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']) {
-    const cell = document.createElement('div');
-    cell.className = 'month-weekday-label';
-    cell.textContent = d;
-    row.appendChild(cell);
-  }
-  return row;
-}
-
 // Everything visible that overlaps the 42 displayed days, filtered once for the
 // whole grid rather than per cell.
 function monthEventPool(gridStart) {
@@ -168,19 +104,39 @@ function buildGrid(gridStart, month, today, monthEvents, cb, rerender, compresse
   const showWN = state.config.showWeekNumbersMonth ?? state.config.showWeekNumbers;
   const grid = document.createElement('div');
   grid.className = 'month-grid' + (showWN ? ' with-weeknum' : '');
+  // One chip row while the sheet is open — the rows are roughly half height
+  // then, and the sheet is already showing the full list anyway.
+  const maxRows = compressed ? 1 : 2;
 
-  for (let i = 0; i < 42; i++) {
-    // Built from calendar fields, not millisecond arithmetic: adding 86400000ms
-    // across a DST fall-back lands on 23:00 of the same day and re-anchors to a
-    // duplicate date. The Date constructor rolls the day field over correctly.
-    const day = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i);
-    if (showWN && i % 7 === 0) {
+  for (let week = 0; week < 6; week++) {
+    const days = weekDays(gridStart, week);
+    if (showWN) {
       const wn = document.createElement('div');
       wn.className = 'month-weeknum-cell';
-      wn.textContent = 'W' + getISOWeek(day);
+      wn.textContent = 'W' + getISOWeek(days[0]);
       grid.appendChild(wn);
     }
-    grid.appendChild(buildDayCell(day, month, today, monthEvents, cb, rerender, compressed));
+    // A whole week at a time, because a multi-day bar has to sit in the same
+    // chip row in every cell it crosses and no single cell can know that.
+    const layouts = layoutWeekRow(days.map(localDateStr), monthEvents, maxRows);
+    for (let i = 0; i < days.length; i++) {
+      grid.appendChild(buildDayCell(days[i], month, today, layouts[i], cb, rerender, compressed));
+    }
   }
   return grid;
+}
+
+// The seven days of one grid row. Built from calendar fields, not millisecond
+// arithmetic: adding 86400000ms across a DST fall-back lands on 23:00 of the
+// same day and re-anchors to a duplicate date. The Date constructor rolls the
+// day field over correctly.
+function weekDays(gridStart, week) {
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const offset = week * 7 + i;
+    days.push(
+      new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + offset),
+    );
+  }
+  return days;
 }
