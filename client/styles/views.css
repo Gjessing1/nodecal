@@ -298,30 +298,71 @@
   margin: 2px auto 0;
 }
 
+/* One grid — the time-column spacer plus the seven days — so an event running
+   across days is a single bar placed over the columns it covers rather than a
+   chip in the first day's cell. The row count is set inline by weekAllDay.js:
+   a lane per stacked bar, then a row per task chip. */
 .week-allday-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto repeat(7, minmax(0, 1fr));
+  row-gap: 2px;
+  padding: 2px 0;
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
   min-height: 28px;
   overflow: hidden;
 }
+/* The day column is the separator and the tap target for blank space. It spans
+   every row and is appended before the bars, which therefore paint over it. */
 .week-allday-cell {
-  flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 2px;
   border-left: 1px solid var(--color-border);
-  overflow: hidden;
+  cursor: pointer;
 }
-.week-allday-cell .allday-chip {
-  width: 100%;
-  box-sizing: border-box;
+.week-allday-row .allday-chip {
   font-size: 10px;
+  min-width: 0;
+  max-width: none;
+  margin: 0 2px;
+  align-self: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.week-allday-row .allday-more {
+  opacity: 0.7;
+  font-style: italic;
+}
+.allday-chip.allday-span {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-left: var(--spacing-xs);
+  padding-right: var(--spacing-xs);
+}
+.allday-chip .allday-span-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.allday-chip .allday-span-edge {
+  flex-shrink: 0;
+  line-height: 1;
+  opacity: 0.8;
+}
+/* A bar clamped at the edge of the visible week keeps a flat edge and an arrow,
+   so it never reads as an event that happens to start on Monday. */
+.allday-chip.continues-before {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  margin-left: 0;
+}
+.allday-chip.continues-after {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  margin-right: 0;
 }
 
 /* ── Weather badges ─────────────────────────────────────── */

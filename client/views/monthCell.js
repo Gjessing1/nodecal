@@ -1,7 +1,8 @@
-import { state, calendarById } from '../app/state.js';
+import { state } from '../app/state.js';
 import { initLongPressCreate } from '../components/dnd.js';
-import { localDateStr, weatherIcon, toTimeInputValue } from '../app/utils.js';
+import { localDateStr, weatherIcon } from '../app/utils.js';
 import { dayEvents, dayTasks } from './dayItems.js';
+import { buildChip } from './monthChip.js';
 
 // One square of the month grid: the date number, up to two event chips, a task
 // pill, and the taps that select the day.
@@ -20,6 +21,8 @@ export function buildDayCell(day, curMonth, today, events, cb, rerender, compres
   const isWeekend = (dow === 0 || dow === 6) && state.config.showWeekendBg !== false;
   const dayStr = localDateStr(day);
   const isSelected = state.selectedDay === dayStr;
+  // The grid rows start on Monday, so this is the cell's column in its week row.
+  const colIdx = (dow + 6) % 7;
 
   const cell = document.createElement('div');
   cell.className =
@@ -59,7 +62,9 @@ export function buildDayCell(day, curMonth, today, events, cb, rerender, compres
   // and the sheet is already showing the full list anyway.
   const max = compressed ? 1 : 2;
   for (let i = 0; i < Math.min(dayEvs.length, max); i++) {
-    cell.appendChild(buildChip(dayEvs[i], cb.onEventClick, () => selectDay(dayStr, rerender)));
+    cell.appendChild(
+      buildChip(dayEvs[i], dayStr, colIdx, cb.onEventClick, () => selectDay(dayStr, rerender)),
+    );
   }
   if (dayEvs.length > max) {
     const more = document.createElement('div');
@@ -103,37 +108,4 @@ function buildTaskPill(tasks, dayStr, rerender) {
     selectDay(dayStr, rerender);
   });
   return pill;
-}
-
-function buildChip(ev, onClick, onSelectDay) {
-  const cal = calendarById(ev.calendarId);
-  const color = cal?.color || '#4a90d9';
-  const chip = document.createElement('div');
-  chip.dataset.id = ev.id;
-  const start = new Date(ev.start);
-  const tz = state.config?.timezone || 'UTC';
-  const [th, tm] = toTimeInputValue(start, tz).split(':').map(Number);
-  chip.dataset.startMin = String(th * 60 + tm);
-
-  if (ev.allDay) {
-    // All-day events: solid color fill (high visibility)
-    chip.className = 'month-event-chip';
-    chip.style.background = color;
-    chip.textContent = ev.title;
-  } else {
-    // Timed events: colored left border, title only (no time prefix — more room for text)
-    chip.className = 'month-event-chip month-event-timed';
-    chip.style.borderLeftColor = color;
-    chip.style.color = color;
-    chip.textContent = ev.title;
-  }
-
-  chip.addEventListener('click', (e) => {
-    e.stopPropagation();
-    // A chip is a few pixels tall on a phone, so a touch is more likely aimed at
-    // the day than at that one event; with a mouse it is a deliberate hit.
-    if (window.matchMedia('(pointer: coarse)').matches) onSelectDay();
-    else onClick(ev);
-  });
-  return chip;
 }

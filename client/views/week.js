@@ -15,6 +15,7 @@ import { initDnd, initSwipe, initLongPressCreate } from '../components/dnd.js';
 import { HOUR_HEIGHT } from '../components/timeGrid.js';
 import { showDayPopup } from './dayPopup.js';
 import { taskSourceVisible } from '../app/taskUtils.js';
+import { buildAllDayRow } from './weekAllDay.js';
 
 let timerId = null;
 let _container = null;
@@ -45,7 +46,6 @@ export function renderWeek(container, callbacks) {
   }
 
   const wStart = weekStart(state.selectedDate);
-  const wEnd = new Date(wStart.getFullYear(), wStart.getMonth(), wStart.getDate() + 7);
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(wStart);
     d.setDate(d.getDate() + i);
@@ -65,10 +65,15 @@ export function renderWeek(container, callbacks) {
   // Navigation bar
   container.appendChild(buildNavBar(wStart, callbacks));
 
-  // All-day row (events + optional tasks)
+  // All-day row (events + optional tasks). All-day events are stored at UTC
+  // midnight, so the week window is compared as date strings — new Date() here
+  // shifts them by the browser offset and drags in the neighbouring day.
+  const weekStartStr = localDateStr(wStart);
+  const weekEndStr = localDateStr(days[6]);
   const allDayEvents = state.events.filter((ev) => {
     if (state.hiddenCalendars.has(ev.calendarId)) return false;
-    return ev.allDay && new Date(ev.start) < wEnd && new Date(ev.end) > wStart;
+    if (!ev.allDay) return false;
+    return ev.start.slice(0, 10) <= weekEndStr && ev.end.slice(0, 10) > weekStartStr;
   });
   const showTasksWeek = state.config.showTasksOnWeek ?? state.config.showTasksOnCalendar ?? false;
   const allDayTasks = showTasksWeek
@@ -81,19 +86,7 @@ export function renderWeek(container, callbacks) {
       )
     : [];
   if (allDayEvents.length > 0 || allDayTasks.length > 0) {
-    container.appendChild(
-      buildAllDayRow(
-        days,
-        allDayEvents,
-        allDayTasks,
-        onEventClick,
-        callbacks.onTaskClick,
-        callbacks.onDayClick,
-        callbacks.onTaskComplete,
-        callbacks.onNewTask,
-        callbacks.onLongPress,
-      ),
-    );
+    container.appendChild(buildAllDayRow(days, allDayEvents, allDayTasks, callbacks));
   }
 
   // Day-column headers (date numbers open the day popup on tap)
@@ -285,101 +278,6 @@ function buildDayHeaders(days, today, callbacks) {
         });
       }
     }
-    row.appendChild(cell);
-  }
-  return row;
-}
-
-function buildAllDayRow(
-  days,
-  events,
-  tasks,
-  onEventClick,
-  onTaskClick,
-  onDayClick,
-  onTaskComplete,
-  onNewTask,
-  onLongPress,
-) {
-  const row = document.createElement('div');
-  row.className = 'week-allday-row';
-  const spacer = document.createElement('div');
-  spacer.className = 'time-col-spacer';
-  row.appendChild(spacer);
-  for (let i = 0; i < days.length; i++) {
-    const day = days[i];
-    const dayStr = localDateStr(day);
-    const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
-    const cell = document.createElement('div');
-    cell.className = 'week-allday-cell';
-
-    const openPopup = () =>
-      showDayPopup(
-        new Date(day),
-        dayStr,
-        onEventClick,
-        onDayClick,
-        onTaskComplete,
-        onTaskClick,
-        onNewTask,
-        onLongPress,
-      );
-
-    for (const ev of events) {
-      let onDay, isFirst;
-      if (ev.allDay) {
-        const s = ev.start.slice(0, 10);
-        const e = ev.end.slice(0, 10);
-        onDay = e > dayStr && s <= dayStr;
-        isFirst = i === 0 ? true : s >= dayStr;
-      } else {
-        const evStart = new Date(ev.start);
-        const evEnd = new Date(ev.end);
-        onDay = evEnd > day && evStart < dayEnd;
-        isFirst = i === 0 ? true : evStart >= day;
-      }
-      if (!onDay || !isFirst) continue;
-      const cal = calendarById(ev.calendarId);
-      const chip = document.createElement('div');
-      chip.className = 'allday-chip';
-      chip.style.background = cal?.color || '#4a90d9';
-      chip.textContent = ev.title;
-      chip.addEventListener('click', (e) => {
-        e.stopPropagation();
-        onEventClick(ev);
-      });
-      cell.appendChild(chip);
-    }
-
-    const dayTasks = tasks.filter((t) => t.due === dayStr);
-    const MAX_TASKS = 2;
-    // If exactly 1 task overflows MAX_TASKS, show it directly (no space saved by "+1 task")
-    const limit = dayTasks.length === MAX_TASKS + 1 ? MAX_TASKS + 1 : MAX_TASKS;
-    for (const task of dayTasks.slice(0, limit)) {
-      const chip = document.createElement('div');
-      chip.className = 'allday-chip task-allday-chip';
-      chip.style.cursor = 'pointer';
-      chip.textContent = task.title;
-      chip.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (onTaskClick) onTaskClick(task);
-      });
-      cell.appendChild(chip);
-    }
-    if (dayTasks.length > limit) {
-      const more = document.createElement('div');
-      more.className = 'allday-chip task-allday-chip';
-      more.style.cssText = 'cursor:pointer;opacity:0.7;font-style:italic';
-      more.textContent = `+${dayTasks.length - limit} tasks`;
-      more.addEventListener('click', (e) => {
-        e.stopPropagation();
-        openPopup();
-      });
-      cell.appendChild(more);
-    }
-
-    // Clicking blank cell area opens the day popup
-    cell.addEventListener('click', openPopup);
     row.appendChild(cell);
   }
   return row;

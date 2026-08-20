@@ -1,6 +1,6 @@
 import { state } from '../app/state.js';
 import { initDayDnd, initSwipe } from '../components/dnd.js';
-import { getISOWeek } from '../app/utils.js';
+import { getISOWeek, localDateStr } from '../app/utils.js';
 import { showMonthYearPicker } from '../components/datePicker.js';
 import { buildDaySheet, setDaySheetRerender } from './daySheet.js';
 import { buildDayCell } from './monthCell.js';
@@ -152,8 +152,14 @@ function buildWeekDayHeader() {
 // whole grid rather than per cell.
 function monthEventPool(gridStart) {
   const end = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + 42);
+  const firstStr = localDateStr(gridStart);
+  const lastStr = localDateStr(new Date(end.getFullYear(), end.getMonth(), end.getDate() - 1));
   return state.events.filter((ev) => {
     if (state.hiddenCalendars.has(ev.calendarId)) return false;
+    // All-day events are stored at UTC midnight, so they are windowed as date
+    // strings; compared as Dates the browser offset drops the ones sitting on
+    // the grid's first or last day. All-day ends are exclusive.
+    if (ev.allDay) return ev.start.slice(0, 10) <= lastStr && ev.end.slice(0, 10) > firstStr;
     return new Date(ev.start) < end && new Date(ev.end) > gridStart;
   });
 }

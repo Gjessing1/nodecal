@@ -47,9 +47,12 @@
 }
 
 .month-day {
+  /* Named because the chips of a spanning event cancel it out to reach the cell
+     edge — see .span-start / .span-middle / .span-end below. */
+  --month-day-pad-x: 3px;
   border-right: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
-  padding: 2px 3px;
+  padding: 2px var(--month-day-pad-x);
   /* A floor, not a height: the rows are 1fr, so this is what stops them being
      squashed. The day sheet lowers it — see --month-row-min below. */
   min-height: var(--month-row-min, 72px);
@@ -244,10 +247,12 @@
 
 /* Event chips inside month cells */
 .month-event-chip {
+  --month-chip-line: 1.3;
+  --month-chip-pad-y: 1px;
   display: block;
   font-size: 10px;
-  line-height: 1.3;
-  padding: 1px 4px;
+  line-height: var(--month-chip-line);
+  padding: var(--month-chip-pad-y) 4px;
   border-radius: 3px;
   color: #fff;
   margin-bottom: 1px;
@@ -263,6 +268,26 @@
   border-left: 3px solid;
   border-radius: 0 3px 3px 0;
   padding-left: 3px;
+}
+
+/* A multi-day event stays a chip per day — the grid's drag-and-drop and day taps
+   need real cells — but the chips square off and reach over the cell padding
+   where the run carries on, so they read as one bar. Only the first chip of each
+   week row carries the title (monthChip.js). */
+.month-event-chip.span-start,
+.month-event-chip.span-middle {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  margin-right: calc(-1 * var(--month-day-pad-x));
+}
+.month-event-chip.span-middle,
+.month-event-chip.span-end {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  margin-left: calc(-1 * var(--month-day-pad-x));
+  /* Unlabelled continuations hold exactly one line, so the bar stays level with
+     the labelled chip it continues from. */
+  min-height: calc(var(--month-chip-line) * 1em + 2 * var(--month-chip-pad-y));
 }
 .month-more {
   font-size: 10px;
