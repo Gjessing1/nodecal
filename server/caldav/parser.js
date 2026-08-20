@@ -141,6 +141,27 @@ function parseDuration(dur) {
   return ((w * 7 + d) * 86400 + h * 3600 + min * 60 + s) * 1000;
 }
 
+// Google's ICS export stamps every exported item with a CATEGORIES entry naming
+// its own type namespace — CATEGORIES:http://schemas.google.com/g/2005#event.
+// It is a machine type marker, not a label anyone chose, and taken at face value
+// it turns up as a category in the filter drawer. Anything else is kept as-is.
+const VENDOR_SCHEMA_CATEGORY = /^https?:\/\/schemas\.google\.com\//i;
+
+/**
+ * Split a CATEGORIES value into labels worth showing.
+ * @param {string} [raw] - the raw property value, comma-separated
+ * @returns {string[]}
+ */
+function parseCategories(raw) {
+  if (!raw) return [];
+  const labels = [];
+  for (const part of raw.split(',')) {
+    const label = part.trim();
+    if (label && !VENDOR_SCHEMA_CATEGORY.test(label)) labels.push(label);
+  }
+  return labels;
+}
+
 function unescapeIcsText(text) {
   return text
     .replace(/\\n/g, '\n')
@@ -257,13 +278,7 @@ function parseIcs(icsText, { timezone = 'UTC' } = {}) {
       }
     }
 
-    const rawCats = props.CATEGORIES?.value || '';
-    const categories = rawCats
-      ? rawCats
-          .split(',')
-          .map((c) => c.trim())
-          .filter(Boolean)
-      : [];
+    const categories = parseCategories(props.CATEGORIES?.value);
 
     events.push({
       uid,
@@ -382,12 +397,7 @@ function parseVtodo(icsText) {
       if (parsed) completed = parsed.date.toISOString();
     }
 
-    const categories = props.CATEGORIES?.value
-      ? props.CATEGORIES.value
-          .split(',')
-          .map((c) => c.trim())
-          .filter(Boolean)
-      : [];
+    const categories = parseCategories(props.CATEGORIES?.value);
 
     result.push({
       uid,
@@ -443,4 +453,11 @@ function serializeTask(task) {
   return lines.map(foldLine).join(CRLF) + CRLF;
 }
 
-module.exports = { parseIcs, serializeEvent, formatIcsDate, parseVtodo, serializeTask };
+module.exports = {
+  parseIcs,
+  serializeEvent,
+  formatIcsDate,
+  parseVtodo,
+  serializeTask,
+  parseCategories,
+};

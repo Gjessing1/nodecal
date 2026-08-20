@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { parseCategories } = require('../caldav/parser');
 
 const CACHE_FILE = '/cache/events.json';
 
@@ -40,6 +41,7 @@ function loadFromDisk() {
       for (const t of data.tasks || []) tasks.set(t.uid, t);
     }
     dropOrphanedOverrides();
+    dropVendorCategories();
     console.log(`Loaded ${events.size} events, ${tasks.size} tasks from cache`);
   } catch {
     // No cache file yet — start fresh
@@ -65,6 +67,31 @@ function dropOrphanedOverrides() {
   }
   if (dropped > 0) {
     console.log(`Dropped ${dropped} orphaned occurrence override(s); next sync re-fetches them`);
+  }
+}
+
+/**
+ * Re-apply the category filter to records cached before it existed.
+ *
+ * A Google-exported item carries CATEGORIES:http://schemas.google.com/... and
+ * the parser now drops it, but a cached copy keeps it until its etag changes —
+ * which for an old event may be never, so it would sit in the filter drawer
+ * indefinitely.
+ */
+function dropVendorCategories() {
+  let cleaned = 0;
+  for (const record of [...events.values(), ...tasks.values()]) {
+    const current = /** @type {any} */ (record).categories;
+    if (!current?.length) continue;
+    const kept = parseCategories(current.join(','));
+    if (kept.length === current.length) continue;
+    /** @type {any} */ (record).categories = kept;
+    cleaned++;
+  }
+  // No flush: the in-memory records are what GET /events serves, and the file
+  // catches up on the next write. Re-running this on the next load is harmless.
+  if (cleaned > 0) {
+    console.log(`Dropped vendor type markers from ${cleaned} cached record(s)`);
   }
 }
 
