@@ -113,11 +113,32 @@ test('event range queries share one last-known offline snapshot', async () => {
   );
 
   assert.strictEqual(response.body, 'LATEST EVENTS');
-  assert.deepStrictEqual(posted, ['OFFLINE_DATA']);
+  assert.deepStrictEqual(posted, ['FRESH_DATA', 'OFFLINE_DATA']);
 
   offline = false;
   const recovered = await dispatchFetch(worker, makeRequest('/api/events'));
-  assert.deepStrictEqual(recovered.posted, ['OFFLINE_DATA', 'FRESH_DATA']);
+  assert.deepStrictEqual(recovered.posted, ['FRESH_DATA', 'OFFLINE_DATA', 'FRESH_DATA']);
+});
+
+// A worker restart used to lose the "I am serving cached data" flag, which
+// silenced FRESH_DATA for the rest of the session and left the page stuck in
+// read-only mode with a working connection.
+test('a restarted worker still signals fresh data after an outage', async () => {
+  const options = {
+    fetch: async () => {
+      throw new TypeError('Failed to fetch');
+    },
+  };
+  const offlineWorker = loadWorker(options);
+  const cache = await offlineWorker.caches.open('nodecal-data-v2');
+  await cache.put('/api/events', makeResponse({ body: 'SNAPSHOT' }));
+  const { posted } = await dispatchFetch(offlineWorker, makeRequest('/api/events'));
+  assert.deepStrictEqual(posted, ['OFFLINE_DATA']);
+
+  // The browser discards an idle worker; the next request starts a fresh one.
+  const restarted = loadWorker({ fetch: async () => makeResponse({ body: 'EVENTS' }) });
+  const recovered = await dispatchFetch(restarted, makeRequest('/api/events'));
+  assert.deepStrictEqual(recovered.posted, ['FRESH_DATA']);
 });
 
 test('a redirected response is never written to the shell cache', async () => {

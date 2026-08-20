@@ -49,6 +49,7 @@ import {
   effectiveTaskSource,
 } from './profiles.js';
 import { initBackNav, goBack } from './backNav.js';
+import { initConnectivity, reportOfflineData, reportFreshData, recheck } from './connectivity.js';
 import { localDateStr, toDateInputValue, localToUTC } from './utils.js';
 
 const viewContainer = document.getElementById('view-container');
@@ -75,11 +76,14 @@ const VIEW_META = {
   tasks: { icon: '✓', label: 'Tasks' },
 };
 
+const OFFLINE_MESSAGE = 'Offline · Read-only · Showing the last saved data · Tap to retry';
+
 function setOfflineMode(offline) {
   const changed = state.isOffline !== offline;
   state.isOffline = offline;
   document.getElementById('app').classList.toggle('offline-readonly', offline);
   offlineStatus.classList.toggle('hidden', !offline);
+  if (offline) offlineStatus.textContent = OFFLINE_MESSAGE;
   syncBtn.disabled = offline;
   settingsBtn.disabled = offline;
   syncBtn.title = offline ? 'Sync unavailable offline' : 'Sync';
@@ -490,9 +494,11 @@ async function showPwaNotification(title, options) {
 // timers while backgrounded, so without this a resumed app shows data from
 // whenever it was last open — stale the moment another device made an edit.
 let _lastWakeRefresh = Date.now();
-async function refreshOnWake() {
+async function refreshOnWake(force = false) {
   if (!state._viewInitialized) return; // still loading or on the login screen
-  if (Date.now() - _lastWakeRefresh < 30 * 1000) return;
+  // A reconnect refresh must never be swallowed by the throttle — the data on
+  // screen is the stale offline snapshot the user just watched go read-only.
+  if (!force && Date.now() - _lastWakeRefresh < 30 * 1000) return;
   _lastWakeRefresh = Date.now();
   try {
     await Promise.all([loadEvents(), loadTasks()]);
@@ -1067,18 +1073,23 @@ async function init() {
   initAuthReload();
   initBackButton();
 
-  window.addEventListener('offline', () => {
-    setOfflineMode(true);
-  });
-  window.addEventListener('online', () => {
-    setOfflineMode(false);
-    refreshOnWake();
+  // connectivity.js owns entering and leaving offline mode; the worker's
+  // signals are hints it verifies against the server.
+  initConnectivity({
+    isOffline: () => state.isOffline,
+    setOffline: setOfflineMode,
+    onReconnect: () => refreshOnWake(true),
   });
   navigator.serviceWorker?.addEventListener('message', (event) => {
-    if (event.data?.type === 'OFFLINE_DATA') setOfflineMode(true);
-    if (event.data?.type === 'FRESH_DATA') setOfflineMode(false);
+    if (event.data?.type === 'OFFLINE_DATA') reportOfflineData();
+    if (event.data?.type === 'FRESH_DATA') reportFreshData();
   });
-  setOfflineMode(!navigator.onLine);
+  offlineStatus.addEventListener('click', () => {
+    offlineStatus.textContent = 'Checking for a connection…';
+    recheck().then((online) => {
+      if (!online) offlineStatus.textContent = OFFLINE_MESSAGE;
+    });
+  });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') refreshOnWake();
   });

@@ -85,7 +85,6 @@ self.addEventListener('activate', (event) => {
 const AUTH_PROBE_PATH = '/api/auth/status';
 const AUTH_SIGNAL_GAP_MS = 30 * 1000;
 let lastAuthSignal = 0;
-let servingOfflineData = false;
 
 function isAuthBounce(res) {
   if (res.type === 'opaqueredirect') return true;
@@ -121,14 +120,16 @@ async function signalAuthRequired() {
 }
 
 async function signalOfflineData() {
-  servingOfflineData = true;
   const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
   for (const client of windows) client.postMessage({ type: 'OFFLINE_DATA' });
 }
 
+// Signalled on every live data read, not only on the first one after an
+// outage. The browser discards an idle worker after ~30s, so a "was I serving
+// cached data?" flag kept in worker memory is false again by the time the
+// connection returns — which is precisely when the page needs to hear this.
+// The page ignores a signal that doesn't change its mode, so repeats are free.
 async function signalFreshData() {
-  if (!servingOfflineData) return;
-  servingOfflineData = false;
   const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
   for (const client of windows) client.postMessage({ type: 'FRESH_DATA' });
 }
