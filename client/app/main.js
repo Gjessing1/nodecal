@@ -175,6 +175,9 @@ function switchView(viewName) {
   if (state.activeView && state.activeView !== viewName) {
     _viewHistory.push(state.activeView);
     if (_viewHistory.length > 10) _viewHistory.shift();
+    // The month view's day sheet belongs to the month view; leaving it drops the
+    // selection so coming back does not land on a pre-compressed grid.
+    state.selectedDay = null;
   }
   state.activeView = viewName;
   try {
@@ -252,17 +255,15 @@ function render() {
   else if (state.activeView === 'day') renderDay(viewContainer, calendarCallbacks);
   else if (state.activeView === 'week') renderWeek(viewContainer, calendarCallbacks);
   else if (state.activeView === 'month')
-    renderMonth(
-      viewContainer,
-      handleEventClick,
-      handleDayClick,
-      calendarCallbacks.onEventMove,
-      () => switchView('tasks'),
-      calendarCallbacks.onLongPress,
-      calendarCallbacks.onTaskComplete,
-      handleTaskEdit,
-      calendarCallbacks.onNewTask,
-    );
+    renderMonth(viewContainer, {
+      onEventClick: handleEventClick,
+      onDayClick: handleDayClick,
+      onEventMove: calendarCallbacks.onEventMove,
+      onLongPress: calendarCallbacks.onLongPress,
+      onTaskComplete: calendarCallbacks.onTaskComplete,
+      onTaskClick: handleTaskEdit,
+      onNewTask: calendarCallbacks.onNewTask,
+    });
   else
     renderAgenda(
       viewContainer,

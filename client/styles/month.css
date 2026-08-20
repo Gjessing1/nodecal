@@ -50,8 +50,13 @@
   border-right: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
   padding: 2px 3px;
-  min-height: 72px;
+  /* A floor, not a height: the rows are 1fr, so this is what stops them being
+     squashed. The day sheet lowers it — see --month-row-min below. */
+  min-height: var(--month-row-min, 72px);
   overflow: hidden;
+}
+.month-day.selected {
+  box-shadow: inset 0 0 0 2px var(--color-accent);
 }
 .month-grid:not(.with-weeknum) .month-day:nth-child(7n) {
   border-right: none;
@@ -270,4 +275,39 @@
 #view-container:has(.month-grid) {
   display: flex;
   flex-direction: column;
+}
+
+/* ── Day sheet (month view) ──────────────────────────────── */
+/* Docked under the grid rather than laid over it: the grid is flex:1 in this
+   column, so giving the sheet a share of the height compresses the rows. */
+#view-container:has(.day-sheet) {
+  --month-row-min: 0;
+  overflow: hidden;
+}
+.day-sheet {
+  /* Sized to its contents, capped at 45% — a quiet day barely compresses the
+     grid, a busy one takes the room it needs and scrolls past that. */
+  flex: 0 1 auto;
+  max-height: 45%;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.14);
+  padding: 0 var(--spacing-md) var(--spacing-sm);
+}
+.day-sheet-handle-wrap {
+  padding: var(--spacing-sm) 0;
+  display: flex;
+  justify-content: center;
+  cursor: pointer;
+}
+.day-sheet-heading {
+  margin-bottom: var(--spacing-sm);
+}
+.day-sheet-list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }

@@ -1,141 +1,103 @@
-import { state, calendarById } from '../app/state.js';
-import { initDayDnd, initLongPressCreate, initSwipe } from '../components/dnd.js';
-import { localDateStr, getISOWeek, weatherIcon, toTimeInputValue } from '../app/utils.js';
+import { state } from '../app/state.js';
+import { initDayDnd, initSwipe } from '../components/dnd.js';
+import { getISOWeek } from '../app/utils.js';
 import { showMonthYearPicker } from '../components/datePicker.js';
-import { showDayPopup } from './dayPopup.js';
-import { taskSourceVisible } from '../app/taskUtils.js';
+import { buildDaySheet, setDaySheetRerender } from './daySheet.js';
+import { buildDayCell } from './monthCell.js';
 
 /**
+ * The month grid, plus the day sheet docked under it when a day is selected.
+ *
+ * The callbacks arrive as one object rather than nine positional arguments
+ * because every re-render inside this file — month nav, swipe, day selection —
+ * has to pass the whole set through again.
+ *
+ * @typedef {object} MonthCallbacks
+ * @property {(event: any) => void} onEventClick
+ * @property {(d: Date) => void} onDayClick
+ * @property {((id: string, day: Date, startMin: number) => void) | null} [onEventMove]
+ * @property {((d: Date) => void) | null} [onLongPress] - new event on that day
+ * @property {((task: any) => void) | null} [onTaskComplete]
+ * @property {((task: any) => void) | null} [onTaskClick]
+ * @property {((d: Date) => void) | null} [onNewTask]
+ *
  * @param {HTMLElement} container
- * @param {(event: any) => void} onEventClick
- * @param {(d: Date) => void} onDayClick
- * @param {(id: string, day: Date, startMin: number) => void} onEventMove
- * @param {() => void} [onTasksClick] - called when "N tasks" pill is clicked
- * @param {(d: Date) => void} [onLongPress] - called with the day Date on long-press
- * @param {(task: any) => void} [onTaskComplete] - toggle task completion from popup
- * @param {(task: any) => void} [onTaskClick] - open task for editing from popup
- * @param {(d: Date) => void} [onNewTask] - open new task modal for a given day
+ * @param {MonthCallbacks} cb
  */
-export function renderMonth(
-  container,
-  onEventClick,
-  onDayClick,
-  onEventMove,
-  onTasksClick,
-  onLongPress,
-  onTaskComplete,
-  onTaskClick,
-  onNewTask,
-) {
+export function renderMonth(container, cb) {
   const anchor = state.selectedDate;
   const year = anchor.getFullYear();
   const month = anchor.getMonth();
   const today = new Date();
+  const rerender = () => renderMonth(container, cb);
+  setDaySheetRerender(rerender);
+
+  // The 42 displayed days, which run from the Monday before the 1st into the
+  // following month. Computed once: the event pool, the cells and the day sheet
+  // all have to agree on which days are on screen.
+  const gridStart = gridStartDate(year, month);
+  const selected = selectedDayDate(gridStart);
 
   container.innerHTML = '';
-  container.appendChild(
-    buildNavBar(
-      year,
-      month,
-      onEventClick,
-      onDayClick,
-      onEventMove,
-      onTasksClick,
-      onLongPress,
-      onTaskComplete,
-      onTaskClick,
-      onNewTask,
-    ),
-  );
+  container.appendChild(buildNavBar(year, month, rerender));
   container.appendChild(buildWeekDayHeader());
-  const grid = buildGrid(
-    year,
-    month,
-    today,
-    onEventClick,
-    onDayClick,
-    onTasksClick,
-    onLongPress,
-    onTaskComplete,
-    onTaskClick,
-    onNewTask,
-  );
+
+  const monthEvents = monthEventPool(gridStart);
+  const grid = buildGrid(gridStart, month, today, monthEvents, cb, rerender, !!selected);
   container.appendChild(grid);
 
-  if (onEventMove) {
+  if (cb.onEventMove) {
     initDayDnd(grid, {
       chipSelector: '.month-event-chip',
       daySelector: '.month-day',
-      onMove: onEventMove,
+      onMove: cb.onEventMove,
     });
   }
 
-  // Swipe left/right to navigate months
   initSwipe(
     grid,
-    () => {
-      state.selectedDate = new Date(year, month - 1, 1);
-      renderMonth(
-        container,
-        onEventClick,
-        onDayClick,
-        onEventMove,
-        onTasksClick,
-        onLongPress,
-        onTaskComplete,
-        onTaskClick,
-        onNewTask,
-      );
-    },
-    () => {
-      state.selectedDate = new Date(year, month + 1, 1);
-      renderMonth(
-        container,
-        onEventClick,
-        onDayClick,
-        onEventMove,
-        onTasksClick,
-        onLongPress,
-        onTaskComplete,
-        onTaskClick,
-        onNewTask,
-      );
-    },
+    () => goToMonth(year, month - 1, rerender),
+    () => goToMonth(year, month + 1, rerender),
   );
+
+  if (selected) {
+    container.appendChild(buildDaySheet(selected, state.selectedDay, cb, monthEvents));
+  }
 }
 
-function buildNavBar(
-  year,
-  month,
-  onEventClick,
-  onDayClick,
-  onEventMove,
-  onTasksClick,
-  onLongPress,
-  onTaskComplete,
-  onTaskClick,
-  onNewTask,
-) {
+// Monday-anchored start of the first displayed week.
+function gridStartDate(year, month) {
+  const dow = new Date(year, month, 1).getDay(); // 0=Sun
+  return new Date(year, month, 1 - (dow === 0 ? 6 : dow - 1));
+}
+
+// A selected day only gets a sheet while it is one of the 42 on screen — the
+// grid's trailing days belong to the neighbouring months and are selectable
+// too, but a day scrolled out of the window is not.
+function selectedDayDate(gridStart) {
+  if (!state.selectedDay) return null;
+  const [y, m, d] = state.selectedDay.split('-').map(Number);
+  const day = new Date(y, m - 1, d);
+  const end = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + 42);
+  if (day < gridStart || day >= end) return null;
+  return day;
+}
+
+// Changing month drops the selection: its day is no longer in the grid.
+function goToMonth(year, month, rerender) {
+  state.selectedDate = new Date(year, month, 1);
+  state.selectedDay = null;
+  rerender();
+}
+
+function buildNavBar(year, month, rerender) {
   const nav = document.createElement('div');
   nav.className = 'view-nav';
 
   const prev = document.createElement('button');
   prev.className = 'nav-arrow';
   prev.textContent = '‹';
-  prev.addEventListener('click', () => {
-    state.selectedDate = new Date(year, month - 1, 1);
-    renderMonth(
-      prev.closest('#view-container'),
-      onEventClick,
-      onDayClick,
-      onEventMove,
-      onTasksClick,
-      onLongPress,
-      onTaskComplete,
-      onTaskClick,
-      onNewTask,
-    );
-  });
+  prev.addEventListener('click', () => goToMonth(year, month - 1, rerender));
 
   const title = document.createElement('span');
   title.className = 'view-nav-title clickable-title';
@@ -144,20 +106,7 @@ function buildNavBar(
     year: 'numeric',
   });
   title.addEventListener('click', () => {
-    showMonthYearPicker(year, month, (y, m) => {
-      state.selectedDate = new Date(y, m, 1);
-      renderMonth(
-        title.closest('#view-container'),
-        onEventClick,
-        onDayClick,
-        onEventMove,
-        onTasksClick,
-        onLongPress,
-        onTaskComplete,
-        onTaskClick,
-        onNewTask,
-      );
-    });
+    showMonthYearPicker(year, month, (y, m) => goToMonth(y, m, rerender));
   });
 
   const now = new Date();
@@ -167,41 +116,16 @@ function buildNavBar(
   todayBtn.hidden = now.getFullYear() === year && now.getMonth() === month;
   todayBtn.addEventListener('click', () => {
     state.selectedDate = new Date();
-    renderMonth(
-      prev.closest('#view-container'),
-      onEventClick,
-      onDayClick,
-      onEventMove,
-      onTasksClick,
-      onLongPress,
-      onTaskComplete,
-      onTaskClick,
-      onNewTask,
-    );
+    state.selectedDay = null;
+    rerender();
   });
 
   const next = document.createElement('button');
   next.className = 'nav-arrow';
   next.textContent = '›';
-  next.addEventListener('click', () => {
-    state.selectedDate = new Date(year, month + 1, 1);
-    renderMonth(
-      next.closest('#view-container'),
-      onEventClick,
-      onDayClick,
-      onEventMove,
-      onTasksClick,
-      onLongPress,
-      onTaskComplete,
-      onTaskClick,
-      onNewTask,
-    );
-  });
+  next.addEventListener('click', () => goToMonth(year, month + 1, rerender));
 
-  nav.appendChild(prev);
-  nav.appendChild(title);
-  nav.appendChild(todayBtn);
-  nav.appendChild(next);
+  nav.append(prev, title, todayBtn, next);
   return nav;
 }
 
@@ -224,260 +148,33 @@ function buildWeekDayHeader() {
   return row;
 }
 
-function buildGrid(
-  year,
-  month,
-  today,
-  onEventClick,
-  onDayClick,
-  onTasksClick,
-  onLongPress,
-  onTaskComplete,
-  onTaskClick,
-  onNewTask,
-) {
+// Everything visible that overlaps the 42 displayed days, filtered once for the
+// whole grid rather than per cell.
+function monthEventPool(gridStart) {
+  const end = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + 42);
+  return state.events.filter((ev) => {
+    if (state.hiddenCalendars.has(ev.calendarId)) return false;
+    return new Date(ev.start) < end && new Date(ev.end) > gridStart;
+  });
+}
+
+function buildGrid(gridStart, month, today, monthEvents, cb, rerender, compressed) {
   const showWN = state.config.showWeekNumbersMonth ?? state.config.showWeekNumbers;
   const grid = document.createElement('div');
   grid.className = 'month-grid' + (showWN ? ' with-weeknum' : '');
 
-  // Monday-anchored start of the first displayed week
-  const firstOfMonth = new Date(year, month, 1);
-  const dow = firstOfMonth.getDay(); // 0=Sun
-  const startOffset = dow === 0 ? 6 : dow - 1;
-  // Build each day from calendar fields (not millisecond arithmetic). Adding
-  // 86400000ms across a DST fall-back (e.g. last Sunday of October) lands on
-  // 23:00 of the same day, which re-anchors to a duplicate date. The Date
-  // constructor rolls the day field over correctly regardless of DST.
-  const start = new Date(year, month, 1 - startOffset);
-  const end = new Date(year, month, 1 - startOffset + 42);
-
-  const monthEvents = state.events.filter((ev) => {
-    if (state.hiddenCalendars.has(ev.calendarId)) return false;
-    return new Date(ev.start) < end && new Date(ev.end) > start;
-  });
-
   for (let i = 0; i < 42; i++) {
-    const day = new Date(year, month, 1 - startOffset + i);
-    // Insert week number cell at start of each week row
+    // Built from calendar fields, not millisecond arithmetic: adding 86400000ms
+    // across a DST fall-back lands on 23:00 of the same day and re-anchors to a
+    // duplicate date. The Date constructor rolls the day field over correctly.
+    const day = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i);
     if (showWN && i % 7 === 0) {
       const wn = document.createElement('div');
       wn.className = 'month-weeknum-cell';
       wn.textContent = 'W' + getISOWeek(day);
       grid.appendChild(wn);
     }
-    grid.appendChild(
-      buildDayCell(
-        day,
-        month,
-        today,
-        monthEvents,
-        onEventClick,
-        onDayClick,
-        onTasksClick,
-        onLongPress,
-        onTaskComplete,
-        onTaskClick,
-        onNewTask,
-      ),
-    );
+    grid.appendChild(buildDayCell(day, month, today, monthEvents, cb, rerender, compressed));
   }
   return grid;
 }
-
-function buildDayCell(
-  day,
-  curMonth,
-  today,
-  events,
-  onEventClick,
-  onDayClick,
-  onTasksClick,
-  onLongPress,
-  onTaskComplete,
-  onTaskClick,
-  onNewTask,
-) {
-  const isToday = day.toDateString() === today.toDateString();
-  const isOther = day.getMonth() !== curMonth;
-  const dow = day.getDay();
-  const isWeekend = (dow === 0 || dow === 6) && state.config.showWeekendBg !== false;
-
-  const cell = document.createElement('div');
-  cell.className =
-    'month-day' +
-    (isToday ? ' today' : '') +
-    (isOther ? ' other-month' : '') +
-    (isWeekend ? ' weekend' : '');
-  cell.dataset.day = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
-
-  const numWrap = document.createElement('div');
-  numWrap.className = 'month-day-num';
-  const numSpan = document.createElement('span');
-  numSpan.textContent = day.getDate();
-  numWrap.appendChild(numSpan);
-  const wx = weatherIcon(
-    localDateStr(day),
-    state.weather,
-    state.config.weatherDaysMonth ?? state.config.weatherDays ?? 4,
-  );
-  if (wx && !isOther) {
-    const wxEl = document.createElement('span');
-    wxEl.className = 'month-weather';
-    wxEl.textContent = wx;
-    numWrap.appendChild(wxEl);
-  }
-  const dayStr = localDateStr(day);
-
-  numWrap.addEventListener('click', (e) => {
-    e.stopPropagation();
-    showDayPopup(
-      day,
-      dayStr,
-      onEventClick,
-      onDayClick,
-      onTaskComplete,
-      onTaskClick,
-      onNewTask,
-      onLongPress,
-    );
-  });
-  cell.appendChild(numWrap);
-  const dayStart = new Date(day);
-  const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
-  const dayEvs = events
-    .filter((ev) => {
-      if (ev.allDay) return ev.start.slice(0, 10) <= dayStr && ev.end.slice(0, 10) > dayStr;
-      return new Date(ev.start) < dayEnd && new Date(ev.end) > dayStart;
-    })
-    .sort(
-      (a, b) =>
-        (a.allDay ? -1 : 1) - (b.allDay ? -1 : 1) ||
-        new Date(a.start).getTime() - new Date(b.start).getTime(),
-    );
-
-  const dayTasks =
-    (state.config.showTasksOnMonth ?? state.config.showTasksOnCalendar)
-      ? state.tasks.filter(
-          (t) =>
-            t.due === dayStr &&
-            t.status !== 'COMPLETED' &&
-            taskSourceVisible(t, state.hiddenCalendars),
-        )
-      : [];
-
-  const MAX = 2;
-  for (let i = 0; i < Math.min(dayEvs.length, MAX); i++) {
-    const popup = () =>
-      showDayPopup(
-        day,
-        dayStr,
-        onEventClick,
-        onDayClick,
-        onTaskComplete,
-        onTaskClick,
-        onNewTask,
-        onLongPress,
-      );
-    cell.appendChild(buildChip(dayEvs[i], onEventClick, popup));
-  }
-  if (dayEvs.length > MAX) {
-    const more = document.createElement('div');
-    more.className = 'month-more';
-    more.textContent = `+${dayEvs.length - MAX}`;
-    more.addEventListener('click', (e) => {
-      e.stopPropagation();
-      onDayClick && onDayClick(new Date(day));
-    });
-    cell.appendChild(more);
-  }
-  if (dayTasks.length > 0) {
-    const pill = document.createElement('div');
-    pill.className = 'month-task-pill';
-    const MAX_TASK_TITLE = 16;
-    const taskLabel =
-      dayTasks.length === 1
-        ? dayTasks[0].title.length > MAX_TASK_TITLE
-          ? dayTasks[0].title.slice(0, MAX_TASK_TITLE) + '…'
-          : dayTasks[0].title
-        : `${dayTasks.length} tasks`;
-    pill.textContent = taskLabel;
-    // Clicking the task pill opens the day popup (same as clicking the date number)
-    pill.style.cursor = 'pointer';
-    pill.addEventListener('click', (e) => {
-      e.stopPropagation();
-      showDayPopup(
-        day,
-        dayStr,
-        onEventClick,
-        onDayClick,
-        onTaskComplete,
-        onTaskClick,
-        onNewTask,
-        onLongPress,
-      );
-    });
-    cell.appendChild(pill);
-  }
-
-  // Clicking empty cell space opens popup (chips/pill/num all stopPropagation)
-  cell.addEventListener('click', () =>
-    showDayPopup(
-      day,
-      dayStr,
-      onEventClick,
-      onDayClick,
-      onTaskComplete,
-      onTaskClick,
-      onNewTask,
-      onLongPress,
-    ),
-  );
-
-  if (onLongPress) {
-    initLongPressCreate(cell, {
-      skipSelector: '.month-event-chip,.month-more,.month-task-pill,.month-day-num',
-      onLongPress() {
-        onLongPress(new Date(day));
-      },
-    });
-  }
-
-  return cell;
-}
-
-function buildChip(ev, onClick, onPopup) {
-  const cal = calendarById(ev.calendarId);
-  const color = cal?.color || '#4a90d9';
-  const chip = document.createElement('div');
-  chip.dataset.id = ev.id;
-  const start = new Date(ev.start);
-  const tz = state.config?.timezone || 'UTC';
-  const [th, tm] = toTimeInputValue(start, tz).split(':').map(Number);
-  chip.dataset.startMin = String(th * 60 + tm);
-
-  if (ev.allDay) {
-    // All-day events: solid color fill (high visibility)
-    chip.className = 'month-event-chip';
-    chip.style.background = color;
-    chip.textContent = ev.title;
-  } else {
-    // Timed events: colored left border, title only (no time prefix — more room for text)
-    chip.className = 'month-event-chip month-event-timed';
-    chip.style.borderLeftColor = color;
-    chip.style.color = color;
-    chip.textContent = ev.title;
-  }
-
-  chip.addEventListener('click', (e) => {
-    e.stopPropagation();
-    // Mobile (coarse pointer): open the day popup for context; desktop: open event directly
-    if (onPopup && window.matchMedia('(pointer: coarse)').matches) {
-      onPopup();
-    } else {
-      onClick(ev);
-    }
-  });
-  return chip;
-}
-
-export { showDayPopup } from './dayPopup.js';
