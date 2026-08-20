@@ -5,7 +5,6 @@
  */
 
 import { settingsBack } from '../components/settingsPanel.js';
-import { closeDaySheet } from '../views/daySheet.js';
 
 /** Overlays built on demand and removed from the DOM when dismissed. */
 const POPOVER_IDS = ['time-picker-overlay', 'mini-cal-overlay', 'month-day-popup'];
@@ -58,11 +57,6 @@ export function goBack() {
       return true;
     }
   }
-
-  // The month view's day sheet is part of the view rather than an overlay, so it
-  // comes after every real overlay: closing it drops the selection and lets the
-  // grid expand again.
-  if (closeDaySheet()) return true;
 
   if (restorePreviousView) return restorePreviousView();
   return false;

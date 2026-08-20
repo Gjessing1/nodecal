@@ -5,10 +5,8 @@ import { showMonthYearPicker } from '../components/datePicker.js';
 // button, and the weekday labels under it. Moving between months lives here too
 // — the arrows, the picker and the grid's swipe all go through goToMonth.
 
-// Changing month drops the selection: its day is no longer in the grid.
 export function goToMonth(year, month, rerender) {
   state.selectedDate = new Date(year, month, 1);
-  state.selectedDay = null;
   rerender();
 }
 
@@ -38,7 +36,6 @@ export function buildNavBar(year, month, rerender) {
   todayBtn.hidden = now.getFullYear() === year && now.getMonth() === month;
   todayBtn.addEventListener('click', () => {
     state.selectedDate = new Date();
-    state.selectedDay = null;
     rerender();
   });
 

@@ -274,16 +274,7 @@ function buildDayHeaders(days, today, callbacks) {
         dateSpan.style.cursor = 'pointer';
         dateSpan.addEventListener('click', (e) => {
           e.stopPropagation();
-          showDayPopup(
-            day,
-            dayStr,
-            callbacks.onEventClick,
-            callbacks.onDayClick,
-            callbacks.onTaskComplete,
-            callbacks.onTaskClick,
-            callbacks.onNewTask,
-            callbacks.onLongPress,
-          );
+          showDayPopup(day, dayStr, callbacks);
         });
       }
     }

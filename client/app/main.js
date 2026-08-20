@@ -175,9 +175,6 @@ function switchView(viewName) {
   if (state.activeView && state.activeView !== viewName) {
     _viewHistory.push(state.activeView);
     if (_viewHistory.length > 10) _viewHistory.shift();
-    // The month view's day sheet belongs to the month view; leaving it drops the
-    // selection so coming back does not land on a pre-compressed grid.
-    state.selectedDay = null;
   }
   state.activeView = viewName;
   try {

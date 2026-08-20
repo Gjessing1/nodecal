@@ -53,9 +53,6 @@ describe('the marker never reaches an event or a task', () => {
           'END:VEVENT',
         ].join('\r\n'),
       ),
-      'cal-1',
-      '/cal/vera.ics',
-      'etag-1',
     );
     assert.equal(ev.title, 'Vera Bursdag');
     assert.deepEqual(ev.categories, []);
@@ -72,9 +69,6 @@ describe('the marker never reaches an event or a task', () => {
           'END:VTODO',
         ].join('\r\n'),
       ),
-      'list-1',
-      '/list/todo.ics',
-      'etag-2',
     );
     assert.deepEqual(task.categories, ['Errands']);
   });

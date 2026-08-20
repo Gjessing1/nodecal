@@ -65,13 +65,6 @@ export const state = {
   activeView: 'agenda',
   /** @type {Date} - anchor date for day/week views */
   selectedDate: new Date(),
-  /**
-   * The day whose sheet is open under the month grid, 'YYYY-MM-DD' local, or
-   * null when no day is selected. Separate from selectedDate, which month
-   * navigation overwrites with the 1st of the displayed month.
-   * @type {string | null}
-   */
-  selectedDay: null,
   /** @type {Set<string>} - calendarIds currently hidden */
   hiddenCalendars: new Set(),
   /**

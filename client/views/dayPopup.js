@@ -3,26 +3,18 @@ import { weatherBadge } from '../app/utils.js';
 import { dayEvents, dayTasks, buildEventRow, buildTaskRow } from './dayItems.js';
 
 /**
- * Show the day popup overlay (used by both month and week views).
+ * Show the day popup overlay. The month grid, the week day headers and the week
+ * all-day row all open it, and all three carry the same callback bag, so it is
+ * taken whole rather than unpacked into eight positional arguments at each site.
+ *
  * @param {Date} day
  * @param {string} dayStr - YYYY-MM-DD
- * @param {function} onEventClick
- * @param {function} onDayClick
- * @param {function} onTaskComplete
- * @param {function} onTaskClick
- * @param {function} onNewTask
- * @param {function} onNewEvent
+ * @param {any} cb - the view's callback bag
  */
-export function showDayPopup(
-  day,
-  dayStr,
-  onEventClick,
-  onDayClick,
-  onTaskComplete,
-  onTaskClick,
-  onNewTask,
-  onNewEvent,
-) {
+export function showDayPopup(day, dayStr, cb) {
+  const { onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask } = cb;
+  // The popup's "+ Event" is the same intent as a long press on a day cell.
+  const onNewEvent = cb.onLongPress;
   document.getElementById('month-day-popup')?.remove();
 
   const dayEvs = dayEvents(day, dayStr);

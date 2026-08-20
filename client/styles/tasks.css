@@ -429,7 +429,7 @@
 /* ── Calendar integration ────────────────────────────────── */
 /* The bottom line of a month cell, under the chips. Sized by line-height rather
    than padding so its border box is exactly one line of the cell's height
-   budget — see --month-row-min in month.css. */
+   budget — see .month-day's min-height in month.css. */
 .month-task-pill {
   flex-shrink: 0;
   margin-top: 1px;

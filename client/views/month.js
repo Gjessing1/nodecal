@@ -1,17 +1,16 @@
 import { state } from '../app/state.js';
 import { initDayDnd, initSwipe } from '../components/dnd.js';
 import { getISOWeek, localDateStr } from '../app/utils.js';
-import { buildDaySheet, setDaySheetRerender } from './daySheet.js';
 import { buildDayCell } from './monthCell.js';
 import { buildNavBar, buildWeekDayHeader, goToMonth } from './monthNav.js';
 import { layoutWeekRow } from './monthRow.js';
 
 /**
- * The month grid, plus the day sheet docked under it when a day is selected.
+ * The month grid.
  *
  * The callbacks arrive as one object rather than nine positional arguments
- * because every re-render inside this file — month nav, swipe, day selection —
- * has to pass the whole set through again.
+ * because every re-render inside this file — month nav, swipe — has to pass the
+ * whole set through again, and the day popup takes the bag whole.
  *
  * @typedef {object} MonthCallbacks
  * @property {(event: any) => void} onEventClick
@@ -31,20 +30,18 @@ export function renderMonth(container, cb) {
   const month = anchor.getMonth();
   const today = new Date();
   const rerender = () => renderMonth(container, cb);
-  setDaySheetRerender(rerender);
 
   // The 42 displayed days, which run from the Monday before the 1st into the
-  // following month. Computed once: the event pool, the cells and the day sheet
-  // all have to agree on which days are on screen.
+  // following month. Computed once so the event pool and the cells agree on
+  // which days are on screen.
   const gridStart = gridStartDate(year, month);
-  const selected = selectedDayDate(gridStart);
 
   container.innerHTML = '';
   container.appendChild(buildNavBar(year, month, rerender));
   container.appendChild(buildWeekDayHeader());
 
   const monthEvents = monthEventPool(gridStart);
-  const grid = buildGrid(gridStart, month, today, monthEvents, cb, rerender, !!selected);
+  const grid = buildGrid(gridStart, month, today, monthEvents, cb);
   container.appendChild(grid);
 
   if (cb.onEventMove) {
@@ -60,28 +57,12 @@ export function renderMonth(container, cb) {
     () => goToMonth(year, month - 1, rerender),
     () => goToMonth(year, month + 1, rerender),
   );
-
-  if (selected) {
-    container.appendChild(buildDaySheet(selected, state.selectedDay, cb, monthEvents));
-  }
 }
 
 // Monday-anchored start of the first displayed week.
 function gridStartDate(year, month) {
   const dow = new Date(year, month, 1).getDay(); // 0=Sun
   return new Date(year, month, 1 - (dow === 0 ? 6 : dow - 1));
-}
-
-// A selected day only gets a sheet while it is one of the 42 on screen — the
-// grid's trailing days belong to the neighbouring months and are selectable
-// too, but a day scrolled out of the window is not.
-function selectedDayDate(gridStart) {
-  if (!state.selectedDay) return null;
-  const [y, m, d] = state.selectedDay.split('-').map(Number);
-  const day = new Date(y, m - 1, d);
-  const end = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + 42);
-  if (day < gridStart || day >= end) return null;
-  return day;
 }
 
 // Everything visible that overlaps the 42 displayed days, filtered once for the
@@ -100,13 +81,11 @@ function monthEventPool(gridStart) {
   });
 }
 
-function buildGrid(gridStart, month, today, monthEvents, cb, rerender, compressed) {
+function buildGrid(gridStart, month, today, monthEvents, cb) {
   const showWN = state.config.showWeekNumbersMonth ?? state.config.showWeekNumbers;
   const grid = document.createElement('div');
   grid.className = 'month-grid' + (showWN ? ' with-weeknum' : '');
-  // One chip row while the sheet is open — the rows are roughly half height
-  // then, and the sheet is already showing the full list anyway.
-  const maxRows = compressed ? 1 : 2;
+  const maxRows = 2;
 
   for (let week = 0; week < 6; week++) {
     const days = weekDays(gridStart, week);
@@ -120,7 +99,7 @@ function buildGrid(gridStart, month, today, monthEvents, cb, rerender, compresse
     // chip row in every cell it crosses and no single cell can know that.
     const layouts = layoutWeekRow(days.map(localDateStr), monthEvents, maxRows);
     for (let i = 0; i < days.length; i++) {
-      grid.appendChild(buildDayCell(days[i], month, today, layouts[i], cb, rerender, compressed));
+      grid.appendChild(buildDayCell(days[i], month, today, layouts[i], cb));
     }
   }
   return grid;

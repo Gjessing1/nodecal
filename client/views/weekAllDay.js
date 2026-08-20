@@ -68,16 +68,7 @@ export function buildAllDayRow(days, events, tasks, cb) {
  */
 function popupOpener(day, dayStr, cb) {
   return function openPopup() {
-    showDayPopup(
-      new Date(day),
-      dayStr,
-      cb.onEventClick,
-      cb.onDayClick,
-      cb.onTaskComplete,
-      cb.onTaskClick,
-      cb.onNewTask,
-      cb.onLongPress,
-    );
+    showDayPopup(new Date(day), dayStr, cb);
   };
 }
 
