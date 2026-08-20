@@ -111,9 +111,20 @@ router.put('/events/:id', async (req, res) => {
     // Simple update (non-recurring, or 'all' scope on recurring base)
     const updated = { ...existing, ...filterChanges(changes) };
     const ics = serializeEvent(updated);
-    const { href, etag } = await putEvent(existing.calendarId, existing.uid, ics, existing.etag);
+    let written;
+    if (existing.href) {
+      written = await putEventAtHref(existing.href, ics, existing.etag);
+    } else {
+      written = await putEvent(existing.calendarId, existing.uid, ics, existing.etag);
+    }
     const now = new Date().toISOString();
-    const stored = { ...updated, href, etag, localModifiedAt: now, lastSyncedAt: now };
+    const stored = {
+      ...updated,
+      href: written.href,
+      etag: written.etag,
+      localModifiedAt: now,
+      lastSyncedAt: now,
+    };
     store.setEvent(stored);
     res.json(toApiShape(stored));
   } catch (err) {

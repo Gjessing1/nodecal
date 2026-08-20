@@ -50,6 +50,7 @@ import {
 import { effectiveTaskSource, resolveEventCalendar } from './profileTargets.js';
 import { initBackNav, goBack } from './backNav.js';
 import { initConnectivity, reportOfflineData, reportFreshData, recheck } from './connectivity.js';
+import { responseError } from './httpError.js';
 import { localDateStr, toDateInputValue, localToUTC } from './utils.js';
 
 const viewContainer = document.getElementById('view-container');
@@ -669,7 +670,7 @@ function handleEventResize(eventId, endMin) {
 async function saveEvent(id, data) {
   if (offlineWriteBlocked()) return;
   const method = id ? 'PUT' : 'POST';
-  const url = id ? `/events/${id}` : '/events';
+  const url = id ? `/api/events/${encodeURIComponent(id)}` : '/api/events';
   const body = id ? data : { ...data, calendarId: data.calendarId || state.calendars[0]?.id };
   try {
     const res = await fetch(url, {
@@ -677,7 +678,7 @@ async function saveEvent(id, data) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error((await res.json()).error);
+    if (!res.ok) throw new Error(await responseError(res));
     await loadEvents();
     render();
   } catch (err) {
@@ -689,7 +690,7 @@ async function deleteEvent(ev, scope) {
   if (offlineWriteBlocked()) return;
   try {
     const uid = ev.uid || ev.id || ev;
-    let url = `/events/${uid}`;
+    let url = `/api/events/${encodeURIComponent(uid)}`;
     if (scope && ev.occurrenceDate) {
       const params = { scope, occurrenceDate: ev.occurrenceDate };
       if (ev.recurrenceId) params.recurrenceId = ev.recurrenceId;
@@ -833,7 +834,7 @@ async function saveTask(id, data) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error((await res.json()).error);
+    if (!res.ok) throw new Error(await responseError(res));
     await loadTasks();
     render();
   } catch (err) {
