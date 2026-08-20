@@ -75,6 +75,30 @@ test('an event alarm inside the window is collected', () => {
   assert.equal(found[0].tag, 'ev-e1');
 });
 
+test('a moved recurring occurrence fires only at its overridden time', () => {
+  seedEvent('series', '2026-07-06T13:00:00Z', 15, {
+    end: '2026-07-06T14:00:00Z',
+    rrule: 'FREQ=WEEKLY;COUNT=3',
+  });
+  seedEvent('series', '2026-07-13T15:00:00Z', 15, {
+    title: 'Event series (moved)',
+    end: '2026-07-13T16:00:00Z',
+    recurrenceId: '2026-07-13T13:00:00.000Z',
+    rrule: null,
+  });
+
+  const found = collectReminders(
+    new Date('2026-07-13T12:30:00Z'),
+    new Date('2026-07-13T15:00:00Z'),
+    CFG,
+  );
+
+  assert.equal(found.length, 1);
+  assert.equal(found[0].title, 'Event series (moved)');
+  assert.equal(found[0].at, '2026-07-13T14:45:00.000Z');
+  assert.equal(found[0].targetId, 'series_2026-07-13T13:00:00.000Z');
+});
+
 test('the window is exclusive at the start and inclusive at the end', () => {
   seedEvent('at-start', '2026-07-10T12:15:00Z', 15); // fires exactly at `from`
   seedEvent('at-end', '2026-07-10T13:15:00Z', 15); // fires exactly at `to`

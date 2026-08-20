@@ -43,6 +43,7 @@ const SERIES = {
   end: '2026-08-17T11:00:00.000Z',
   allDay: false,
   rrule: 'FREQ=WEEKLY;COUNT=8',
+  alarmMinutes: 15,
   exdates: null,
   href: 'http://localhost:5232/test/cal1/series-123.ics',
   etag: 'v1',
@@ -111,6 +112,7 @@ describe('editing one occurrence', () => {
     assert.equal(override.uid, 'series-123');
     assert.equal(override.title, 'Standup (moved)');
     assert.equal(override.start, '2026-08-26T09:00:00.000Z');
+    assert.equal(override.alarmMinutes, 15, 'the series alarm was dropped from the override');
     // The override suppresses the occurrence on its own; an EXDATE as well
     // would hide it from clients that honour EXDATE first.
     assert.equal(master.exdates, null);

@@ -6,7 +6,7 @@
 // about the window ahead ("what should I arm local alarms for?"). Sharing the
 // walk is what keeps a reminder identical whichever way it reaches the phone.
 const store = require('../cache/store');
-const { expandRecurring } = require('../caldav/recurrence');
+const { indexOverrides, expandSeries, emitOverrides } = require('../caldav/overrides');
 
 // An alarm fires before its event, so collecting alarms for a window means
 // looking at events past the end of it. Nothing in the UI offers a lead longer
@@ -84,9 +84,12 @@ function taskAlarmDatetime(dueStr, reminderType, cfg) {
 function eventsForWindow(from, to) {
   const searchTo = new Date(to.getTime() + ALARM_LEAD_HEADROOM_MS);
   const events = [...store.getNonRecurringInRange(from, searchTo)];
+  const overrides = store.getOverrides();
+  const overridesByUid = indexOverrides(overrides);
   for (const base of store.getRecurringBases()) {
-    events.push(...expandRecurring(base, from, searchTo));
+    events.push(...expandSeries(base, overridesByUid.get(base.uid), from, searchTo));
   }
+  events.push(...emitOverrides(overrides, from, searchTo));
   return events;
 }
 
