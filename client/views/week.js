@@ -16,6 +16,7 @@ import { HOUR_HEIGHT } from '../components/timeGrid.js';
 import { showDayPopup } from './dayPopup.js';
 import { taskSourceVisible } from '../app/taskUtils.js';
 import { buildAllDayRow } from './weekAllDay.js';
+import { clipEventToDay } from './eventSegment.js';
 
 let timerId = null;
 let _container = null;
@@ -118,15 +119,23 @@ export function renderWeek(container, callbacks) {
       col.appendChild(timeLine);
     }
 
+    // Blocks are clipped to their own column, so an event running past midnight
+    // continues at the top of the next day instead of being redrawn there at
+    // the clock time it started at.
     const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
-    const dayEvents = state.events.filter((ev) => {
-      if (state.hiddenCalendars.has(ev.calendarId)) return false;
-      return !ev.allDay && new Date(ev.start) < dayEnd && new Date(ev.end) > day;
-    });
-
-    for (const ev of dayEvents) {
+    for (const ev of state.events) {
+      if (ev.allDay || state.hiddenCalendars.has(ev.calendarId)) continue;
+      const segment = clipEventToDay(ev, day, dayEnd);
+      if (!segment) continue;
       const cal = calendarById(ev.calendarId);
-      col.appendChild(buildEventBlock(ev, cal?.color || '#4a90d9', onEventClick, tz));
+      col.appendChild(
+        buildEventBlock(ev, {
+          color: cal?.color || '#4a90d9',
+          onClick: onEventClick,
+          timezone: tz,
+          segment,
+        }),
+      );
     }
 
     grid.appendChild(col);

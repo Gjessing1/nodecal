@@ -59,22 +59,33 @@ export function buildHourLines() {
 /**
  * Build a positioned event block for a time-grid column.
  * @param {object} ev  - event object from state
- * @param {string} color  - calendar color hex
- * @param {function} onClick
- * @param {string} timezone - IANA timezone for vertical positioning
+ * @param {object} opts
+ * @param {string} opts.color - calendar color hex
+ * @param {(ev: any) => void} opts.onClick
+ * @param {string} [opts.timezone] - IANA timezone for vertical positioning
+ * @param {import('../views/eventSegment.js').EventSegment} opts.segment - the
+ *   part of the event that falls on this day, from clipEventToDay
  * @returns {HTMLElement}
  */
-export function buildEventBlock(ev, color, onClick, timezone = 'UTC') {
-  const start = new Date(ev.start);
-  const end = new Date(ev.end);
-  const top = timeToTop(start, timezone);
+export function buildEventBlock(ev, { color, onClick, timezone = 'UTC', segment }) {
+  const { start, end, continuesBefore, continuesAfter } = segment;
+  // A block clipped at midnight starts at the very top of the column. Reading
+  // timeToTop of the day boundary instead would give 00:00 only while the
+  // configured zone is the device's.
+  const top = continuesBefore ? 0 : timeToTop(start, timezone);
   const rawHeight = ((end.getTime() - start.getTime()) / 60000) * (HOUR_HEIGHT / 60);
-  const height = Math.max(rawHeight, 24);
+  const height = Math.min(Math.max(rawHeight, 24), TOTAL_HEIGHT - top);
 
   const block = document.createElement('div');
-  block.className = 'event-block';
+  block.className =
+    'event-block' +
+    (continuesBefore ? ' continues-before' : '') +
+    (continuesAfter ? ' continues-after' : '');
   block.style.cssText = `top:${top}px;height:${height}px;background:${color};`;
   block.dataset.id = ev.id;
+  // Dragging a tail segment would move the whole event onto this day, so dnd.js
+  // leaves it alone; the block still opens the editor on tap.
+  if (continuesBefore) block.dataset.continuation = 'true';
 
   // Show time label when block is tall enough to fit it alongside the title
   if (height >= 40) {
@@ -82,12 +93,17 @@ export function buildEventBlock(ev, color, onClick, timezone = 'UTC') {
     const is12h = state.config?.timeFormat === '12h';
     const timeLabel = document.createElement('span');
     timeLabel.className = 'event-block-time';
-    timeLabel.textContent = start.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: is12h,
-      timeZone: tz,
-    });
+    // A continuation shows the event's real start, not the midnight it was
+    // clipped at, so the label never reads as a second event starting at 00:00.
+    const labelTime = continuesBefore ? new Date(ev.start) : start;
+    timeLabel.textContent =
+      (continuesBefore ? '\u2191 ' : '') +
+      labelTime.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: is12h,
+        timeZone: tz,
+      });
     block.appendChild(timeLabel);
   }
 
@@ -96,9 +112,14 @@ export function buildEventBlock(ev, color, onClick, timezone = 'UTC') {
   title.textContent = ev.title;
   block.appendChild(title);
 
-  const handle = document.createElement('div');
-  handle.className = 'resize-handle';
-  block.appendChild(handle);
+  // Only a whole event gets a resize handle: handleEventResize builds the new
+  // end on the event's start date, so dragging the bottom of a clipped block
+  // would yank a multi-day event back onto its first day.
+  if (!continuesBefore && !continuesAfter) {
+    const handle = document.createElement('div');
+    handle.className = 'resize-handle';
+    block.appendChild(handle);
+  }
 
   block.addEventListener('click', (e) => {
     e.stopPropagation();

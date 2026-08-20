@@ -28,6 +28,9 @@ export function initDnd(gridEl, scrollEl, opts) {
       (isResize ? target.closest('.resize-handle') : target).closest('.event-block')
     );
     if (!block) return;
+    // The tail of an event that started on an earlier day: dragging it would
+    // move the whole event onto this one, so leave it to the click handler.
+    if (block.dataset.continuation) return;
 
     e.preventDefault();
     const blockRect = block.getBoundingClientRect();

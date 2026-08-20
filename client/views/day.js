@@ -14,6 +14,7 @@ import {
 import { initDnd, initSwipe, initLongPressCreate } from '../components/dnd.js';
 import { HOUR_HEIGHT } from '../components/timeGrid.js';
 import { taskSourceVisible } from '../app/taskUtils.js';
+import { clipEventToDay } from './eventSegment.js';
 
 let timerId = null;
 let _container = null;
@@ -36,12 +37,17 @@ export function renderDay(container, callbacks) {
   const date = state.selectedDate;
   const isToday = date.toDateString() === new Date().toDateString();
   const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const dayEnd = new Date(dayStart.getTime() + 86400000);
+  const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
 
-  const dayEvents = state.events.filter((ev) => {
-    if (state.hiddenCalendars.has(ev.calendarId)) return false;
-    return !ev.allDay && new Date(ev.start) < dayEnd && new Date(ev.end) > dayStart;
-  });
+  // One entry per event visible in the column, already clipped to it. An event
+  // crossing midnight lands in two days as two segments rather than one block
+  // drawn twice at its start time.
+  const daySegments = [];
+  for (const ev of state.events) {
+    if (ev.allDay || state.hiddenCalendars.has(ev.calendarId)) continue;
+    const segment = clipEventToDay(ev, dayStart, dayEnd);
+    if (segment) daySegments.push({ ev, segment });
+  }
 
   const dayStr = localDateStr(dayStart);
   const allDayEvents = state.events.filter((ev) => {
@@ -97,9 +103,16 @@ export function renderDay(container, callbacks) {
   const timeLine = buildCurrentTimeLine(tz);
   eventsCol.appendChild(timeLine);
 
-  for (const ev of dayEvents) {
+  for (const { ev, segment } of daySegments) {
     const cal = calendarById(ev.calendarId);
-    eventsCol.appendChild(buildEventBlock(ev, cal?.color || '#4a90d9', onEventClick, tz));
+    eventsCol.appendChild(
+      buildEventBlock(ev, {
+        color: cal?.color || '#4a90d9',
+        onClick: onEventClick,
+        timezone: tz,
+        segment,
+      }),
+    );
   }
 
   wrapper.appendChild(timeCol);

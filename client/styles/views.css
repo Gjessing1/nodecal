@@ -192,6 +192,35 @@
 .event-block:active {
   opacity: 0.7;
 }
+/* A block clipped at midnight keeps a flat edge and a dashed rule there, so it
+   reads as one event carrying on across the boundary rather than two events. */
+.event-block.continues-before {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+.event-block.continues-after {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.event-block.continues-before::before,
+.event-block.continues-after::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: repeating-linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0.85) 0 4px,
+    transparent 4px 8px
+  );
+}
+.event-block.continues-before::before {
+  top: 0;
+}
+.event-block.continues-after::after {
+  bottom: 0;
+}
 
 /* ── Resize handle ──────────────────────────────────────── */
 .resize-handle {
