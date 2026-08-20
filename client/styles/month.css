@@ -345,11 +345,7 @@
   min-height: var(--month-chip-h);
 }
 
-/* Make the month view fill the scrollable area as a column layout. The
-   container's bottom padding is left alone deliberately: handing those 40px to
-   the grid does fit six rows into a 640px window without scrolling, but the FAB
-   is fixed 16px above the bottom nav and would then cover most of the last
-   row's Sunday cell instead of the 32px it covers today. */
+/* Make the month view fill the scrollable area as a column layout. */
 #view-container:has(.month-grid) {
   display: flex;
   flex-direction: column;

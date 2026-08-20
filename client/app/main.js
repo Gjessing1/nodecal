@@ -57,7 +57,6 @@ const viewContainer = document.getElementById('view-container');
 const syncBtn = /** @type {HTMLButtonElement} */ (document.getElementById('sync-btn'));
 const syncError = document.getElementById('sync-error');
 const offlineStatus = document.getElementById('offline-status');
-const fab = document.getElementById('fab');
 const calBtn = document.getElementById('cal-btn');
 const settingsBtn = /** @type {HTMLButtonElement} */ (document.getElementById('settings-btn'));
 const bottomNav = document.getElementById('bottom-nav');
@@ -227,8 +226,6 @@ function render() {
   // Rebuilt every render so a profile switch, a drawer toggle or a fresh
   // calendar list all move the "To:" chips without extra plumbing.
   if (showQuickAdd) renderQuickAddTarget();
-  // FAB is hidden in tasks view — tasks view has its own + and ↵ buttons
-  fab.hidden = state.isOffline || state.activeView === 'tasks';
   const calendarCallbacks = state.isOffline
     ? {
         ...viewCallbacks,
@@ -1253,16 +1250,6 @@ async function init() {
     if (e.key === 'Enter') submitCalQuickAdd();
   });
   document.getElementById('cal-quickadd-submit').addEventListener('click', submitCalQuickAdd);
-
-  fab.addEventListener('click', () => {
-    if (offlineWriteBlocked()) return;
-    if (state.activeView === 'tasks') {
-      const source = effectiveTaskSource() || undefined;
-      openTaskModal({ source }, { onSave: (data) => handleTaskAdd(data), onDelete: () => {} });
-      return;
-    }
-    openNewEventModal(state.selectedDate || new Date(), (data) => saveEvent(null, data));
-  });
 
   // Render the nav immediately with default config so it's never blank during load.
   // buildNav() is called again after loadAll() sets the real settings.

@@ -343,31 +343,12 @@ select {
   color: var(--color-text-muted);
 }
 
-/* ── FAB ────────────────────────────────────────────────── */
 :root {
   --cal-quickadd-h: 60px;
   --tasks-quickadd-h: 96px;
 }
 .tasks-quickadd-visible #view-container {
   padding-bottom: calc(var(--tasks-quickadd-h) + var(--spacing-xl));
-}
-
-.fab {
-  position: fixed;
-  bottom: calc(var(--nav-height) + var(--spacing-md) + var(--app-safe-area-bottom));
-  right: calc(var(--spacing-lg) + var(--app-safe-area-right));
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--color-accent);
-  color: #fff;
-  font-size: 28px;
-  line-height: 56px;
-  text-align: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-}
-.cal-quickadd-visible .fab {
-  display: none;
 }
 
 /* ── Modal ──────────────────────────────────────────────── */
