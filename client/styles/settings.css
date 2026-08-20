@@ -118,6 +118,14 @@
 }
 
 /* ── Controls shared by the section editors ───────────────── */
+/* Some settings treat an empty field as a real answer, so the placeholder is
+   carrying meaning ("No limit") and has to read like the hint text under it
+   rather than the browser's washed-out default. */
+.settings-pane input::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
+}
+
 .settings-help {
   margin-top: var(--spacing-xs);
   color: var(--color-text-muted);

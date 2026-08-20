@@ -39,10 +39,17 @@ export function renderSyncSection(pane, draft, ctx) {
       ),
       field(
         'Events future (days)',
-        numberInput(draft.syncFutureDays ?? 0, { min: 0, fallback: 0 }, (v) => {
-          draft.syncFutureDays = v;
-        }),
-        '0 means no limit — every future event is synced.',
+        // 0 is still what gets stored for "no limit" — settings files written
+        // before this field went blank-for-unlimited already mean that — but
+        // the user never has to know the sentinel exists.
+        numberInput(
+          draft.syncFutureDays ?? 0,
+          { min: 1, blankValue: 0, placeholder: 'No limit' },
+          (v) => {
+            draft.syncFutureDays = v;
+          },
+        ),
+        'Stop syncing events this many days ahead. Leave blank to sync every future event.',
       ),
     ),
   );

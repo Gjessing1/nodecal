@@ -15,6 +15,22 @@ function readOverrides() {
   }
 }
 
+/**
+ * `syncFutureDays` is how many days ahead events are fetched, and 0 has always
+ * meant "no limit". Settings files in the wild already store 0 that way, so 0
+ * stays the wire value for unlimited even though the UI now shows an empty
+ * field instead. Anything missing, blank, negative or unparseable collapses to
+ * it rather than being written to disk as junk.
+ * @param {*} value
+ * @returns {number} days ahead, or 0 for no limit
+ */
+function normalizeSyncFutureDays(value) {
+  const days = Math.trunc(Number(value));
+  if (!Number.isFinite(days)) return 0;
+  if (days < 0) return 0;
+  return days;
+}
+
 router.get('/settings', (req, res) => {
   const overrides = readOverrides();
   res.json({
@@ -122,6 +138,10 @@ router.put('/settings', (req, res) => {
     if (k in req.body) toSave[k] = req.body[k];
   }
 
+  if ('syncFutureDays' in toSave) {
+    toSave.syncFutureDays = normalizeSyncFutureDays(toSave.syncFutureDays);
+  }
+
   if (toSave.enabledViews?.length === 0) {
     return res.status(400).json({ error: 'enabledViews must not be empty' });
   }
@@ -161,3 +181,6 @@ router.put('/settings', (req, res) => {
 });
 
 module.exports = router;
+// app.js mounts the router itself; the normalizer rides along so tests can pin
+// the 0-means-unlimited contract without standing up an HTTP server.
+module.exports.normalizeSyncFutureDays = normalizeSyncFutureDays;

@@ -85,20 +85,42 @@ export function select(value, options, onChange) {
 /**
  * A number input. `onChange` receives the parsed number, clamped to min/max;
  * a blank or unparseable field falls back to `fallback`.
+ *
+ * Pass `blankValue` when empty is a real answer rather than a slip: the field
+ * renders empty whenever the stored value equals it, and an empty field reports
+ * it back instead of `fallback`. That keeps a stored sentinel (0 meaning "no
+ * limit") out of the user's way while still writing the value the rest of the
+ * app expects. Use `placeholder` to say what empty means. Every caller needs
+ * one of `fallback` or `blankValue` — they are the two answers to an empty
+ * field, and a field with neither has nothing to report.
+ *
  * @param {number} value
- * @param {{min?: number, max?: number, step?: number, fallback: number}} opts
+ * @param {{min?: number, max?: number, step?: number, fallback?: number, blankValue?: number, placeholder?: string}} opts
  * @param {function(number): void} onChange
  */
 export function numberInput(value, opts, onChange) {
   const el = document.createElement('input');
   el.type = 'number';
-  el.value = String(value);
+  if (opts.blankValue !== undefined && value === opts.blankValue) {
+    el.value = '';
+  } else {
+    el.value = String(value);
+  }
   if (opts.min !== undefined) el.min = String(opts.min);
   if (opts.max !== undefined) el.max = String(opts.max);
   if (opts.step !== undefined) el.step = String(opts.step);
+  if (opts.placeholder !== undefined) el.placeholder = opts.placeholder;
   el.addEventListener('change', () => {
     let next = parseInt(el.value, 10);
-    if (!Number.isFinite(next)) next = opts.fallback;
+    if (!Number.isFinite(next)) {
+      // An empty field is the answer here, so don't clamp it up to `min`.
+      if (opts.blankValue !== undefined) {
+        el.value = '';
+        onChange(opts.blankValue);
+        return;
+      }
+      next = opts.fallback;
+    }
     if (opts.min !== undefined && next < opts.min) next = opts.min;
     if (opts.max !== undefined && next > opts.max) next = opts.max;
     el.value = String(next);
