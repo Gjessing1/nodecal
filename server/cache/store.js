@@ -3,8 +3,24 @@ const path = require('path');
 
 const CACHE_FILE = '/cache/events.json';
 
-/** @type {Map<string, object>} uid → event */
+/** @type {Map<string, object>} event key (see eventKey) → event */
 const events = new Map();
+
+/**
+ * The cache key for an event record.
+ *
+ * A recurring series whose occurrences have been individually edited arrives as
+ * several VEVENTs in one resource: the master, plus one override per edited
+ * occurrence. They all share the UID and are told apart only by RECURRENCE-ID.
+ * Keying on UID alone let the last one win, which silently destroyed the master
+ * — and with it the whole series, since getRecurringBases() filters on `rrule`.
+ * @param {{uid: string, recurrenceId?: string|null}} ev
+ * @returns {string}
+ */
+function eventKey(ev) {
+  if (!ev.recurrenceId) return ev.uid;
+  return `${ev.uid}::${ev.recurrenceId}`;
+}
 /** @type {Map<string, object>} uid → task */
 const tasks = new Map();
 let calendars = [];
@@ -18,14 +34,37 @@ function loadFromDisk() {
     const data = JSON.parse(raw);
     // Handle plain array (oldest format), {events, ctags}, and {events, tasks, ctags}
     const evList = Array.isArray(data) ? data : data.events || [];
-    for (const ev of evList) events.set(ev.uid, ev);
+    for (const ev of evList) events.set(eventKey(ev), ev);
     if (!Array.isArray(data)) {
       calendarCtags = data.ctags || {};
       for (const t of data.tasks || []) tasks.set(t.uid, t);
     }
+    dropOrphanedOverrides();
     console.log(`Loaded ${events.size} events, ${tasks.size} tasks from cache`);
   } catch {
     // No cache file yet — start fresh
+  }
+}
+
+/**
+ * Heal caches written while the key was the bare UID.
+ *
+ * Back then an override overwrote its own master and the series was lost. Such
+ * a record is recognisable now: an override whose master is not in the cache.
+ * Its etag still matches the server's, so no sync would ever re-fetch it —
+ * dropping it leaves the href uncached, which is what makes the next sync pull
+ * the whole resource back, master included.
+ */
+function dropOrphanedOverrides() {
+  let dropped = 0;
+  for (const [key, ev] of events) {
+    if (!ev.recurrenceId) continue;
+    if (events.has(ev.uid)) continue;
+    events.delete(key);
+    dropped++;
+  }
+  if (dropped > 0) {
+    console.log(`Dropped ${dropped} orphaned occurrence override(s); next sync re-fetches them`);
   }
 }
 
@@ -66,6 +105,21 @@ function setCalendarCtag(calendarId, ctag) {
 function getEvent(uid) {
   return events.get(uid) || null;
 }
+
+/** Look up one record by its full cache key — an override needs its RECURRENCE-ID. */
+function getEventByKey(key) {
+  return events.get(key) || null;
+}
+
+/** Every modified-occurrence record, for GET /events to match against a series. */
+function getOverrides() {
+  return Array.from(events.values()).filter((ev) => ev.recurrenceId);
+}
+
+/** Every record belonging to one CalDAV resource: a master plus its overrides. */
+function getEventsByHref(href) {
+  return Array.from(events.values()).filter((ev) => ev.href === href);
+}
 function getEventCount() {
   return events.size;
 }
@@ -81,13 +135,16 @@ function getEventsInRange(from, to) {
 function getNonRecurringInRange(from, to) {
   const result = [];
   for (const ev of events.values()) {
+    // Overrides are emitted by the recurring expansion instead, in place of the
+    // occurrence they replace; returning them here too would double them up.
+    if (ev.recurrenceId) continue;
     if (!ev.rrule && new Date(ev.start) < to && new Date(ev.end) > from) result.push(ev);
   }
   return result;
 }
 
 function getRecurringBases() {
-  return Array.from(events.values()).filter((ev) => ev.rrule);
+  return Array.from(events.values()).filter((ev) => ev.rrule && !ev.recurrenceId);
 }
 
 function getAllEvents() {
@@ -106,7 +163,7 @@ function getEventByHref(href) {
 }
 
 function setEvent(event) {
-  events.set(event.uid, event);
+  events.set(eventKey(event), event);
   flushToDisk();
 }
 function removeEvent(uid) {
@@ -114,10 +171,23 @@ function removeEvent(uid) {
   flushToDisk();
 }
 function setEventSilent(event) {
-  events.set(event.uid, event);
+  events.set(eventKey(event), event);
 }
-function removeEventSilent(uid) {
-  events.delete(uid);
+/** @param {string} key - a cache key from eventKey(), not necessarily a bare uid */
+function removeEventSilent(key) {
+  events.delete(key);
+}
+
+/**
+ * Drop every record of one resource. A CalDAV href holds the whole series, so
+ * re-fetching it has to clear the old records first — otherwise an override the
+ * user deleted elsewhere lingers here forever, since nothing else deletes it.
+ * @param {string} href
+ */
+function removeEventsByHrefSilent(href) {
+  for (const [key, ev] of events) {
+    if (ev.href === href) events.delete(key);
+  }
 }
 function clearEvents() {
   events.clear();
@@ -187,6 +257,10 @@ module.exports = {
   getCalendarCtag,
   setCalendarCtag,
   getEvent,
+  getEventByKey,
+  getOverrides,
+  getEventsByHref,
+  eventKey,
   getEventCount,
   getAllEvents,
   getEventsInRange,
@@ -199,6 +273,7 @@ module.exports = {
   clearEvents,
   setEventSilent,
   removeEventSilent,
+  removeEventsByHrefSilent,
   flushToDisk,
   getTasks,
   getTask,

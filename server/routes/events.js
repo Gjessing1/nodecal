@@ -1,7 +1,8 @@
 const { Router } = require('express');
 const { putEvent, putEventAtHref, deleteEvent } = require('../caldav/client');
 const { serializeEvent, formatIcsDate } = require('../caldav/parser');
-const { expandRecurring, setRruleUntil, rrulestr } = require('../caldav/recurrence');
+const { setRruleUntil, rrulestr } = require('../caldav/recurrence');
+const { indexOverrides, expandSeries, emitOverrides } = require('../caldav/overrides');
 const store = require('../cache/store');
 
 const router = Router();
@@ -16,10 +17,18 @@ router.get('/events', (req, res) => {
   for (const ev of store.getNonRecurringInRange(from, to)) {
     result.push(toApiShape(ev));
   }
+  // Overrides replace the occurrence their RECURRENCE-ID names, so the series
+  // has to be expanded knowing about them or the occurrence shows up twice —
+  // once at its original time and once at the edited one.
+  const overrides = store.getOverrides();
+  const overridesByUid = indexOverrides(overrides);
   for (const ev of store.getRecurringBases()) {
-    for (const occ of expandRecurring(ev, from, to)) {
+    for (const occ of expandSeries(ev, overridesByUid.get(ev.uid), from, to)) {
       result.push(toApiShape(occ));
     }
+  }
+  for (const ov of emitOverrides(overrides, from, to)) {
+    result.push(toApiShape(ov));
   }
   result.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
   res.json(result);

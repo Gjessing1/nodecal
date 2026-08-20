@@ -7,37 +7,106 @@ const {
   fetchTasksByHref,
 } = require('./client');
 const { getIcsFeeds, fetchFeed } = require('../ics/feed');
+const { expandRecurring } = require('./recurrence');
 const store = require('../cache/store');
 const config = require('../config');
+const fs = require('fs');
 
 function syncLog(msg) {
   if (config.app.debugSync) console.log(`[sync] ${msg}`);
 }
 
-const RANGE_PAST_DAYS = 30;
-const RANGE_FUTURE_DAYS = 90;
+const SETTINGS_FILE = '/config/settings.json';
+// The fallbacks match what the client asks for when the same keys are unset —
+// `syncHistoryDays ?? 730` and `syncFutureDays || 0` in client/app/main.js. The
+// sync window has to be at least as wide as the query the client makes against
+// it, or the calendar shows gaps where nothing was ever fetched. They used to
+// be 30 and 90, which is what made `Events history (days)` unable to mean 750.
+const DEFAULT_PAST_DAYS = 730;
+// syncFutureDays uses 0 for "no limit". A CalDAV time-range filter still needs
+// a concrete end, so unlimited is capped at the same 10 years rangeTo() uses.
+const NO_LIMIT_FUTURE_DAYS = 3650;
+
+/**
+ * How far back and forward to sync, from Settings ▸ Sync.
+ *
+ * These used to be hard-coded at 30/90, which quietly capped the pane's
+ * `Events history (days)` — a value of 750 fetched 30. Read straight from the
+ * settings file rather than over HTTP: sync runs on a timer inside the same
+ * process, with no request to carry the config.
+ * @returns {{pastDays: number, futureDays: number}}
+ */
+function readSyncWindowDays() {
+  let overrides = {};
+  try {
+    overrides = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
+  } catch {
+    // No settings file — the defaults below are the previous behaviour.
+  }
+  const past = Number(overrides.syncHistoryDays);
+  const future = Number(overrides.syncFutureDays);
+  return {
+    pastDays: Number.isFinite(past) && past > 0 ? past : DEFAULT_PAST_DAYS,
+    futureDays: Number.isFinite(future) && future > 0 ? future : NO_LIMIT_FUTURE_DAYS,
+  };
+}
+
+/**
+ * Does this cached record fall inside the window the server was asked about?
+ *
+ * Only records that do can be judged missing. A series is expanded rather than
+ * range-checked on its start: an open-ended weekly event that began years ago
+ * still overlaps today's window, and the server would have listed it.
+ * @param {object} ev
+ * @param {Date} from
+ * @param {Date} to
+ * @returns {boolean}
+ */
+function overlapsWindow(ev, from, to) {
+  if (ev.rrule && !ev.recurrenceId) return expandRecurring(ev, from, to).length > 0;
+  return new Date(ev.start) < to && new Date(ev.end) > from;
+}
 
 /**
  * Pure function — computes what to fetch and what to delete based on
  * the server's current etag list vs the local cache.
  *
+ * Grouped by href, because one resource holds a whole series: a master plus an
+ * override per edited occurrence. They share an href and an etag, so they are
+ * fetched and dropped together.
+ *
  * @param {Array<{href, etag}>} serverEtags  - from listEventEtags()
  * @param {Array<{href, etag, uid}>} cached  - events already in cache for this calendar
- * @returns {{ toFetch: string[], toDelete: string[] }}
+ * @param {Date} from - start of the window listEventEtags() was given
+ * @param {Date} to   - end of that window
+ * @returns {{ toFetch: string[], toDelete: string[] }} toDelete holds cache keys
  */
-function computeSyncDiff(serverEtags, cached) {
+function computeSyncDiff(serverEtags, cached, from, to) {
   const serverMap = new Map(serverEtags.map((e) => [e.href, e.etag]));
+  /** @type {Map<string, object[]>} */
+  const byHref = new Map();
+  for (const ev of cached) {
+    const group = byHref.get(ev.href);
+    if (group) group.push(ev);
+    else byHref.set(ev.href, [ev]);
+  }
+
   const toFetch = [];
   const toDelete = [];
 
-  for (const ev of cached) {
-    if (!serverMap.has(ev.href)) toDelete.push(ev.uid);
+  for (const [href, group] of byHref) {
+    if (serverMap.has(href)) continue;
+    // The etag listing is time-filtered, so absence only means "deleted" for
+    // events inside that window. Treating every absence as a deletion is how
+    // anything older than the window used to be erased on the next sync.
+    if (!group.some((ev) => overlapsWindow(ev, from, to))) continue;
+    for (const ev of group) toDelete.push(store.eventKey(ev));
   }
 
   for (const { href, etag } of serverEtags) {
-    const local = cached.find((ev) => ev.href === href);
-    if (!local || local.etag !== etag) {
-      syncLog(`etag mismatch: href=${href} local=${local?.etag || 'none'} server=${etag}`);
+    const group = byHref.get(href);
+    if (!group || group.some((ev) => ev.etag !== etag)) {
+      syncLog(`etag mismatch: href=${href} local=${group?.[0]?.etag || 'none'} server=${etag}`);
       toFetch.push(href);
     }
   }
@@ -71,8 +140,9 @@ async function withRetry(fn, retries = 3, delayMs = 2000) {
  */
 async function syncIncremental() {
   const now = new Date();
-  const from = new Date(now.getTime() - RANGE_PAST_DAYS * 86400000);
-  const to = new Date(now.getTime() + RANGE_FUTURE_DAYS * 86400000);
+  const { pastDays, futureDays } = readSyncWindowDays();
+  const from = new Date(now.getTime() - pastDays * 86400000);
+  const to = new Date(now.getTime() + futureDays * 86400000);
 
   const calendars = await withRetry(() => listCalendars());
 
@@ -99,7 +169,7 @@ async function syncIncremental() {
 
     const serverEtags = await withRetry(() => listEventEtags(cal.href, from, to));
     const cachedEvents = store.getEventsByCalendar(cal.id);
-    const { toFetch, toDelete } = computeSyncDiff(serverEtags, cachedEvents);
+    const { toFetch, toDelete } = computeSyncDiff(serverEtags, cachedEvents, from, to);
 
     // Fetch updated/new events BEFORE modifying the store so that a concurrent
     // GET /events request never sees a partially-updated calendar (missing both
@@ -110,12 +180,21 @@ async function syncIncremental() {
     }
 
     // Apply deletes and additions atomically (no awaits below this point)
-    for (const uid of toDelete) {
-      store.removeEventSilent(uid);
+    for (const key of toDelete) {
+      store.removeEventSilent(key);
       totalChanged++;
     }
+    // Clear each re-fetched resource before re-adding it: a series that lost an
+    // override still returns the same href, and nothing else would drop the
+    // stale override record. What was there is kept aside first — the
+    // local-edit warning below needs the record this fetch is replacing.
+    const replaced = new Map();
+    for (const href of new Set(fetchedEvents.map((ev) => ev.href))) {
+      for (const ev of store.getEventsByHref(href)) replaced.set(store.eventKey(ev), ev);
+      store.removeEventsByHrefSilent(href);
+    }
     for (const ev of fetchedEvents) {
-      const existing = store.getEvent(ev.uid);
+      const existing = replaced.get(store.eventKey(ev));
       if (existing?.localModifiedAt) {
         syncLog(
           `server overwrites local edit: uid=${ev.uid} localModifiedAt=${existing.localModifiedAt}`,

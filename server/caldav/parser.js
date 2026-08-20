@@ -158,10 +158,47 @@ function escapeIcsText(text) {
 }
 
 /**
+ * RECURRENCE-ID identifies which occurrence of a series a VEVENT replaces.
+ * Stored as an ISO UTC string like every other datetime here, rather than the
+ * raw `20260819T100000Z` form: serializeEvent() writes it back through
+ * `new Date(event.recurrenceId)`, which yields Invalid Date on the raw form,
+ * and matching an occurrence means comparing instants.
+ * @param {{value: string, params: Object<string,string>}|undefined} prop
+ * @param {string} timezone - fallback zone for a floating value
+ * @returns {string|null}
+ */
+function parseRecurrenceId(prop, timezone) {
+  if (!prop) return null;
+  const parsed = parseIcsDate(prop.value, prop.params, timezone);
+  if (!parsed) return null;
+  return parsed.date.toISOString();
+}
+
+/**
+ * A VEVENT as this parser hands it on. A document can hold several with the
+ * same `uid`: the master of a recurring series, plus one per occurrence that
+ * was edited individually, each carrying the `recurrenceId` it replaces.
+ * @typedef {object} ParsedEvent
+ * @property {string} uid
+ * @property {string} title
+ * @property {string} start - ISO UTC
+ * @property {string} end - ISO UTC
+ * @property {boolean} allDay
+ * @property {string} description
+ * @property {string} location
+ * @property {string} url
+ * @property {string[]} categories
+ * @property {string|null} rrule
+ * @property {string[]|null} exdates
+ * @property {string|null} recurrenceId - ISO UTC instant this VEVENT replaces
+ * @property {number|null} alarmMinutes
+ */
+
+/**
  * Parse a VCALENDAR ICS string into an array of event objects.
  * @param {string} icsText
  * @param {{ timezone?: string }} [opts]
- * @returns {Array<{uid, title, start, end, allDay, description, location}>}
+ * @returns {ParsedEvent[]}
  */
 function parseIcs(icsText, { timezone = 'UTC' } = {}) {
   const unfolded = unfold(icsText);
@@ -240,7 +277,7 @@ function parseIcs(icsText, { timezone = 'UTC' } = {}) {
       categories,
       rrule: props.RRULE?.value || null,
       exdates: exdates.length > 0 ? exdates : null,
-      recurrenceId: props['RECURRENCE-ID']?.value || null,
+      recurrenceId: parseRecurrenceId(props['RECURRENCE-ID'], timezone),
       alarmMinutes: alarmMinutes ?? null,
     });
   }
