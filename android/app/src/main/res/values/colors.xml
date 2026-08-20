@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The dark half of client/styles/tokens.css, for the full-screen alarm. -->
+<resources>
+    <color name="alarm_background">#121212</color>
+    <color name="alarm_surface">#1e1e1e</color>
+    <color name="alarm_text">#e8e8e8</color>
+    <color name="alarm_text_muted">#909090</color>
+    <color name="alarm_accent">#3b82f6</color>
+</resources>

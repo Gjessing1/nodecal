@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The full-screen reminder. Colours are fixed to Nodecal's dark palette rather
+    than following DayNight: this is drawn over the lock screen, usually at night
+    and often on a phone whose theme the user cannot see from here.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/alarm_background"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:paddingStart="32dp"
+    android:paddingEnd="32dp"
+    android:paddingTop="48dp"
+    android:paddingBottom="48dp">
+
+    <ImageView
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginBottom="24dp"
+        android:contentDescription="@string/app_name"
+        android:src="@drawable/ic_notification"
+        android:tint="@color/alarm_accent" />
+
+    <TextView
+        android:id="@+id/alarm_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/alarm_accent"
+        android:textSize="56sp"
+        android:letterSpacing="-0.02" />
+
+    <TextView
+        android:id="@+id/alarm_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:gravity="center"
+        android:textColor="@color/alarm_text"
+        android:textSize="26sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/alarm_body"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:textColor="@color/alarm_text_muted"
+        android:textSize="17sp" />
+
+    <Button
+        android:id="@+id/alarm_open"
+        style="?android:attr/borderlessButtonStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="40dp"
+        android:background="@color/alarm_accent"
+        android:text="@string/reminder_open"
+        android:textColor="@color/alarm_background"
+        android:textSize="17sp" />
+
+    <Button
+        android:id="@+id/alarm_snooze"
+        style="?android:attr/borderlessButtonStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:background="@color/alarm_surface"
+        android:textColor="@color/alarm_text"
+        android:textSize="17sp" />
+
+    <Button
+        android:id="@+id/alarm_dismiss"
+        style="?android:attr/borderlessButtonStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:background="@color/alarm_surface"
+        android:text="@string/reminder_dismiss"
+        android:textColor="@color/alarm_text_muted"
+        android:textSize="17sp" />
+
+</LinearLayout>

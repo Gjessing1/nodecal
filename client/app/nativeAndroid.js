@@ -46,11 +46,62 @@ export async function setNativeSystemBarStyle(darkBackground) {
 // PWA's reminder paths are dead in the app. The native shell arms local alarms
 // against the schedule the server publishes at /api/reminders/upcoming instead.
 
-/** @returns {Promise<{enabled: boolean, permissionGranted: boolean, scheduled: number} | null>} */
+/**
+ * How a reminder is delivered on this device. Everything below `scheduled` is
+ * absent on an APK older than 0.1.8, which is how the settings UI decides
+ * whether to offer the options at all.
+ * @typedef {object} NativeReminderStatus
+ * @property {boolean} enabled
+ * @property {boolean} permissionGranted
+ * @property {number} scheduled
+ * @property {boolean} [fullScreenAllowed] - Android 14+ grants this separately.
+ * @property {boolean} [exactAlarmsAllowed]
+ * @property {'fullscreen'|'banner'|'silent'} [eventStyle]
+ * @property {'fullscreen'|'banner'|'silent'} [taskStyle]
+ * @property {number} [snoozeMinutes]
+ * @property {boolean} [showBadge]
+ * @property {boolean} [clearOnOpen]
+ * @property {boolean} [keepUntilDismissed]
+ * @property {boolean} [alarmMode]
+ */
+
+/** @returns {Promise<NativeReminderStatus | null>} */
 export async function getNativeReminderStatus() {
   const plugin = nativePlugin();
   if (typeof plugin?.getReminderStatus !== 'function') return null;
   return plugin.getReminderStatus();
+}
+
+/**
+ * Change one or more delivery options. Native applies them immediately — there
+ * is no Save step — and answers with the full status back.
+ * @param {Partial<NativeReminderStatus>} patch
+ * @returns {Promise<NativeReminderStatus>}
+ */
+export async function setNativeReminderSettings(patch) {
+  const plugin = nativePlugin();
+  if (typeof plugin?.setReminderSettings !== 'function') {
+    throw new Error('This app version has no reminder options — update the APK');
+  }
+  return plugin.setReminderSettings(patch);
+}
+
+/** Android's own notification screen, which owns sound and vibration. */
+export async function openNativeNotificationSettings() {
+  const plugin = nativePlugin();
+  if (typeof plugin?.openNotificationSettings !== 'function') {
+    throw new Error('This app version cannot open notification settings — update the APK');
+  }
+  await plugin.openNotificationSettings();
+}
+
+/** Android 14+ only: the grant screen for full-screen alerts. */
+export async function requestNativeFullScreenPermission() {
+  const plugin = nativePlugin();
+  if (typeof plugin?.requestFullScreenPermission !== 'function') {
+    throw new Error('This app version cannot show full-screen alerts — update the APK');
+  }
+  await plugin.requestFullScreenPermission();
 }
 
 /** @param {boolean} enabled */

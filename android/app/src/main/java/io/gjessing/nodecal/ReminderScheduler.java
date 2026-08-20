@@ -18,8 +18,6 @@ import org.json.JSONObject;
  * once an alarm is armed, nothing needs to reach the server for it to go off.
  */
 final class ReminderScheduler {
-    static final long SNOOZE_MS = 10 * 60 * 1000;
-
     private static final String TAG = "NodecalReminder";
     private static final int WINDOW_HOURS = 48;
     // Comfortably inside the window above, so a phone that is never opened still
@@ -27,6 +25,7 @@ final class ReminderScheduler {
     private static final long BACKSTOP_MS = 12 * 60 * 60 * 1000;
     private static final int BACKSTOP_REQUEST_CODE = 1409;
     private static final String SNOOZE_SUFFIX = "#snooze";
+    private static final int ALARM_SHOW_REQUEST_CODE = 1410;
 
     private ReminderScheduler() {}
 
@@ -91,7 +90,7 @@ final class ReminderScheduler {
     /** Re-arm the same reminder a few minutes out, with no server round trip. */
     static void snooze(Context context, Reminder reminder) {
         Context appContext = context.getApplicationContext();
-        long firesAt = System.currentTimeMillis() + SNOOZE_MS;
+        long firesAt = System.currentTimeMillis() + ReminderSettings.snoozeMillis(appContext);
         Reminder snoozed = reminder.rescheduledTo(firesAt, SNOOZE_SUFFIX + firesAt);
         ReminderStore.addSnoozed(appContext, snoozed);
         arm(appContext, snoozed);
@@ -117,13 +116,30 @@ final class ReminderScheduler {
         AlarmManager alarmManager = context.getSystemService(AlarmManager.class);
         if (alarmManager == null) return;
         PendingIntent pending = firePendingIntent(context, reminder, PendingIntent.FLAG_UPDATE_CURRENT);
-        if (canScheduleExact(alarmManager)) {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, reminder.at, pending);
-        } else {
+        if (!canScheduleExact(alarmManager)) {
             // USE_EXACT_ALARM should make this unreachable; a late reminder still
             // beats none if a future Android revokes it.
             alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, reminder.at, pending);
+        } else if (ReminderSettings.alarmMode(context)) {
+            // The one alarm type Doze never defers or rate-limits. Everything
+            // else, setExactAndAllowWhileIdle included, is capped at roughly one
+            // per nine minutes, so two reminders close together means the second
+            // arrives late. The price is the system next-alarm indicator, which
+            // this takes over from the user's clock app — hence opt-in.
+            alarmManager.setAlarmClock(new AlarmManager.AlarmClockInfo(reminder.at, showIntent(context)), pending);
+        } else {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, reminder.at, pending);
         }
+    }
+
+    /** Where the system's next-alarm indicator sends the user when tapped. */
+    private static PendingIntent showIntent(Context context) {
+        return PendingIntent.getActivity(
+            context,
+            ALARM_SHOW_REQUEST_CODE,
+            new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
     }
 
     private static void cancel(Context context, Reminder reminder) {

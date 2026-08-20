@@ -14,12 +14,20 @@ import {
   sendNativeTestNotification,
   setNativeRemindersEnabled,
 } from '../../app/nativeAndroid.js';
+import { buildNativeReminderOptions } from './nativeReminderOptions.js';
 import { button, help, toggle } from './fields.js';
 
 export function buildNativeReminders() {
   const wrap = document.createElement('div');
   wrap.className = 'modal-field';
   const status = help('');
+  const options = buildNativeReminderOptions();
+
+  /** @param {import('../../app/nativeAndroid.js').NativeReminderStatus} state */
+  function applyState(state) {
+    paint(status, state);
+    options.sync(state);
+  }
 
   const check = toggle(
     'Reminders on this device (works with the app closed)',
@@ -28,7 +36,7 @@ export function buildNativeReminders() {
       input.disabled = true;
       try {
         const result = await setNativeRemindersEnabled(checked);
-        paint(status, { enabled: checked, ...result });
+        applyState({ ...result, enabled: checked });
       } catch (err) {
         input.checked = !checked;
         status.textContent = '✗ ' + err.message;
@@ -69,14 +77,14 @@ export function buildNativeReminders() {
       input.disabled = false;
       testBtn.disabled = false;
       input.checked = state.enabled;
-      paint(status, state);
+      applyState(state);
     })
     .catch(() => {
       status.textContent = 'Update the Android app to get reminders';
       status.dataset.tone = 'muted';
     });
 
-  wrap.append(check, statusRow);
+  wrap.append(check, statusRow, options.el);
   return wrap;
 }
 

@@ -1,16 +1,21 @@
 package io.gjessing.nodecal;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.Manifest;
+import android.app.AlarmManager;
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.os.Build;
 import android.service.notification.StatusBarNotification;
+import androidx.core.app.NotificationCompat;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import org.json.JSONObject;
@@ -26,20 +31,36 @@ import org.junit.runner.RunWith;
  */
 @RunWith(AndroidJUnit4.class)
 public class ReminderNotificationTest {
+    /** Every delivery preference at its shipped default. */
+    private static final String DEFAULTS =
+        "{\"eventStyle\":\"banner\",\"taskStyle\":\"banner\",\"snoozeMinutes\":10," +
+        "\"showBadge\":true,\"clearOnOpen\":true,\"keepUntilDismissed\":false,\"alarmMode\":false}";
+
+    /** A channel that is not ours, to prove the shade sweep is not a cancelAll. */
+    private static final String FOREIGN_CHANNEL = "nodecal.test.foreign";
+
     private Context context;
     private NotificationManager manager;
+    private AlarmManager alarms;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         manager = context.getSystemService(NotificationManager.class);
+        alarms = context.getSystemService(AlarmManager.class);
         grantNotificationPermission();
+        // SharedPreferences outlive the test, so a style set by one case would
+        // otherwise decide where the next one posts.
+        apply(DEFAULTS);
         clearAll();
     }
 
     @After
-    public void tearDown() {
+    public void tearDown() throws Exception {
         clearAll();
+        manager.deleteNotificationChannel(FOREIGN_CHANNEL);
+        ReminderScheduler.disable(context);
+        apply(DEFAULTS);
     }
 
     /**
@@ -55,10 +76,23 @@ public class ReminderNotificationTest {
             .grantRuntimePermission(context.getPackageName(), Manifest.permission.POST_NOTIFICATIONS);
     }
 
+    /**
+     * Change delivery settings the way the web UI does, minus the re-arm: these
+     * tests post notifications and must not leave alarms behind.
+     */
+    private void apply(String patch) throws Exception {
+        ReminderSettings.applyJson(context, new JSONObject(patch));
+        ReminderChannels.ensure(context);
+    }
+
     /** Every notification call crosses a binder, so none of them is instant. */
     private void clearAll() {
         manager.cancelAll();
-        awaitGone("task-1");
+        for (int attempt = 0; attempt < 40; attempt++) {
+            if (manager.getActiveNotifications().length == 0) return;
+            sleepBriefly();
+        }
+        throw new AssertionError("Notifications were still posted after cancelAll");
     }
 
     // ── Payload ─────────────────────────────────────────────────────────────
@@ -94,36 +128,135 @@ public class ReminderNotificationTest {
         assertNull(Reminder.fromJson(new JSONObject("{\"tag\":\"t\"}")));
     }
 
-    // ── Notification ────────────────────────────────────────────────────────
+    // ── Actions ─────────────────────────────────────────────────────────────
 
     @Test
-    public void aTaskReminderOffersSnoozeAndComplete() {
+    public void aTaskReminderOffersSnoozeDismissAndComplete() {
         ReminderNotifier.show(context, reminder("task"));
 
         Notification posted = awaitPosted("task-1");
         assertEquals("Renew passport", posted.extras.getString(Notification.EXTRA_TITLE));
         assertEquals("Due: 2026-08-20", posted.extras.getString(Notification.EXTRA_TEXT));
-        assertEquals(2, posted.actions.length);
+        assertEquals(3, posted.actions.length);
         assertEquals("Snooze 10 min", posted.actions[0].title.toString());
-        assertEquals("Complete", posted.actions[1].title.toString());
+        assertEquals("Dismiss", posted.actions[1].title.toString());
+        assertEquals("Complete", posted.actions[2].title.toString());
         assertNotNull(posted.contentIntent);
     }
 
-    /** Nothing can be completed about an event, so it only offers Snooze. */
+    /** Nothing can be completed about an event, so it stops at the two. */
     @Test
-    public void anEventReminderOffersOnlySnooze() {
+    public void anEventReminderOffersSnoozeAndDismiss() {
         ReminderNotifier.show(context, reminder("event"));
 
         Notification posted = awaitPosted("task-1");
-        assertEquals(1, posted.actions.length);
+        assertEquals(2, posted.actions.length);
         assertEquals("Snooze 10 min", posted.actions[0].title.toString());
+        assertEquals("Dismiss", posted.actions[1].title.toString());
     }
 
     @Test
-    public void theRemindersChannelIsCreatedOnFirstUse() {
+    public void theSnoozeButtonSaysHowLongItSnoozesFor() throws Exception {
+        apply("{\"snoozeMinutes\":30}");
         ReminderNotifier.show(context, reminder("event"));
-        assertNotNull(manager.getNotificationChannel(ReminderNotifier.CHANNEL_ID));
+
+        assertEquals("Snooze 30 min", awaitPosted("task-1").actions[0].title.toString());
     }
+
+    /** Swiping a reminder away must clean up exactly as Dismiss does. */
+    @Test
+    public void swipingAwayRunsTheSameCleanupAsDismiss() {
+        ReminderNotifier.show(context, reminder("event"));
+
+        assertNotNull(awaitPosted("task-1").deleteIntent);
+    }
+
+    @Test
+    public void keepingRemindersUntilDismissedMakesThemOngoing() throws Exception {
+        ReminderNotifier.show(context, reminder("event"));
+        assertEquals(0, awaitPosted("task-1").flags & Notification.FLAG_ONGOING_EVENT);
+
+        clearAll();
+        apply("{\"keepUntilDismissed\":true}");
+        ReminderNotifier.show(context, reminder("event"));
+        assertNotEquals(0, awaitPosted("task-1").flags & Notification.FLAG_ONGOING_EVENT);
+    }
+
+    // ── Channels ────────────────────────────────────────────────────────────
+
+    @Test
+    public void theChannelAReminderNeedsExistsBeforeItIsPosted() {
+        ReminderNotifier.show(context, reminder("event"));
+
+        String channelId = awaitPosted("task-1").getChannelId();
+        assertEquals(ReminderChannels.idFor(context, ReminderSettings.STYLE_BANNER), channelId);
+        assertNotNull(manager.getNotificationChannel(channelId));
+    }
+
+    /** A silent reminder must land in the shade only, which is the channel's job. */
+    @Test
+    public void theStyleDecidesWhichChannelAReminderPostsTo() throws Exception {
+        apply("{\"eventStyle\":\"fullscreen\",\"taskStyle\":\"silent\"}");
+
+        ReminderNotifier.show(context, reminder("task"));
+        String quiet = awaitPosted("task-1").getChannelId();
+        assertEquals(ReminderChannels.idFor(context, ReminderSettings.STYLE_SILENT), quiet);
+        assertEquals(NotificationManager.IMPORTANCE_LOW, manager.getNotificationChannel(quiet).getImportance());
+
+        clearAll();
+        ReminderNotifier.show(context, reminder("event"));
+        String alert = awaitPosted("task-1").getChannelId();
+        assertEquals(ReminderChannels.idFor(context, ReminderSettings.STYLE_FULLSCREEN), alert);
+        assertEquals(NotificationManager.IMPORTANCE_HIGH, manager.getNotificationChannel(alert).getImportance());
+    }
+
+    /**
+     * A channel's badge is the user's the moment it is created and recreating
+     * the same id restores their value, so the setting has to move the posting
+     * to a different channel — and take the old one off the system screen.
+     */
+    @Test
+    public void turningTheBadgeOffMovesRemindersToAnotherChannel() throws Exception {
+        ReminderNotifier.show(context, reminder("event"));
+        String badged = awaitPosted("task-1").getChannelId();
+        assertTrue(manager.getNotificationChannel(badged).canShowBadge());
+
+        clearAll();
+        apply("{\"showBadge\":false}");
+        ReminderNotifier.show(context, reminder("event"));
+
+        String plain = awaitPosted("task-1").getChannelId();
+        assertNotEquals(badged, plain);
+        assertFalse(manager.getNotificationChannel(plain).canShowBadge());
+        assertNull("The unused channel must not linger in Android's settings", manager.getNotificationChannel(badged));
+    }
+
+    // ── Full screen ─────────────────────────────────────────────────────────
+
+    @Test
+    public void aFullScreenReminderCarriesTheAlarmScreen() throws Exception {
+        apply("{\"eventStyle\":\"fullscreen\"}");
+        ReminderNotifier.show(context, reminder("event"));
+
+        Notification posted = awaitPosted("task-1");
+        if (ReminderBridge.fullScreenAllowed(context)) {
+            assertNotNull(posted.fullScreenIntent);
+        } else {
+            // Android 14 can withhold the grant. The reminder must then still
+            // arrive as an ordinary heads-up notification, not vanish.
+            assertNotNull(posted.contentIntent);
+        }
+    }
+
+    @Test
+    public void aBannerReminderCarriesNoAlarmScreen() throws Exception {
+        apply("{\"eventStyle\":\"banner\"}");
+        ReminderNotifier.show(context, reminder("event"));
+
+        assertNull(awaitPosted("task-1").fullScreenIntent);
+    }
+
+    // ── Shade ───────────────────────────────────────────────────────────────
 
     @Test
     public void aFailedCompleteLeavesTheNotificationSayingSo() {
@@ -145,10 +278,93 @@ public class ReminderNotificationTest {
         awaitGone("task-1");
     }
 
+    /** Opening the app clears reminders, and nothing else Nodecal has posted. */
+    @Test
+    public void clearingTheShadeLeavesOtherNotificationsAlone() {
+        postForeignNotification();
+        ReminderNotifier.show(context, reminder("task"));
+        assertNotNull(awaitPosted("task-1"));
+
+        ReminderShade.cancelAll(context);
+
+        awaitGone("task-1");
+        assertNotNull("A notification on another channel is not ours to clear", find("foreign-1"));
+    }
+
+    /** The setting is what the launcher counter is read from. */
+    @Test
+    public void everyPostedReminderRaisesTheCounter() {
+        ReminderNotifier.show(context, reminder("event"));
+        assertEquals(1, awaitPosted("task-1").number);
+
+        ReminderNotifier.show(context, reminder("event", "task-2"));
+        assertEquals(2, awaitPosted("task-2").number);
+    }
+
+    @Test
+    public void openingTheAppClearsRemindersOnlyWhenAskedTo() throws Exception {
+        apply("{\"clearOnOpen\":false}");
+        ReminderNotifier.show(context, reminder("event"));
+        assertNotNull(awaitPosted("task-1"));
+
+        ReminderShade.cancelAllIfEnabled(context);
+        assertNotNull("Clearing is opt-out, and it was opted out of", find("task-1"));
+
+        apply("{\"clearOnOpen\":true}");
+        ReminderShade.cancelAllIfEnabled(context);
+        awaitGone("task-1");
+    }
+
+    // ── Alarms ──────────────────────────────────────────────────────────────
+
+    /**
+     * Alarm mode buys immunity from Doze by posting a real alarm clock, and the
+     * whole cost of that is the system's next-alarm indicator — so seeing it
+     * appear is the test. Snooze is used to arm one: it is the only path that
+     * needs no server.
+     */
+    @Test
+    public void alarmModeTakesOverTheSystemNextAlarmIndicator() throws Exception {
+        ReminderStore.setEnabled(context, true);
+        AlarmManager.AlarmClockInfo before = alarms.getNextAlarmClock();
+
+        apply("{\"alarmMode\":false,\"snoozeMinutes\":60}");
+        ReminderScheduler.snooze(context, reminder("event"));
+        assertEquals("An exact alarm must stay out of the indicator", before, alarms.getNextAlarmClock());
+
+        apply("{\"alarmMode\":true}");
+        ReminderScheduler.snooze(context, reminder("event"));
+
+        AlarmManager.AlarmClockInfo next = alarms.getNextAlarmClock();
+        assertNotNull(next);
+        assertNotEquals(before, next);
+        assertTrue(next.getTriggerTime() > System.currentTimeMillis());
+        assertNotNull("Tapping the indicator must lead back into Nodecal", next.getShowIntent());
+    }
+
+    private void postForeignNotification() {
+        manager.createNotificationChannel(
+            new NotificationChannel(FOREIGN_CHANNEL, "Foreign", NotificationManager.IMPORTANCE_LOW)
+        );
+        manager.notify(
+            "foreign-1",
+            99,
+            new NotificationCompat.Builder(context, FOREIGN_CHANNEL)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle("Not a reminder")
+                .build()
+        );
+        awaitPosted("foreign-1");
+    }
+
     private static Reminder reminder(String kind) {
+        return reminder(kind, "task-1");
+    }
+
+    private static Reminder reminder(String kind, String tag) {
         return new Reminder(
-            "task-1-1787130000000",
-            "task-1",
+            tag + "-1787130000000",
+            tag,
             "Renew passport",
             "Due: 2026-08-20",
             1787130000000L,

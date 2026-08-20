@@ -14,6 +14,13 @@
     <uses-permission
         android:name="android.permission.SCHEDULE_EXACT_ALARM"
         android:maxSdkVersion="32" />
+    <!--
+        Lets a reminder whose style asks for it take over the screen instead of
+        showing a banner. From Android 14 this is granted by the user rather than
+        at install unless the app is a clock or a dialler, so the Settings row
+        checks canUseFullScreenIntent() and offers the grant screen.
+    -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
     <application
         android:allowBackup="false"
@@ -31,6 +38,23 @@
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
             android:exported="true" />
+
+        <!--
+            The full-screen reminder. Its own task, kept out of Recents, and
+            finished as soon as it stops being visible: it is an interruption,
+            not somewhere the user navigates back to.
+        -->
+        <activity
+            android:name=".ReminderAlarmActivity"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:noHistory="true"
+            android:showWhenLocked="true"
+            android:taskAffinity=""
+            android:theme="@style/AppTheme.Alarm"
+            android:turnScreenOn="true" />
 
         <activity-alias
             android:name=".LauncherDefault"

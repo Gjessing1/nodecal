@@ -16,6 +16,7 @@ import org.json.JSONObject;
 public class ReminderReceiver extends BroadcastReceiver {
     static final String ACTION_FIRE = "io.gjessing.nodecal.action.REMINDER_FIRE";
     static final String ACTION_SNOOZE = "io.gjessing.nodecal.action.REMINDER_SNOOZE";
+    static final String ACTION_DISMISS = "io.gjessing.nodecal.action.REMINDER_DISMISS";
     static final String ACTION_COMPLETE = "io.gjessing.nodecal.action.REMINDER_COMPLETE";
     static final String ACTION_REFRESH = "io.gjessing.nodecal.action.REMINDER_REFRESH";
 
@@ -58,6 +59,14 @@ public class ReminderReceiver extends BroadcastReceiver {
                 ReminderNotifier.cancel(appContext, reminder.tag);
                 ReminderScheduler.forgetSnoozed(appContext, reminder);
                 ReminderScheduler.snooze(appContext, reminder);
+                return;
+
+            // Also the notification's delete intent, so swiping it away and
+            // pressing Dismiss clean up identically.
+            case ACTION_DISMISS:
+                if (reminder == null) return;
+                ReminderNotifier.cancel(appContext, reminder.tag);
+                ReminderScheduler.forgetSnoozed(appContext, reminder);
                 return;
 
             case ACTION_COMPLETE:

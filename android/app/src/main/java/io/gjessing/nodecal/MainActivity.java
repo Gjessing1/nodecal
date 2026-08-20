@@ -69,6 +69,12 @@ public class MainActivity extends BridgeActivity {
         // Cheapest moment to re-arm: the calendar the user is looking at is the
         // one the alarms should match.
         ReminderScheduler.refreshAsync(this);
+        // The user is looking at the calendar, so reminders that already fired
+        // have been seen. Without this they sit in the shade keeping the
+        // launcher's badge lit long after they stopped meaning anything; only
+        // the one that was tapped ever cleared itself. Armed alarms, snoozes
+        // included, are untouched.
+        ReminderShade.cancelAllIfEnabled(this);
     }
 
     @Override

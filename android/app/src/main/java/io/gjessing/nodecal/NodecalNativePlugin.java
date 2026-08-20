@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.net.Uri;
 import android.os.Build;
+import android.provider.Settings;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.pm.PackageInfoCompat;
 import com.getcapacitor.JSObject;
@@ -87,11 +88,51 @@ public class NodecalNativePlugin extends Plugin {
 
     @PluginMethod
     public void getReminderStatus(PluginCall call) {
-        JSObject result = new JSObject();
-        result.put("enabled", ReminderStore.isEnabled(getContext()));
-        result.put("permissionGranted", NotificationManagerCompat.from(getContext()).areNotificationsEnabled());
-        result.put("scheduled", ReminderStore.getScheduled(getContext()).size());
-        call.resolve(result);
+        try {
+            call.resolve(ReminderBridge.status(getContext()));
+        } catch (Exception error) {
+            call.reject("Could not read reminder settings", error);
+        }
+    }
+
+    /** A partial patch: the web UI sends the one control the user just changed. */
+    @PluginMethod
+    public void setReminderSettings(PluginCall call) {
+        try {
+            call.resolve(ReminderBridge.apply(getContext(), call.getData()));
+        } catch (Exception error) {
+            call.reject("Could not save reminder settings", error);
+        }
+    }
+
+    /** Sound and vibration stay Android's to own, so hand the user its screen. */
+    @PluginMethod
+    public void openNotificationSettings(PluginCall call) {
+        open(call, ReminderChannels.systemSettingsIntent(getContext()));
+    }
+
+    @PluginMethod
+    public void requestFullScreenPermission(PluginCall call) {
+        if (ReminderBridge.fullScreenAllowed(getContext())) {
+            call.resolve();
+            return;
+        }
+        open(
+            call,
+            new Intent(
+                Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                Uri.fromParts("package", getContext().getPackageName(), null)
+            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        );
+    }
+
+    private void open(PluginCall call, Intent intent) {
+        try {
+            getContext().startActivity(intent);
+            call.resolve();
+        } catch (Exception error) {
+            call.reject("Android could not open that settings screen", error);
+        }
     }
 
     @PluginMethod
@@ -99,7 +140,8 @@ public class NodecalNativePlugin extends Plugin {
         if (!Boolean.TRUE.equals(call.getBoolean("enabled", false))) {
             ReminderScheduler.disable(getContext());
             ReminderStore.setEnabled(getContext(), false);
-            call.resolve(status(false));
+            ReminderShade.cancelAll(getContext());
+            resolveWithStatus(call);
             return;
         }
         if (needsNotificationPermission()) {
@@ -155,15 +197,17 @@ public class NodecalNativePlugin extends Plugin {
 
     private void enableReminders(PluginCall call) {
         ReminderStore.setEnabled(getContext(), true);
+        ReminderChannels.ensure(getContext());
         ReminderScheduler.refreshAsync(getContext());
-        call.resolve(status(true));
+        resolveWithStatus(call);
     }
 
-    private JSObject status(boolean enabled) {
-        JSObject result = new JSObject();
-        result.put("enabled", enabled);
-        result.put("permissionGranted", NotificationManagerCompat.from(getContext()).areNotificationsEnabled());
-        return result;
+    private void resolveWithStatus(PluginCall call) {
+        try {
+            call.resolve(ReminderBridge.status(getContext()));
+        } catch (Exception error) {
+            call.reject("Could not read reminder settings", error);
+        }
     }
 
     /**

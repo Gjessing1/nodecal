@@ -14,7 +14,10 @@
     <string name="change_server">Change server</string>
     <string name="reminder_channel_name">Reminders</string>
     <string name="reminder_channel_description">Event alarms and task reminders from your calendar.</string>
-    <string name="reminder_snooze">Snooze 10 min</string>
+    <string name="reminder_channel_quiet_name">Quiet reminders</string>
+    <string name="reminder_snooze">Snooze %1$d min</string>
+    <string name="reminder_dismiss">Dismiss</string>
+    <string name="reminder_open">Open in Nodecal</string>
     <string name="reminder_complete">Complete</string>
     <string name="reminder_complete_failed">Could not reach Nodecal — the task is still open.</string>
     <string name="notification_permission_denied">Android is blocking notifications for Nodecal. Allow them in the system app settings.</string>
