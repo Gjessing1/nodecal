@@ -23,6 +23,7 @@ import {
 } from '../components/modalEditor.js';
 import { initCalendarDrawer, openDrawer } from '../components/calendarDrawer.js';
 import { showSnackbar } from '../components/snackbar.js';
+import { renderQuickAddTarget } from '../components/quickAddTarget.js';
 import { initSettingsPanel, openSettings } from '../components/settingsPanel.js';
 import { initInstallPrompt } from './installPrompt.js';
 import { initSwUpdate } from './swUpdate.js';
@@ -44,10 +45,9 @@ import {
   activeProfileId,
   activeProfile,
   isSingleMode,
-  DUAL_IDS,
-  effectiveEventCalendar,
-  effectiveTaskSource,
+  SWITCH_IDS,
 } from './profiles.js';
+import { effectiveTaskSource, resolveEventCalendar } from './profileTargets.js';
 import { initBackNav, goBack } from './backNav.js';
 import { initConnectivity, reportOfflineData, reportFreshData, recheck } from './connectivity.js';
 import { localDateStr, toDateInputValue, localToUTC } from './utils.js';
@@ -140,12 +140,12 @@ function updateProfileSwitcher() {
   btn.textContent = p.name || activeProfileId();
 }
 
-// One-tap switch: toggle between the Personal/Work pair, persisting the current
-// profile's live calendar visibility first so drawer toggles aren't lost.
+// One-tap switch: step through Personal → Work → Combined, persisting the
+// current profile's live calendar visibility first so drawer toggles aren't lost.
 function cycleProfile() {
   if (isSingleMode()) return;
   captureActiveProfile();
-  const next = DUAL_IDS[(DUAL_IDS.indexOf(activeProfileId()) + 1) % DUAL_IDS.length];
+  const next = SWITCH_IDS[(SWITCH_IDS.indexOf(activeProfileId()) + 1) % SWITCH_IDS.length];
   applyProfile(next);
   if (!state.isOffline) persistProfiles();
   updateProfileSwitcher();
@@ -223,6 +223,9 @@ function render() {
   const showQuickAdd = !state.isOffline && state.activeView !== 'tasks';
   calQuickAdd.classList.toggle('hidden', !showQuickAdd);
   document.getElementById('app').classList.toggle('cal-quickadd-visible', showQuickAdd);
+  // Rebuilt every render so a profile switch, a drawer toggle or a fresh
+  // calendar list all move the "To:" chips without extra plumbing.
+  if (showQuickAdd) renderQuickAddTarget();
   // FAB is hidden in tasks view — tasks view has its own + and ↵ buttons
   fab.hidden = state.isOffline || state.activeView === 'tasks';
   const calendarCallbacks = state.isOffline
@@ -1045,7 +1048,13 @@ function initBackButton() {
 async function init() {
   initTheme();
   initLogin();
-  initModal();
+  // A batch shift rewrites events the app never saw go by, so refetch and
+  // re-render as soon as it lands instead of waiting for the poll interval.
+  initModal(async (message) => {
+    await loadEvents();
+    render();
+    if (message) showSnackbar(message);
+  });
   // Calendar visibility belongs to the active profile — capture + persist it
   // whenever the drawer toggles a calendar, so it survives reloads and switches.
   initCalendarDrawer(() => {
@@ -1217,7 +1226,7 @@ async function init() {
           start: data.start,
           end: data.end,
           allDay: data.allDay,
-          calendarId: effectiveEventCalendar() || state.calendars[0]?.id,
+          calendarId: resolveEventCalendar(),
           description: '',
           ...(data.rrule ? { rrule: data.rrule } : {}),
           alarmMinutes: state.config.alarmDefaultMinutes || null,

@@ -1,7 +1,7 @@
 import { state } from '../app/state.js';
 import { getAllCategories, parseTagsFromTitle } from '../app/taskUtils.js';
 import { localDateStr } from '../app/utils.js';
-import { effectiveTaskSource } from '../app/profiles.js';
+import { effectiveTaskSource, rememberTaskSource } from '../app/profileTargets.js';
 import { openTaskModal } from './taskModal.js';
 
 let _quickAddEl = null;
@@ -249,6 +249,9 @@ function buildQuickAdd(callbacks) {
       btn.textContent = src.name || src.url;
       btn.addEventListener('click', () => {
         selectedSource = selectedSource === src.url ? null : src.url;
+        // Picking a source makes it the active profile's default, so the next
+        // task lands in the same place without picking again.
+        if (selectedSource) rememberTaskSource(selectedSource);
         buildSourceSelector();
       });
       sourceRow.appendChild(btn);

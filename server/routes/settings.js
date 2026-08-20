@@ -58,6 +58,14 @@ router.get('/settings', (req, res) => {
         defaultEventCalendar: '',
         defaultView: '',
       },
+      combined: {
+        name: 'Combined',
+        hiddenCalendars: [],
+        accentColor: '',
+        defaultTaskSource: '',
+        defaultEventCalendar: '',
+        defaultView: '',
+      },
     },
     ...overrides,
   });

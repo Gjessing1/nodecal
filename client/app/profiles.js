@@ -35,11 +35,22 @@ const DEFAULT_PROFILES = {
     defaultEventCalendar: '',
     defaultView: '',
   },
+  // 'Combined' is the both-at-once view: nothing hidden by default. It is an
+  // ordinary profile otherwise, so the drawer can still hide a calendar in it
+  // and the choice is remembered like any other.
+  combined: {
+    name: 'Combined',
+    hiddenCalendars: [],
+    accentColor: '',
+    defaultTaskSource: '',
+    defaultEventCalendar: '',
+    defaultView: '',
+  },
 };
 
-// Display order for the built-ins and the two ids that form the switcher pair.
-export const PROFILE_ORDER = ['single', 'personal', 'work'];
-export const DUAL_IDS = ['personal', 'work'];
+// Display order for the built-ins, and the ids the navbar pill cycles through.
+export const PROFILE_ORDER = ['single', 'personal', 'work', 'combined'];
+export const SWITCH_IDS = ['personal', 'work', 'combined'];
 
 // `config` defaults to the live settings; the Settings editor passes its draft
 // so edits stay uncommitted until Save.
@@ -91,22 +102,6 @@ export function applyProfile(id) {
   state.hiddenCalendars = new Set(p.hiddenCalendars || []);
   if (p.defaultView) state.config.defaultView = p.defaultView;
   applyAccent(p.accentColor);
-}
-
-// Resolve which task source new tasks should land in: the active profile's
-// override if set, otherwise the global default. Computed at point of use so
-// switching profiles changes the quick-add target without clobbering the
-// global `defaultTaskSource` setting.
-export function effectiveTaskSource() {
-  return activeProfile()?.defaultTaskSource || state.config.defaultTaskSource || '';
-}
-
-// Resolve which calendar new events should land in: the active profile's
-// override if set, otherwise the global default. Computed at point of use so
-// switching profiles changes the target without clobbering the global
-// `defaultCalendar` setting.
-export function effectiveEventCalendar() {
-  return activeProfile()?.defaultEventCalendar || state.config.defaultCalendar || '';
 }
 
 // Ensure every profile's chosen task source is a registered task source so the

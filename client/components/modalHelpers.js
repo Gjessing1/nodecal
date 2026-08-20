@@ -153,18 +153,24 @@ export function mountLocationUrlSection(wrap, opts) {
 /**
  * Mount a persistent collapsible toggle header.
  * Clicking the header toggles the body open/closed.
- * Starts expanded when hasContent is true, collapsed otherwise.
+ * Starts expanded when hasContent is true, unless defaultExpanded overrides it.
+ * A section that is collapsed while holding content gets a dot on its header, so
+ * the user can see a reminder or a repeat rule is set without opening it.
  *
  * @param {HTMLElement} toggleEl - container for the header button
  * @param {HTMLElement} bodyEl   - the section to show/hide
- * @param {{ label?: string, hasContent?: boolean, onToggle?: (expanded: boolean) => void }} [opts]
+ * @param {{ label?: string, hasContent?: boolean, defaultExpanded?: boolean, onToggle?: (expanded: boolean) => void }} [opts]
  */
-export function mountCollapsibleToggle(toggleEl, bodyEl, { label, hasContent, onToggle } = {}) {
+export function mountCollapsibleToggle(
+  toggleEl,
+  bodyEl,
+  { label, hasContent, defaultExpanded, onToggle } = {},
+) {
   if (!toggleEl || !bodyEl) return;
   toggleEl.innerHTML = '';
 
   const cleanLabel = label.replace(/^\+\s*/, '');
-  let expanded = hasContent;
+  let expanded = defaultExpanded ?? hasContent;
   bodyEl.style.display = expanded ? '' : 'none';
 
   const btn = document.createElement('button');
@@ -172,7 +178,9 @@ export function mountCollapsibleToggle(toggleEl, bodyEl, { label, hasContent, on
   btn.className = 'add-field-btn';
   btn.style.cssText = 'display:flex;align-items:center;gap:4px;';
   function update() {
-    btn.textContent = (expanded ? '− ' : '+ ') + cleanLabel;
+    const dot = !expanded && hasContent ? ' •' : '';
+    btn.textContent = (expanded ? '− ' : '+ ') + cleanLabel + dot;
+    btn.classList.toggle('has-content', !expanded && !!hasContent);
   }
   update();
   btn.addEventListener('click', () => {

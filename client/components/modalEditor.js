@@ -1,4 +1,5 @@
 import { state, calendarById } from '../app/state.js';
+import { mountBatchShift } from './batchShift.js';
 import { toDateInputValue, toTimeInputValue, localToUTC, esc } from '../app/utils.js';
 import { buildTimePicker } from './timePicker.js';
 import { buildRecurrenceEditor } from './recurrenceUI.js';
@@ -9,11 +10,17 @@ import {
   wireCategoryUI,
 } from './modalHelpers.js';
 import { getAllEventCategories } from '../app/eventUtils.js';
-import { effectiveEventCalendar } from '../app/profiles.js';
+import { resolveEventCalendar } from '../app/profileTargets.js';
 
-let overlay, sheet, onSaveCb, onDeleteCb, onDuplicateCb;
+let overlay, sheet, onSaveCb, onDeleteCb, onDuplicateCb, onEventsChangedCb;
 
-export function initModal() {
+/**
+ * @param {(message: string) => void} [onEventsChanged] - called when something
+ *   inside the modal changed events behind the app's back (batch shift), so the
+ *   app can refetch and re-render instead of waiting for the next poll.
+ */
+export function initModal(onEventsChanged) {
+  onEventsChangedCb = onEventsChanged;
   overlay = document.getElementById('modal-overlay');
   sheet = overlay.querySelector('.modal-sheet');
   overlay.addEventListener('click', (e) => {
@@ -228,7 +235,7 @@ function renderForm(event, defaultDate, explicitTime = false) {
   // For all-day events, slice the UTC date string directly — never convert through local timezone.
   const allDayDateVal = event?.allDay ? event.start.slice(0, 10) : toDateInputValue(start, tz);
   // Default calendar: prefer event's calendar, then the profile/global default, then first available
-  const defaultCalId = event?.calendarId || effectiveEventCalendar() || state.calendars[0]?.id;
+  const defaultCalId = event?.calendarId || resolveEventCalendar();
 
   sheet.innerHTML = `
     <div class="modal-handle"></div>
@@ -401,9 +408,12 @@ function renderForm(event, defaultDate, explicitTime = false) {
 
   // ── Reminder / Repeat collapse when unused ────────────────────────────────
   const _alarmVal = event?.alarmMinutes ?? state.config.alarmDefaultMinutes ?? 0;
+  // Collapsed even when a reminder or rule is set — the form is long enough on a
+  // phone without it, and the header dot says the section is not empty.
   mountCollapsibleToggle(sheet.querySelector('#f-rr-toggle'), sheet.querySelector('#f-rr-body'), {
     label: '+ Reminder / Repeat',
     hasContent: !!(_alarmVal > 0 || event?.rrule),
+    defaultExpanded: false,
   });
 
   // Alarm select → show/hide custom minutes row
@@ -460,6 +470,7 @@ function renderForm(event, defaultDate, explicitTime = false) {
     mountCollapsibleToggle(catToggleEl, catBodyEl, {
       label: 'Categories',
       hasContent: modalCats.length > 0,
+      defaultExpanded: false,
       onToggle: (expanded) => catSection.classList.toggle('collapsible-expanded', expanded),
     });
 
@@ -487,115 +498,15 @@ function renderForm(event, defaultDate, explicitTime = false) {
       onRemove: () => refreshBatchShift(),
     });
 
-    // Batch shift (collapsible, shown only when there are categories)
-    const batchToggle = document.createElement('div');
-    batchToggle.className = 'collapsible-field-wrap';
-    const batchBody = document.createElement('div');
-    batchBody.className = 'hidden';
-
-    function refreshBatchShift() {
-      batchToggle.innerHTML = '';
-      batchBody.innerHTML = '';
-      if (!modalCats.length) return;
-      const toggleBtn = document.createElement('button');
-      toggleBtn.type = 'button';
-      toggleBtn.className = 'add-field-btn';
-      toggleBtn.textContent = '+ Batch shift';
-      let open = false;
-      toggleBtn.addEventListener('click', () => {
-        open = !open;
-        batchBody.classList.toggle('hidden', !open);
-        toggleBtn.textContent = open ? '− Batch shift' : '+ Batch shift';
-      });
-      batchToggle.appendChild(toggleBtn);
-
-      const hint = document.createElement('div');
-      hint.className = 'batch-shift-status';
-      hint.textContent = 'Tip: use a negative number to shift events backwards.';
-      batchBody.appendChild(hint);
-
-      for (const cat of modalCats) {
-        const row = document.createElement('div');
-        row.className = 'batch-shift-row';
-        const catLabel = document.createElement('span');
-        catLabel.className = 'task-cat-chip';
-        catLabel.textContent = cat;
-
-        const nInput = document.createElement('input');
-        nInput.type = 'number';
-        nInput.min = '-365';
-        nInput.max = '365';
-        nInput.title = 'Negative shifts backwards, positive shifts forwards';
-        nInput.className = 'rec-interval-input';
-        nInput.value = '7';
-        const unitSel = document.createElement('select');
-        unitSel.className = 'rec-freq-sel';
-        for (const [v, l] of [
-          ['1', 'day(s)'],
-          ['7', 'week(s)'],
-        ]) {
-          const o = document.createElement('option');
-          o.value = v;
-          o.textContent = l;
-          unitSel.appendChild(o);
-        }
-        const futureBtn = document.createElement('button');
-        futureBtn.type = 'button';
-        futureBtn.className = 'btn btn-primary batch-shift-apply';
-        futureBtn.textContent = 'Shift this and future events';
-        const allBtn = document.createElement('button');
-        allBtn.type = 'button';
-        allBtn.className = 'btn btn-ghost batch-shift-apply';
-        allBtn.textContent = 'Shift all';
-        const status = document.createElement('span');
-        status.className = 'batch-shift-status';
-
-        async function doShift(withAnchor) {
-          const n = parseInt(nInput.value) || 7;
-          const multiplier = parseInt(unitSel.value) || 1;
-          const shiftDays = n * multiplier;
-          futureBtn.disabled = true;
-          allBtn.disabled = true;
-          status.textContent = '…';
-          try {
-            const body = { category: cat, shiftDays };
-            if (withAnchor) {
-              const anchorDate = event?.occurrenceDate || event?.start || null;
-              if (anchorDate) body.anchorDate = anchorDate;
-            }
-            const r = await fetch('/api/events/batch-shift', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(body),
-            });
-            const data = await r.json();
-            if (!data.ok) throw new Error(data.error);
-            if (data.total === 0) {
-              status.textContent = '✗ No events found';
-            } else if (!data.shifted && data.errors?.length) {
-              status.textContent = `✗ ${data.errors[0].error}`;
-            } else {
-              status.textContent = `✓ ${data.shifted}/${data.total} shifted${data.skipped ? ` (${data.skipped} skipped)` : ''}`;
-            }
-          } catch (err) {
-            status.textContent = '✗ ' + err.message;
-          } finally {
-            futureBtn.disabled = false;
-            allBtn.disabled = false;
-          }
-        }
-        futureBtn.addEventListener('click', () => doShift(true));
-        allBtn.addEventListener('click', () => doShift(false));
-
-        const controls = document.createElement('div');
-        controls.className = 'batch-shift-controls';
-        controls.append(nInput, unitSel, futureBtn, allBtn, status);
-        row.append(catLabel, controls);
-        batchBody.appendChild(row);
-      }
-    }
-    refreshBatchShift();
-    catSection.append(batchToggle, batchBody);
+    // Batch shift lives in its own module — see components/batchShift.js.
+    const refreshBatchShift = mountBatchShift(catSection, {
+      getCategories: () => modalCats,
+      getAnchorDate: () => event?.occurrenceDate || event?.start || null,
+      onShifted: (message) => {
+        closeModal();
+        onEventsChangedCb?.(message);
+      },
+    });
 
     // Store reference so handleSave can read categories
     catSection._getCategories = catCtrl.getCategories;

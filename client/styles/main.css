@@ -212,6 +212,16 @@ select {
 .cal-quickadd-visible #view-container {
   padding-bottom: calc(var(--cal-quickadd-h) + var(--spacing-xl));
 }
+.cal-quickadd-target {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+  flex-wrap: wrap;
+}
+.cal-quickadd-target[hidden] {
+  display: none;
+}
 .cal-quickadd-row {
   display: flex;
   align-items: center;
@@ -794,6 +804,10 @@ select {
   color: var(--color-text-muted);
   padding: 2px 0;
   text-align: left;
+}
+/* Collapsed but not empty — the dot in the label needs to read as a marker */
+.add-field-btn.has-content {
+  color: var(--color-accent);
 }
 /* After-completion row — never wrap */
 .rec-after-row {

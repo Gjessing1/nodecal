@@ -265,6 +265,9 @@ router.post('/events/batch-shift', async (req, res) => {
       return res.status(400).json({ error: 'category and shiftDays required' });
 
     const shiftMs = Math.round(shiftDays) * 86400000;
+    // Stamped like every other write path so the sync engine can still tell a
+    // locally-edited event from a stale remote one.
+    const now = new Date().toISOString();
     const anchor = anchorDate ? new Date(anchorDate) : null;
     const catLower = category.toLowerCase();
     const matching = store
@@ -289,7 +292,7 @@ router.post('/events/batch-shift', async (req, res) => {
             ...(ev.rrule ? { exdates: null } : {}),
           };
           const { href, etag } = await putEventAtHref(ev.href, serializeEvent(updated), ev.etag);
-          store.setEvent({ ...updated, href, etag });
+          store.setEvent({ ...updated, href, etag, localModifiedAt: now, lastSyncedAt: now });
           shifted++;
           continue;
         }
@@ -307,7 +310,7 @@ router.post('/events/batch-shift', async (req, res) => {
             end: new Date(evStart.getTime() + durMs + shiftMs).toISOString(),
           };
           const { href, etag } = await putEventAtHref(ev.href, serializeEvent(updated), ev.etag);
-          store.setEvent({ ...updated, href, etag });
+          store.setEvent({ ...updated, href, etag, localModifiedAt: now, lastSyncedAt: now });
           shifted++;
           continue;
         }
@@ -333,7 +336,7 @@ router.post('/events/batch-shift', async (req, res) => {
             exdates: null,
           };
           const { href, etag } = await putEventAtHref(ev.href, serializeEvent(updated), ev.etag);
-          store.setEvent({ ...updated, href, etag });
+          store.setEvent({ ...updated, href, etag, localModifiedAt: now, lastSyncedAt: now });
           shifted++;
           continue;
         }
@@ -346,7 +349,13 @@ router.post('/events/batch-shift', async (req, res) => {
           serializeEvent(cappedBase),
           ev.etag,
         );
-        store.setEvent({ ...cappedBase, href: bHref, etag: bEtag });
+        store.setEvent({
+          ...cappedBase,
+          href: bHref,
+          etag: bEtag,
+          localModifiedAt: now,
+          lastSyncedAt: now,
+        });
 
         const newUid = crypto.randomUUID();
         const newStart = new Date(firstAtOrAfter.getTime() + shiftMs);
@@ -364,7 +373,13 @@ router.post('/events/batch-shift', async (req, res) => {
           newUid,
           serializeEvent(newSeries),
         );
-        store.setEvent({ ...newSeries, href: nHref, etag: nEtag });
+        store.setEvent({
+          ...newSeries,
+          href: nHref,
+          etag: nEtag,
+          localModifiedAt: now,
+          lastSyncedAt: now,
+        });
         shifted++;
       } catch (err) {
         console.error(`[batch-shift] skipped "${ev.title}" (${ev.uid}): ${err.message}`);

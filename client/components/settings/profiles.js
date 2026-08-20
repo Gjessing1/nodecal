@@ -29,7 +29,7 @@ export function renderProfilesSection(pane, draft) {
           draft.activeProfile = v;
         },
       ),
-      'Single hides the navbar switcher. Personal / Work shows it.',
+      'Single hides the navbar switcher. Personal / Work / Combined shows it, and tapping the pill steps through the three.',
     ),
   );
 

@@ -70,14 +70,15 @@
         </div>
       </header>
 
-      <div id="offline-status" class="offline-status hidden" role="status" aria-live="polite">
-        Offline · Read-only · Showing the last saved data
-      </div>
+      <!-- Copy comes from OFFLINE_MESSAGE in client/app/main.js, which is the
+           only thing that ever unhides this banner. -->
+      <div id="offline-status" class="offline-status hidden" role="status" aria-live="polite"></div>
       <div id="sync-error" class="sync-error hidden"></div>
 
       <main id="view-container"></main>
 
       <div id="cal-quickadd" class="cal-quickadd hidden">
+        <div id="cal-quickadd-target" class="cal-quickadd-target" hidden></div>
         <div class="cal-quickadd-row">
           <input
             type="text"
