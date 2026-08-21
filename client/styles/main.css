@@ -70,100 +70,6 @@ select {
 .cal-quickadd-visible #view-container {
   padding-bottom: calc(var(--cal-quickadd-h) + var(--spacing-xl));
 }
-/* ── Agenda view ────────────────────────────────────────── */
-.agenda-group {
-  padding: 0 var(--spacing-md);
-}
-.agenda-date-header {
-  padding: var(--spacing-md) 0 var(--spacing-sm);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border-top: 1px solid var(--color-border);
-}
-.agenda-date-header.today {
-  color: var(--color-today-text);
-}
-.agenda-empty {
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-  padding: var(--spacing-sm) 0 var(--spacing-md);
-}
-.agenda-group.is-past {
-  opacity: 0.7;
-}
-.agenda-earlier-btn {
-  display: block;
-  margin: 0 auto var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-md);
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-}
-.agenda-today-chip {
-  position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: calc(
-    var(--nav-height) + var(--spacing-xl) + var(--spacing-lg) + var(--app-safe-area-bottom)
-  );
-  z-index: 40;
-  padding: var(--spacing-xs) var(--spacing-md);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: #fff;
-  background: var(--color-accent);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-}
-.agenda-gap {
-  padding: var(--spacing-xs) var(--spacing-md);
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  font-style: italic;
-  border-top: 1px solid var(--color-border);
-}
-
-/* ── Event card ─────────────────────────────────────────── */
-.event-card {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-sm);
-  margin-bottom: var(--spacing-xs);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-.event-card:active {
-  background: var(--color-surface);
-}
-.event-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  margin-top: 5px;
-}
-.event-info {
-  flex: 1;
-  min-width: 0;
-}
-.event-title {
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.event-time {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
-
 :root {
   --cal-quickadd-h: 60px;
   --tasks-quickadd-h: 96px;
@@ -601,16 +507,6 @@ select {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
-.agenda-cat-filter {
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-bottom: 1px solid var(--color-border);
-  flex-shrink: 0;
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  background: var(--color-bg);
-}
-
 /* ── Recurrence editor ──────────────────────────────────── */
 .rec-editor {
   display: flex;
@@ -1115,15 +1011,6 @@ mark.nlp-match {
 }
 .time-wheel-panel.hidden {
   display: none;
-}
-
-/* ── Agenda compact ─────────────────────────────────────── */
-.agenda-empty-inline {
-  text-transform: none;
-  font-weight: 400;
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  letter-spacing: 0;
 }
 
 /* ── Utilities ──────────────────────────────────────────── */

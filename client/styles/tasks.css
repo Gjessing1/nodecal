@@ -454,10 +454,6 @@
   background: var(--color-border) !important;
 }
 
-.task-agenda-card {
-  opacity: 0.85;
-}
-
 /* ── Quick-add + button (opens full task modal) ──────────── */
 .tasks-quickadd-new {
   width: 44px;

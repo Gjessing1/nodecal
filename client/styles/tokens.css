@@ -28,6 +28,7 @@
   --spacing-xl: 40px;
   --spacing-control: 10px;
   --spacing-pill-y: 3px;
+  --spacing-event-dot-offset: 5px;
 
   --text-sm: 13px;
   --text-md: 15px;
@@ -47,6 +48,7 @@
   --shadow-drawer: 4px 0 16px rgba(0, 0, 0, 0.15);
   --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.12);
   --shadow-popup: 0 12px 40px rgba(0, 0, 0, 0.25);
+  --shadow-floating: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
 :root {
