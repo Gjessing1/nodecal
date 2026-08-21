@@ -3,7 +3,6 @@ import { localDateStr, getISOWeek, weatherBadge } from '../app/utils.js';
 import {
   buildTimeColumn,
   buildHourLines,
-  buildEventBlock,
   buildCurrentTimeLine,
   updateCurrentTimeLine,
   getTotalHeight,
@@ -11,12 +10,14 @@ import {
   buildNightOverlay,
   TIME_COL_WIDTH,
 } from '../components/timeGrid.js';
+import { buildEventBlock } from '../components/eventBlock.js';
 import { initDnd, initSwipe, initLongPressCreate } from '../components/dnd.js';
 import { HOUR_HEIGHT } from '../components/timeGrid.js';
 import { showDayPopup } from './dayPopup.js';
 import { taskSourceVisible } from '../app/taskUtils.js';
 import { buildAllDayRow } from './weekAllDay.js';
 import { clipEventToDay } from './eventSegment.js';
+import { layoutTimeGridSegments } from './timeGridLayout.js';
 import { dayWindow, shiftLabel, timeOnDay, todayLabel, todayStr } from '../app/dayWindow.js';
 
 let timerId = null;
@@ -128,10 +129,14 @@ export function renderWeek(container, callbacks) {
     // continues at the top of the next day instead of being redrawn there at
     // the clock time it started at.
     const { start: windowStart, end: windowEnd } = dayWindow(dayStr, tz);
+    const daySegments = [];
     for (const ev of state.events) {
       if (ev.allDay || state.hiddenCalendars.has(ev.calendarId)) continue;
       const segment = clipEventToDay(ev, windowStart, windowEnd);
       if (!segment) continue;
+      daySegments.push({ ev, segment });
+    }
+    for (const { ev, segment, layout } of layoutTimeGridSegments(daySegments)) {
       const cal = calendarById(ev.calendarId);
       col.appendChild(
         buildEventBlock(ev, {
@@ -139,6 +144,7 @@ export function renderWeek(container, callbacks) {
           onClick: onEventClick,
           timezone: tz,
           segment,
+          layout,
         }),
       );
     }

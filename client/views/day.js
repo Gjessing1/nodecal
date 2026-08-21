@@ -5,17 +5,18 @@ import { showDatePicker } from '../components/datePicker.js';
 import {
   buildTimeColumn,
   buildHourLines,
-  buildEventBlock,
   buildCurrentTimeLine,
   updateCurrentTimeLine,
   getTotalHeight,
   timeToTop,
   buildNightOverlay,
 } from '../components/timeGrid.js';
+import { buildEventBlock } from '../components/eventBlock.js';
 import { initDnd, initSwipe, initLongPressCreate } from '../components/dnd.js';
 import { HOUR_HEIGHT } from '../components/timeGrid.js';
 import { taskSourceVisible } from '../app/taskUtils.js';
 import { clipEventToDay } from './eventSegment.js';
+import { layoutTimeGridSegments } from './timeGridLayout.js';
 
 let timerId = null;
 let _container = null;
@@ -106,7 +107,7 @@ export function renderDay(container, callbacks) {
   const timeLine = buildCurrentTimeLine(tz);
   eventsCol.appendChild(timeLine);
 
-  for (const { ev, segment } of daySegments) {
+  for (const { ev, segment, layout } of layoutTimeGridSegments(daySegments)) {
     const cal = calendarById(ev.calendarId);
     eventsCol.appendChild(
       buildEventBlock(ev, {
@@ -114,6 +115,7 @@ export function renderDay(container, callbacks) {
         onClick: onEventClick,
         timezone: tz,
         segment,
+        layout,
       }),
     );
   }

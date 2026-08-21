@@ -177,8 +177,9 @@
 /* ── Event block (time grid) ────────────────────────────── */
 .event-block {
   position: absolute;
-  left: 2px;
-  right: 2px;
+  left: calc(var(--event-left, 0%) + var(--spacing-2xs));
+  right: auto;
+  width: calc(var(--event-width, 100%) - var(--spacing-xs));
   border-radius: var(--radius-sm);
   padding: 2px var(--spacing-xs);
   cursor: pointer;
@@ -188,6 +189,28 @@
   user-select: none;
   display: flex;
   flex-direction: column;
+}
+.event-block.has-conflict {
+  box-shadow: inset var(--spacing-2xs) 0 var(--color-danger);
+}
+.event-conflict-mark {
+  position: absolute;
+  top: var(--spacing-2xs);
+  right: var(--spacing-2xs);
+  display: grid;
+  place-items: center;
+  width: var(--spacing-md);
+  height: var(--spacing-md);
+  border-radius: var(--radius-lg);
+  background: var(--color-danger);
+  color: var(--color-bg);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+.event-block.occurrence-modified .event-conflict-mark {
+  right: var(--spacing-sm);
 }
 .event-block:active {
   opacity: 0.7;
