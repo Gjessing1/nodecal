@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
@@ -13,6 +14,7 @@ export default defineConfig({
     emptyOutDir: true,
   },
   plugins: [
+    tailwindcss(),
     VitePWA({
       strategies: 'injectManifest',
       srcDir: 'client',

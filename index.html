@@ -11,12 +11,7 @@
     <title>Nodecal</title>
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
     <link rel="apple-touch-icon" href="/icons/icon.svg" />
-    <link rel="stylesheet" href="/client/styles/tokens.css" />
-    <link rel="stylesheet" href="/client/styles/main.css" />
-    <link rel="stylesheet" href="/client/styles/views.css" />
-    <link rel="stylesheet" href="/client/styles/month.css" />
-    <link rel="stylesheet" href="/client/styles/tasks.css" />
-    <link rel="stylesheet" href="/client/styles/settings.css" />
+    <link rel="stylesheet" href="/client/styles/app.css" />
     <!-- Apply saved theme before first paint to avoid flash -->
     <script>
       (function () {
@@ -27,9 +22,14 @@
     </script>
   </head>
   <body>
-    <div id="login-overlay" class="login-overlay hidden">
-      <div class="login-card">
-        <h1>Nodecal</h1>
+    <div
+      id="login-overlay"
+      class="login-overlay fixed inset-0 z-[var(--z-overlay)] flex animate-[fadeIn_0.2s_ease] items-center justify-center bg-bg pt-[calc(var(--spacing-md)+var(--app-safe-area-top))] pr-[calc(var(--spacing-md)+var(--app-safe-area-right))] pb-[calc(var(--spacing-md)+var(--app-safe-area-bottom))] pl-[calc(var(--spacing-md)+var(--app-safe-area-left))] hidden"
+    >
+      <div
+        class="flex w-9/10 max-w-login flex-col gap-lg rounded-md border border-border bg-surface px-lg py-xl shadow-modal"
+      >
+        <h1 class="text-center text-xl font-bold">Nodecal</h1>
         <form id="login-form" autocomplete="on">
           <input
             type="text"
@@ -50,8 +50,10 @@
               placeholder="Enter password"
             />
           </div>
-          <div id="login-error" class="login-error hidden">Wrong password — try again</div>
-          <button type="submit" class="btn btn-primary" style="width: 100%">Sign in</button>
+          <div id="login-error" class="py-xs text-center text-sm text-danger hidden">
+            Wrong password — try again
+          </div>
+          <button type="submit" class="btn btn-primary w-full">Sign in</button>
         </form>
       </div>
     </div>
@@ -124,8 +126,11 @@
         </div>
       </div>
 
-      <div id="install-banner" class="install-banner hidden">
-        <span class="install-text">Add Nodecal to your home screen</span>
+      <div
+        id="install-banner"
+        class="fixed right-[calc(var(--spacing-md)+var(--app-safe-area-right))] bottom-[calc(var(--nav-height)+var(--spacing-sm)+var(--app-safe-area-bottom))] left-[calc(var(--spacing-md)+var(--app-safe-area-left))] z-[var(--z-install-banner)] flex items-center gap-sm rounded-md border border-border bg-surface px-md py-sm shadow-banner hidden"
+      >
+        <span class="install-text flex-1 text-sm">Add Nodecal to your home screen</span>
         <button id="install-btn" class="btn btn-primary">Install</button>
         <button id="install-dismiss" class="btn btn-ghost">✕</button>
       </div>

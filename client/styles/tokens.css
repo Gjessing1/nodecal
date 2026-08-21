@@ -1,13 +1,10 @@
 /*
- * Nodecal design tokens. Naming follows Tailwind v4 @theme namespaces
- * (--color-*, --spacing-*, --text-*, --radius-*) so a future Tailwind
- * migration turns this file's :root block into the literal @theme block
- * (maily convergence — see docs/ARCHITECTURE.md). Always style through
- * these tokens, never hard-coded values.
+ * Nodecal design tokens. Tailwind utilities and the remaining component CSS
+ * both consume these variables while the migration proceeds incrementally.
+ * `static` keeps every token available to legacy CSS, even when no generated
+ * utility references it yet.
  */
-:root {
-  color-scheme: light;
-
+@theme static {
   --color-bg: #ffffff;
   --color-surface: #f5f5f5;
   --color-border: #e0e0e0;
@@ -30,14 +27,26 @@
   --text-sm: 13px;
   --text-md: 15px;
   --text-lg: 18px;
+  --text-xl: 22px;
 
   --radius-sm: 6px;
   --radius-md: 12px;
   --radius-lg: 20px;
 
-  /* Layout constants — component-scoped, stay out of a future @theme block */
+  --container-login: 340px;
+
+  --shadow-banner: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+:root {
+  color-scheme: light;
+
+  /* Layout constants are component-scoped, so they stay outside @theme. */
   --nav-height: 56px;
   --header-height: 52px;
+  --z-install-banner: 90;
+  --z-overlay: 200;
 
   /*
    * Capacitor supplies the --safe-area-inset-* variables on Android because

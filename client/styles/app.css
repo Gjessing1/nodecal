@@ -1,0 +1,7 @@
+@import 'tailwindcss';
+@import './tokens.css';
+@import './main.css';
+@import './views.css';
+@import './month.css';
+@import './tasks.css';
+@import './settings.css';
