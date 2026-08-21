@@ -34,57 +34,8 @@ select {
   padding: var(--spacing-sm) var(--spacing-md);
 }
 
-/* ── App shell ──────────────────────────────────────────── */
-#app {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  height: 100dvh;
-  overflow: hidden;
-  padding-bottom: calc(var(--nav-height) + var(--app-safe-area-bottom));
-}
-
-.app-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: calc(var(--header-height) + var(--app-safe-area-top));
-  padding: var(--app-safe-area-top) calc(var(--spacing-md) + var(--app-safe-area-right)) 0
-    calc(var(--spacing-md) + var(--app-safe-area-left));
-  background: var(--color-bg);
-  border-bottom: 1px solid var(--color-border);
-  flex-shrink: 0;
-}
-.app-header h1 {
-  font-size: var(--text-lg);
-  font-weight: 600;
-}
-.app-header .sync-btn {
-  padding: var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  font-size: 18px;
-  color: var(--color-text-muted);
-}
-.app-header .sync-btn:hover {
-  background: var(--color-surface);
-}
-.app-header .sync-btn.syncing {
+.sync-btn.syncing {
   animation: spin 1s linear infinite;
-}
-.profile-pill {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: var(--color-accent-light);
-  color: var(--color-accent);
-  border: 1px solid var(--color-accent);
-  line-height: 1.4;
-  max-width: 92px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex-shrink: 0;
 }
 .profile-accent-sw {
   width: 38px;
@@ -97,13 +48,6 @@ select {
 }
 .profile-accent-sw.active {
   border-color: var(--color-text);
-}
-
-#view-container {
-  flex: 1;
-  overflow-y: auto;
-  padding-bottom: var(--spacing-xl);
-  min-height: 0;
 }
 
 /* ── Search overlay ─────────────────────────────────────── */
@@ -191,64 +135,9 @@ select {
   font-size: var(--text-sm);
 }
 
-/* ── Calendar quick-add bar ─────────────────────────────── */
-.cal-quickadd {
-  position: fixed;
-  bottom: calc(var(--nav-height) + var(--app-safe-area-bottom));
-  left: 0;
-  right: 0;
-  z-index: 50;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  padding: var(--spacing-sm) calc(var(--spacing-md) + var(--app-safe-area-right)) var(--spacing-sm)
-    calc(var(--spacing-md) + var(--app-safe-area-left));
-  border-top: 1px solid var(--color-border);
-  background: var(--color-bg);
-}
-.cal-quickadd.hidden {
-  display: none;
-}
 .cal-quickadd-visible #view-container {
   padding-bottom: calc(var(--cal-quickadd-h) + var(--spacing-xl));
 }
-.cal-quickadd-target {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-xs);
-  flex-wrap: wrap;
-}
-.cal-quickadd-target[hidden] {
-  display: none;
-}
-.cal-quickadd-row {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-}
-.cal-quickadd #cal-quickadd-nlp-fb {
-  margin-top: var(--spacing-xs);
-}
-.cal-quickadd-input {
-  flex: 1;
-  border-radius: var(--radius-md);
-  padding: 10px var(--spacing-md);
-  font-size: var(--text-md);
-}
-.cal-quickadd-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--color-accent);
-  color: #fff;
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
 /* ── Agenda view ────────────────────────────────────────── */
 .agenda-group {
   padding: 0 var(--spacing-md);
@@ -1018,13 +907,6 @@ select {
 .rec-mode-btn.active {
   background: var(--color-accent);
   color: #fff;
-}
-
-/* ── Header right cluster ───────────────────────────────── */
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 2px;
 }
 
 /* ── Settings panel toggles ─────────────────────────────── */

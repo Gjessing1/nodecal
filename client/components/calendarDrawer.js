@@ -24,19 +24,19 @@ function renderList() {
   list.innerHTML = '';
   for (const cal of state.calendars) {
     const item = document.createElement('label');
-    item.className = 'cal-item';
+    item.className = 'flex cursor-pointer items-center gap-sm border-b border-border py-sm';
 
     const swatch = document.createElement('span');
-    swatch.className = 'cal-swatch';
+    swatch.className = 'h-[14px] w-[14px] shrink-0 rounded-full';
     swatch.style.background = cal.color;
 
     const name = document.createElement('span');
-    name.className = 'cal-name';
+    name.className = 'flex-1 text-md';
     name.textContent = cal.name;
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
-    checkbox.className = 'cal-checkbox';
+    checkbox.className = 'h-[18px] w-[18px] cursor-pointer accent-accent';
     checkbox.checked = !state.hiddenCalendars.has(cal.id);
     checkbox.addEventListener('change', () => {
       if (checkbox.checked) state.hiddenCalendars.delete(cal.id);

@@ -118,9 +118,15 @@ function buildNav() {
     const meta = VIEW_META[viewId];
     if (!meta) continue;
     const btn = document.createElement('button');
-    btn.className = 'nav-btn' + (state.activeView === viewId ? ' active' : '');
+    btn.className =
+      'nav-btn flex flex-1 flex-col items-center justify-center gap-2xs py-xs text-sm';
+    if (state.activeView === viewId) {
+      btn.classList.add('font-semibold', 'text-accent');
+    } else {
+      btn.classList.add('text-text-muted');
+    }
     btn.dataset.view = viewId;
-    btn.innerHTML = `<span class="nav-icon">${meta.icon}</span><span>${meta.label}</span>`;
+    btn.innerHTML = `<span class="nav-icon text-lg leading-none">${meta.icon}</span><span>${meta.label}</span>`;
     btn.addEventListener('click', () => switchView(viewId));
     bottomNav.appendChild(btn);
   }

@@ -12,6 +12,8 @@
   --color-text-muted: #757575;
   --color-accent: #2563eb;
   --color-accent-light: #dbeafe;
+  --color-on-accent: #ffffff;
+  --color-overlay: rgba(0, 0, 0, 0.4);
   --color-danger: #dc2626;
   --color-today-bg: #eff6ff;
   --color-today-text: #1d4ed8;
@@ -23,6 +25,8 @@
   --spacing-md: 16px;
   --spacing-lg: 24px;
   --spacing-xl: 40px;
+  --spacing-control: 10px;
+  --spacing-pill-y: 3px;
 
   --text-sm: 13px;
   --text-md: 15px;
@@ -34,8 +38,11 @@
   --radius-lg: 20px;
 
   --container-login: 340px;
+  --container-drawer: 280px;
+  --container-profile: 92px;
 
   --shadow-banner: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-drawer: 4px 0 16px rgba(0, 0, 0, 0.15);
   --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.12);
 }
 

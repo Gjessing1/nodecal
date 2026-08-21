@@ -58,12 +58,22 @@
       </div>
     </div>
 
-    <div id="app">
-      <header class="app-header">
+    <div
+      id="app"
+      class="flex h-dvh flex-col overflow-hidden pb-[calc(var(--nav-height)+var(--app-safe-area-bottom))]"
+    >
+      <header
+        class="flex h-[calc(var(--header-height)+var(--app-safe-area-top))] shrink-0 items-center justify-between border-b border-border bg-bg pt-[var(--app-safe-area-top)] pr-[calc(var(--spacing-md)+var(--app-safe-area-right))] pl-[calc(var(--spacing-md)+var(--app-safe-area-left))]"
+      >
         <button class="icon-btn" id="cal-btn" title="Calendars">☰</button>
-        <h1 id="header-title">Nodecal</h1>
-        <div class="header-right">
-          <button class="profile-pill" id="profile-switch" title="Switch profile" hidden></button>
+        <h1 id="header-title" class="text-lg font-semibold">Nodecal</h1>
+        <div class="flex items-center gap-2xs">
+          <button
+            class="max-w-profile shrink-0 overflow-hidden rounded-full border border-accent bg-accent-light px-control py-pill-y text-sm leading-[1.4] font-semibold text-ellipsis whitespace-nowrap text-accent"
+            id="profile-switch"
+            title="Switch profile"
+            hidden
+          ></button>
           <button class="icon-btn" id="search-btn" title="Search">⌕</button>
           <button class="icon-btn" id="theme-btn" title="Toggle theme">◐</button>
           <button class="icon-btn" id="settings-btn" title="Settings">⚙&#xFE0E;</button>
@@ -76,33 +86,47 @@
       <div id="offline-status" class="offline-status hidden" role="status" aria-live="polite"></div>
       <div id="sync-error" class="sync-error hidden"></div>
 
-      <main id="view-container"></main>
+      <main id="view-container" class="min-h-0 flex-1 overflow-y-auto pb-xl"></main>
 
-      <div id="cal-quickadd" class="cal-quickadd hidden">
-        <div id="cal-quickadd-target" class="cal-quickadd-target" hidden></div>
-        <div class="cal-quickadd-row">
+      <div
+        id="cal-quickadd"
+        class="fixed right-0 bottom-[calc(var(--nav-height)+var(--app-safe-area-bottom))] left-0 z-50 flex flex-col gap-0 border-t border-border bg-bg pt-sm pr-[calc(var(--spacing-md)+var(--app-safe-area-right))] pb-sm pl-[calc(var(--spacing-md)+var(--app-safe-area-left))] hidden"
+      >
+        <div id="cal-quickadd-target" class="mb-xs flex flex-wrap items-center gap-sm" hidden></div>
+        <div class="flex items-center gap-sm">
           <input
             type="text"
             id="cal-quickadd-input"
-            class="cal-quickadd-input"
+            class="flex-1 rounded-md px-md py-control text-md"
             placeholder="Add event… e.g. Meeting tomorrow 14:00"
             autocomplete="off"
             spellcheck="false"
           />
-          <button class="cal-quickadd-btn" id="cal-quickadd-submit" aria-label="Add">↵</button>
+          <button
+            class="flex h-xl w-xl shrink-0 items-center justify-center rounded-full bg-accent text-lg text-on-accent"
+            id="cal-quickadd-submit"
+            aria-label="Add"
+          >
+            ↵
+          </button>
         </div>
         <div class="nlp-feedback hidden" id="cal-quickadd-nlp-fb"></div>
       </div>
 
-      <nav class="bottom-nav" id="bottom-nav"></nav>
+      <nav
+        class="fixed right-0 bottom-0 left-0 z-20 flex h-[calc(var(--nav-height)+var(--app-safe-area-bottom))] border-t border-border bg-bg pt-0 pr-[var(--app-safe-area-right)] pb-[var(--app-safe-area-bottom)] pl-[var(--app-safe-area-left)]"
+        id="bottom-nav"
+      ></nav>
 
       <div id="modal-overlay" class="modal-overlay hidden">
         <div class="modal-sheet"></div>
       </div>
 
-      <div id="cal-drawer-overlay" class="cal-drawer-overlay hidden">
-        <div class="cal-drawer">
-          <h2>Calendars</h2>
+      <div id="cal-drawer-overlay" class="fixed inset-0 z-50 bg-overlay hidden">
+        <div
+          class="cal-drawer absolute top-0 bottom-0 left-0 w-[min(var(--container-drawer),85vw)] overflow-y-auto bg-bg pt-[calc(var(--spacing-lg)+var(--app-safe-area-top))] pr-[calc(var(--spacing-md)+var(--app-safe-area-right))] pb-[calc(var(--spacing-lg)+var(--app-safe-area-bottom))] pl-[calc(var(--spacing-md)+var(--app-safe-area-left))] shadow-drawer"
+        >
+          <h2 class="mb-md text-lg">Calendars</h2>
           <div id="cal-list"></div>
         </div>
       </div>
