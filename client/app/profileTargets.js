@@ -60,13 +60,50 @@ export function resolveEventCalendar() {
 }
 
 /**
- * Calendars a new item can actually be written to in the current profile:
- * writable (ICS feeds are not) and not hidden by the profile. The quick-add
- * "To:" row only appears when this returns more than one — which in practice
- * means the Combined profile.
+ * Collection URLs registered as task sources. Radicale advertises VEVENT support
+ * on a task collection too, so `supported-calendar-component-set` cannot tell
+ * them apart — being a registered task source is the only signal we have that a
+ * collection holds tasks rather than events.
+ * @returns {Set<string>}
+ */
+function taskListUrls() {
+  return new Set((state.taskSources || []).map((s) => s.url));
+}
+
+/**
+ * Calendars a new *event* can be written to in the current profile: writable
+ * (ICS feeds are not), not hidden by the profile, and not a task list. The
+ * quick-add "To:" row only appears when this returns more than one — which in
+ * practice means the Combined profile.
  * @returns {Array<any>}
  */
 export function targetCalendars() {
   const cals = state.calendars || [];
-  return cals.filter((c) => !c.readOnly && !state.hiddenCalendars.has(c.id));
+  const writable = cals.filter((c) => !c.readOnly && !state.hiddenCalendars.has(c.id));
+  const taskLists = taskListUrls();
+  const eventCals = writable.filter((c) => !taskLists.has(c.id));
+  // Tasks and events can legitimately share one collection — only drop task
+  // lists while another writable calendar is left to take the event.
+  return eventCals.length ? eventCals : writable;
+}
+
+/**
+ * Calendars the event editor offers. Same rule as targetCalendars() without the
+ * profile's visibility filter — deliberately moving an event into a calendar
+ * this profile hides stays possible — plus the event's own calendar, so editing
+ * an event never silently relocates it.
+ * @param {string} [currentId] - the event's current calendar, kept in the list
+ * @returns {Array<any>}
+ */
+export function eventCalendars(currentId) {
+  const cals = state.calendars || [];
+  const writable = cals.filter((c) => !c.readOnly);
+  const taskLists = taskListUrls();
+  const offered = writable.filter((c) => !taskLists.has(c.id));
+  const list = offered.length ? offered : writable;
+  if (currentId && !list.some((c) => c.id === currentId)) {
+    const own = cals.find((c) => c.id === currentId);
+    if (own) return [own, ...list];
+  }
+  return list;
 }

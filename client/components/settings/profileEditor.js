@@ -1,6 +1,7 @@
 import { state } from '../../app/state.js';
 import { field, help, select, toggle } from './fields.js';
 import { ALL_VIEWS } from './sections.js';
+import { eventCalendars } from '../../app/profileTargets.js';
 
 // Accent presets — empty string means "use the theme default" (no override).
 const ACCENTS = ['', '#2563eb', '#b45309', '#15803d', '#7c3aed', '#db2777', '#0891b2'];
@@ -135,7 +136,9 @@ function buildTaskSourceField(profile, draft) {
  * global `defaultCalendar` via effectiveEventCalendar().
  */
 function buildEventCalendarField(profile) {
-  const cals = writableCalendars();
+  // Task lists are writable but hold tasks, not events — eventCalendars() keeps
+  // them out so a profile can't point new events at a task collection.
+  const cals = eventCalendars();
   if (!cals.length) {
     return field('Default calendar for new events', help('Sync first to list calendars.'));
   }

@@ -11,7 +11,7 @@ import {
   scopeFieldHtml,
 } from './modalHelpers.js';
 import { getAllEventCategories } from '../app/eventUtils.js';
-import { resolveEventCalendar } from '../app/profileTargets.js';
+import { eventCalendars, resolveEventCalendar } from '../app/profileTargets.js';
 import { showDeleteScopeDialog } from './deleteScopeDialog.js';
 import { trapFocus } from './focusTrap.js';
 
@@ -239,7 +239,12 @@ function renderForm(event, defaultDate, explicitTime = false) {
       <div class="modal-field modal-cal-field">
         <label>Calendar</label>
         <select id="f-calendar">
-          ${state.calendars.map((c) => `<option value="${esc(c.id)}" ${defaultCalId === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
+          ${eventCalendars(event?.calendarId)
+            .map(
+              (c) =>
+                `<option value="${esc(c.id)}" ${defaultCalId === c.id ? 'selected' : ''}>${esc(c.name)}</option>`,
+            )
+            .join('')}
         </select>
       </div>
       <div class="modal-allday-toggle">
