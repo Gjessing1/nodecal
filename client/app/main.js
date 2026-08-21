@@ -896,7 +896,7 @@ function runSearch(query) {
 
   if (!matches.length) {
     const empty = document.createElement('p');
-    empty.className = 'search-empty';
+    empty.className = 'p-md text-sm text-text-muted';
     empty.textContent = 'No results for "' + query + '"';
     searchResults.appendChild(empty);
     return;
@@ -911,21 +911,23 @@ function runSearch(query) {
 
   for (const { type, item } of matches.slice(0, 50)) {
     const row = document.createElement('div');
-    row.className = 'search-result-row';
+    row.className =
+      'flex cursor-pointer items-start gap-sm border-b border-border px-md py-sm hover:bg-surface active:bg-surface';
 
     const icon = document.createElement('span');
-    icon.className = 'search-result-icon';
+    icon.className = 'w-[24px] shrink-0 pt-[2px] text-sm text-text-muted';
     icon.textContent = type === 'task' ? '✓' : '▭';
 
     const info = document.createElement('div');
-    info.className = 'search-result-info';
+    info.className = 'min-w-0 flex-1';
 
     const title = document.createElement('div');
-    title.className = 'search-result-title';
+    title.className = 'overflow-hidden text-md text-ellipsis whitespace-nowrap';
     title.textContent = item.title;
 
     const sub = document.createElement('div');
-    sub.className = 'search-result-sub';
+    sub.className =
+      'mt-[2px] overflow-hidden text-sm text-ellipsis whitespace-nowrap text-text-muted';
     if (type === 'event') {
       const d = new Date(item.start);
       const tz = state.config.timezone;

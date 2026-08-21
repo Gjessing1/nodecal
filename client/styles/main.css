@@ -50,89 +50,21 @@ select {
   border-color: var(--color-text);
 }
 
-/* ── Search overlay ─────────────────────────────────────── */
-.search-overlay {
+/* The native app draws edge-to-edge. Keep the coupled height and inset padding
+   in one late-loading rule so the Android gesture/navigation area cannot be
+   separated from the bar by utility generation or cascade changes. */
+.bottom-nav {
   position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  z-index: 200;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-}
-.search-overlay.hidden {
-  display: none;
-}
-.search-panel {
+  height: calc(var(--nav-height) + var(--app-safe-area-bottom));
+  min-height: calc(var(--nav-height) + var(--app-safe-area-bottom));
+  padding: 0 var(--app-safe-area-right) var(--app-safe-area-bottom) var(--app-safe-area-left);
+  border-top: 1px solid var(--color-border);
   background: var(--color-bg);
-  border-bottom-left-radius: var(--radius-md);
-  border-bottom-right-radius: var(--radius-md);
-  max-height: 80dvh;
-  display: flex;
-  flex-direction: column;
-  padding-top: var(--app-safe-area-top);
-}
-.search-input-row {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-bottom: 1px solid var(--color-border);
-}
-#search-input {
-  flex: 1;
-  border: none;
-  background: none;
-  font-size: var(--text-lg);
-  color: var(--color-text);
-  outline: none;
-  padding: var(--spacing-sm) 0;
-}
-.search-results {
-  overflow-y: auto;
-  flex: 1;
-}
-.search-result-row {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-bottom: 1px solid var(--color-border);
-  cursor: pointer;
-}
-.search-result-row:hover,
-.search-result-row:active {
-  background: var(--color-surface);
-}
-.search-result-icon {
-  width: 24px;
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  padding-top: 2px;
-  flex-shrink: 0;
-}
-.search-result-info {
-  flex: 1;
-  min-width: 0;
-}
-.search-result-title {
-  font-size: var(--text-md);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.search-result-sub {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 2px;
-}
-.search-empty {
-  padding: var(--spacing-md);
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
 }
 
 .cal-quickadd-visible #view-container {

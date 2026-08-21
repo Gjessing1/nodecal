@@ -22,17 +22,18 @@ export function showDayPopup(day, dayStr, cb) {
 
   const overlay = document.createElement('div');
   overlay.id = 'month-day-popup';
-  overlay.className = 'day-popup-overlay';
+  overlay.className = 'fixed inset-0 z-[150] flex items-center justify-center bg-overlay-soft p-md';
   overlay.addEventListener('click', () => overlay.remove());
 
   const panel = document.createElement('div');
-  panel.className = 'day-popup-panel';
+  panel.className =
+    'max-h-[70dvh] w-full max-w-popup overflow-y-auto rounded-lg bg-bg p-md shadow-popup';
   panel.addEventListener('click', (e) => e.stopPropagation());
 
   const heading = document.createElement('div');
-  heading.className = 'day-popup-heading';
+  heading.className = 'mb-md flex items-start justify-between gap-sm text-md font-semibold';
   const headingLeft = document.createElement('div');
-  headingLeft.className = 'day-popup-heading-left';
+  headingLeft.className = 'flex flex-col gap-2xs';
   headingLeft.textContent = day.toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
@@ -45,12 +46,12 @@ export function showDayPopup(day, dayStr, cb) {
   );
   if (wx) {
     const wxSpan = document.createElement('span');
-    wxSpan.className = 'day-popup-weather';
+    wxSpan.className = 'text-sm font-normal text-text-muted';
     wxSpan.textContent = wx;
     headingLeft.appendChild(wxSpan);
   }
   const closeBtn = document.createElement('button');
-  closeBtn.className = 'day-popup-close';
+  closeBtn.className = 'px-xs text-md text-text-muted';
   closeBtn.textContent = '✕';
   closeBtn.addEventListener('click', () => overlay.remove());
   heading.appendChild(headingLeft);
@@ -59,7 +60,7 @@ export function showDayPopup(day, dayStr, cb) {
 
   if (!dayEvs.length && !tasks.length) {
     const empty = document.createElement('p');
-    empty.className = 'day-popup-empty';
+    empty.className = 'py-sm text-sm text-text-muted';
     empty.textContent = 'Nothing scheduled';
     panel.appendChild(empty);
   }
@@ -91,10 +92,10 @@ export function showDayPopup(day, dayStr, cb) {
   }
 
   const footer = document.createElement('div');
-  footer.className = 'day-popup-footer';
+  footer.className = 'mt-sm flex gap-sm';
   if (onNewEvent) {
     const btn = document.createElement('button');
-    btn.className = 'btn btn-ghost day-popup-new-event';
+    btn.className = 'btn btn-ghost flex-1 text-sm text-accent';
     btn.textContent = '+ Event';
     btn.addEventListener('click', () => {
       overlay.remove();
@@ -104,7 +105,7 @@ export function showDayPopup(day, dayStr, cb) {
   }
   if (onNewTask) {
     const btn = document.createElement('button');
-    btn.className = 'btn btn-ghost day-popup-new-task';
+    btn.className = 'btn btn-ghost flex-1 text-sm text-accent';
     btn.textContent = '+ Task';
     btn.addEventListener('click', () => {
       overlay.remove();
@@ -114,7 +115,7 @@ export function showDayPopup(day, dayStr, cb) {
   }
   if (onDayClick) {
     const btn = document.createElement('button');
-    btn.className = 'day-popup-view-day btn btn-ghost';
+    btn.className = 'btn btn-ghost flex-1 text-sm';
     btn.textContent = 'Day view →';
     btn.addEventListener('click', () => {
       overlay.remove();

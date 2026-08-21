@@ -113,10 +113,7 @@
         <div class="nlp-feedback hidden" id="cal-quickadd-nlp-fb"></div>
       </div>
 
-      <nav
-        class="fixed right-0 bottom-0 left-0 z-20 flex h-[calc(var(--nav-height)+var(--app-safe-area-bottom))] border-t border-border bg-bg pt-0 pr-[var(--app-safe-area-right)] pb-[var(--app-safe-area-bottom)] pl-[var(--app-safe-area-left)]"
-        id="bottom-nav"
-      ></nav>
+      <nav class="bottom-nav" id="bottom-nav"></nav>
 
       <div id="modal-overlay" class="modal-overlay hidden">
         <div class="modal-sheet"></div>
@@ -135,18 +132,22 @@
         <div class="settings-sheet"></div>
       </div>
 
-      <div id="search-overlay" class="search-overlay hidden">
-        <div class="search-panel">
-          <div class="search-input-row">
+      <div
+        id="search-overlay"
+        class="fixed inset-0 z-[var(--z-overlay)] flex flex-col items-stretch bg-overlay hidden"
+      >
+        <div class="flex max-h-[80dvh] flex-col rounded-b-md bg-bg pt-[var(--app-safe-area-top)]">
+          <div class="flex items-center gap-sm border-b border-border px-md py-sm">
             <input
               type="search"
               id="search-input"
+              class="flex-1 border-0 bg-transparent py-sm text-lg text-text outline-none"
               placeholder="Search events and tasks…"
               autocomplete="off"
             />
             <button class="icon-btn" id="search-close">✕</button>
           </div>
-          <div id="search-results" class="search-results"></div>
+          <div id="search-results" class="flex-1 overflow-y-auto"></div>
         </div>
       </div>
 

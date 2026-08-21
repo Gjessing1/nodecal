@@ -50,20 +50,21 @@ export function dayTasks(dayStr) {
  */
 export function buildEventRow(ev, onClick) {
   const row = document.createElement('div');
-  row.className = 'day-popup-event';
+  row.className =
+    'flex cursor-pointer items-start gap-sm border-b border-border py-sm last-of-type:border-b-0 hover:rounded-sm hover:bg-surface';
 
   const dot = document.createElement('span');
-  dot.className = 'day-popup-dot';
+  dot.className = 'mt-xs h-[10px] w-[10px] shrink-0 rounded-full';
   dot.style.background = calendarById(ev.calendarId)?.color || '#4a90d9';
 
   const info = document.createElement('div');
-  info.className = 'day-popup-info';
+  info.className = 'min-w-0 flex-1';
   const title = document.createElement('div');
-  title.className = 'day-popup-title';
+  title.className = 'overflow-hidden text-md text-ellipsis whitespace-nowrap';
   title.textContent = ev.title;
   info.appendChild(title);
   const meta = document.createElement('div');
-  meta.className = 'day-popup-time';
+  meta.className = 'text-sm text-text-muted';
   if (!ev.allDay) {
     meta.textContent = new Date(ev.start).toLocaleTimeString('en-US', {
       hour: '2-digit',
@@ -92,11 +93,12 @@ export function buildEventRow(ev, onClick) {
  */
 export function buildTaskRow(task, onComplete, onClick) {
   const row = document.createElement('div');
-  row.className = 'day-popup-task';
+  row.className =
+    'flex cursor-pointer items-center gap-sm border-b border-border py-sm last-of-type:border-b-0 hover:rounded-sm hover:bg-surface';
 
   const checkbox = document.createElement('input');
   checkbox.type = 'checkbox';
-  checkbox.className = 'day-popup-task-check';
+  checkbox.className = 'h-[18px] w-[18px] shrink-0 cursor-pointer border-0 p-0 accent-accent';
   checkbox.checked = task.status === 'COMPLETED';
   checkbox.disabled = !onComplete;
   if (!onComplete) checkbox.title = 'Unavailable offline';
@@ -106,7 +108,7 @@ export function buildTaskRow(task, onComplete, onClick) {
   });
 
   const title = document.createElement('div');
-  title.className = 'day-popup-title';
+  title.className = 'overflow-hidden text-md text-ellipsis whitespace-nowrap';
   title.textContent = task.title;
 
   row.append(checkbox, title);
