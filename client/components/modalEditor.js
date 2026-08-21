@@ -14,6 +14,8 @@ import { getAllEventCategories } from '../app/eventUtils.js';
 import { eventCalendars, resolveEventCalendar } from '../app/profileTargets.js';
 import { showDeleteScopeDialog } from './deleteScopeDialog.js';
 import { trapFocus } from './focusTrap.js';
+import { todayLabel } from '../app/dayWindow.js';
+import { computeDefaultStart } from './defaultStart.js';
 
 let overlay, sheet, onSaveCb, onDeleteCb, onDuplicateCb, onEventsChangedCb;
 /** @type {(() => void)|null} */
@@ -151,17 +153,6 @@ function renderReadOnly(event) {
   sheet.querySelector('#f-close').addEventListener('click', closeModal);
 }
 
-function computeDefaultStart(date, tz) {
-  const todayStr = toDateInputValue(new Date(), tz);
-  const dateStr = toDateInputValue(date, tz);
-  if (dateStr === todayStr) {
-    const rounded = Math.ceil(Date.now() / (15 * 60000)) * (15 * 60000);
-    return new Date(rounded);
-  }
-  const t = state.config.defaultEventTime || '09:00';
-  return localToUTC(dateStr, t, tz);
-}
-
 const ALARM_PRESETS = [
   [0, 'None'],
   [5, '5 min before'],
@@ -194,7 +185,7 @@ function renderForm(event, defaultDate, explicitTime = false) {
     ? new Date(event.start)
     : explicitTime && defaultDate
       ? defaultDate
-      : computeDefaultStart(defaultDate || new Date(), tz);
+      : computeDefaultStart(defaultDate || todayLabel(tz), tz, state.config.defaultEventTime);
   const end = event ? new Date(event.end) : new Date(start.getTime() + durMs);
   // For all-day events, slice the UTC date string directly — never convert through local timezone.
   const allDayDateVal = event?.allDay ? event.start.slice(0, 10) : toDateInputValue(start, tz);

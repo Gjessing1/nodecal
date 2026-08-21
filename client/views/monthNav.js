@@ -1,5 +1,6 @@
 import { state } from '../app/state.js';
 import { showMonthYearPicker } from '../components/datePicker.js';
+import { todayLabel, todayStr } from '../app/dayWindow.js';
 
 // The month view's header: the month being shown with its arrows and Today
 // button, and the weekday labels under it. Moving between months lives here too
@@ -29,13 +30,16 @@ export function buildNavBar(year, month, rerender) {
     showMonthYearPicker(year, month, (y, m) => goToMonth(y, m, rerender));
   });
 
-  const now = new Date();
+  // Which month "today" falls in is the configured zone's answer, not the
+  // browser's — they are different months for a few hours around a month
+  // boundary, and the grid already marks today with todayStr(tz).
+  const tz = state.config.timezone;
   const todayBtn = document.createElement('button');
   todayBtn.className = 'nav-today-btn';
   todayBtn.textContent = 'Today';
-  todayBtn.hidden = now.getFullYear() === year && now.getMonth() === month;
+  todayBtn.hidden = todayStr(tz).slice(0, 7) === `${year}-${String(month + 1).padStart(2, '0')}`;
   todayBtn.addEventListener('click', () => {
-    state.selectedDate = new Date();
+    state.selectedDate = todayLabel(tz);
     rerender();
   });
 

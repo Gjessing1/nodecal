@@ -38,6 +38,7 @@ import {
   openNativeExternal,
 } from './nativeAndroid.js';
 import { initDeepLink, retryDeepLink } from './deepLink.js';
+import { todayLabel } from './dayWindow.js';
 import {
   applyProfile,
   captureActiveProfile,
@@ -164,7 +165,7 @@ function switchView(viewName) {
   // Tapping the already-active tab: return to today/current-time
   if (viewName === state.activeView) {
     if (viewName === 'day' || viewName === 'week' || viewName === 'month') {
-      state.selectedDate = new Date();
+      state.selectedDate = todayLabel(state.config.timezone);
       resetDayScroll();
       resetWeekScroll();
     } else if (viewName === 'agenda') {
@@ -337,6 +338,11 @@ async function loadAll() {
   if (sourcesRes.ok) setTaskSources(await sourcesRes.json());
 
   if (!state._viewInitialized) {
+    // state.js bootstraps selectedDate with `new Date()` before any config
+    // exists, which the views read back as the *browser's* date. Now that the
+    // configured zone is known, re-anchor on today there — still before the
+    // first render, so nothing has been drawn on the wrong day.
+    state.selectedDate = todayLabel(state.config.timezone);
     const calViews = settings.enabledViews || ['agenda'];
     const tabs = [...calViews, ...(settings.enableTasksView ? ['tasks'] : [])];
     const def = state.config.defaultView || calViews[0];
@@ -1235,7 +1241,7 @@ async function init() {
         });
       } else {
         // NLP didn't parse — open modal with just the title pre-filled
-        const d = state.selectedDate || new Date();
+        const d = state.selectedDate || todayLabel(state.config.timezone);
         openNewEventModal(d, (eventData) => saveEvent(null, eventData));
         setTimeout(() => {
           /** @type {HTMLInputElement} */ (document.getElementById('f-title')).value = text;
@@ -1243,7 +1249,9 @@ async function init() {
       }
     } catch {
       // On error, open modal
-      openNewEventModal(state.selectedDate || new Date(), (data) => saveEvent(null, data));
+      openNewEventModal(state.selectedDate || todayLabel(state.config.timezone), (data) =>
+        saveEvent(null, data),
+      );
     }
   }
   calQuickAddInput.addEventListener('keydown', (e) => {

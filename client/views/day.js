@@ -1,6 +1,6 @@
 import { state, calendarById } from '../app/state.js';
 import { localDateStr, getISOWeek, weatherBadge } from '../app/utils.js';
-import { dayWindow, timeOnDay, todayStr } from '../app/dayWindow.js';
+import { dayWindow, shiftLabel, timeOnDay, todayLabel, todayStr } from '../app/dayWindow.js';
 import { showDatePicker } from '../components/datePicker.js';
 import {
   buildTimeColumn,
@@ -136,11 +136,11 @@ export function renderDay(container, callbacks) {
   initSwipe(
     scroll,
     () => {
-      state.selectedDate = new Date(dayLabel.getTime() - 86400000);
+      state.selectedDate = shiftLabel(dayLabel, -1);
       renderDay(container, callbacks);
     },
     () => {
-      state.selectedDate = new Date(dayLabel.getTime() + 86400000);
+      state.selectedDate = shiftLabel(dayLabel, 1);
       renderDay(container, callbacks);
     },
   );
@@ -180,7 +180,7 @@ function buildNavBar(date, isToday, callbacks) {
   prev.className = 'nav-arrow';
   prev.textContent = '‹';
   prev.addEventListener('click', () => {
-    state.selectedDate = new Date(date.getTime() - 86400000);
+    state.selectedDate = shiftLabel(date, -1);
     renderDay(prev.closest('#view-container'), callbacks);
   });
 
@@ -212,7 +212,7 @@ function buildNavBar(date, isToday, callbacks) {
   todayBtn.textContent = 'Today';
   todayBtn.hidden = isToday;
   todayBtn.addEventListener('click', () => {
-    state.selectedDate = new Date();
+    state.selectedDate = todayLabel(state.config.timezone);
     renderDay(prev.closest('#view-container'), callbacks);
   });
 
@@ -220,7 +220,7 @@ function buildNavBar(date, isToday, callbacks) {
   next.className = 'nav-arrow';
   next.textContent = '›';
   next.addEventListener('click', () => {
-    state.selectedDate = new Date(date.getTime() + 86400000);
+    state.selectedDate = shiftLabel(date, 1);
     renderDay(next.closest('#view-container'), callbacks);
   });
 

@@ -65,7 +65,17 @@ export const state = {
   weather: null,
   /** @type {'agenda'|'day'|'week'|'month'|'tasks'} */
   activeView: 'agenda',
-  /** @type {Date} - anchor date for day/week views */
+  /**
+   * Anchor day for the day/week/month views, held as a *label*: browser-local
+   * midnight naming a calendar date, read back with `localDateStr` and moved
+   * with `shiftLabel`. It is never an instant — anything needing a real time on
+   * that day builds one with `timeOnDay`/`localToUTC` in the configured zone.
+   *
+   * This bootstrap value is the browser's today, which is the wrong date in a
+   * zone that has already rolled over; `loadAll` re-anchors it with
+   * `todayLabel(tz)` as soon as the config arrives, before the first render.
+   * @type {Date}
+   */
   selectedDate: new Date(),
   /** @type {Set<string>} - calendarIds currently hidden */
   hiddenCalendars: new Set(),

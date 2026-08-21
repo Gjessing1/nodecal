@@ -17,7 +17,7 @@ import { showDayPopup } from './dayPopup.js';
 import { taskSourceVisible } from '../app/taskUtils.js';
 import { buildAllDayRow } from './weekAllDay.js';
 import { clipEventToDay } from './eventSegment.js';
-import { dayWindow, timeOnDay, todayStr } from '../app/dayWindow.js';
+import { dayWindow, shiftLabel, timeOnDay, todayLabel, todayStr } from '../app/dayWindow.js';
 
 let timerId = null;
 let _container = null;
@@ -166,11 +166,11 @@ export function renderWeek(container, callbacks) {
   initSwipe(
     scroll,
     () => {
-      state.selectedDate = new Date(wStart.getTime() - 7 * 86400000);
+      state.selectedDate = shiftLabel(wStart, -7);
       renderWeek(container, callbacks);
     },
     () => {
-      state.selectedDate = new Date(wStart.getTime() + 7 * 86400000);
+      state.selectedDate = shiftLabel(wStart, 7);
       renderWeek(container, callbacks);
     },
   );
@@ -216,7 +216,7 @@ function buildNavBar(wStart, callbacks) {
   prev.className = 'nav-arrow';
   prev.textContent = '‹';
   prev.addEventListener('click', () => {
-    state.selectedDate = new Date(wStart.getTime() - 7 * 86400000);
+    state.selectedDate = shiftLabel(wStart, -7);
     renderWeek(prev.closest('#view-container'), callbacks);
   });
 
@@ -229,11 +229,15 @@ function buildNavBar(wStart, callbacks) {
   const todayBtn = document.createElement('button');
   todayBtn.className = 'nav-today-btn';
   todayBtn.textContent = 'Today';
-  const now = new Date();
-  const thisWeek = now >= wStart && now < new Date(wStart.getTime() + 7 * 86400000);
+  // Compare date strings, not a `new Date()` instant against the week's labels:
+  // the labels are browser-local midnight and the instant is now, so near
+  // midnight in a divergent zone the button hid on the wrong week.
+  const tz = state.config.timezone;
+  const today = todayStr(tz);
+  const thisWeek = today >= localDateStr(wStart) && today <= localDateStr(shiftLabel(wStart, 6));
   todayBtn.hidden = thisWeek;
   todayBtn.addEventListener('click', () => {
-    state.selectedDate = new Date();
+    state.selectedDate = todayLabel(tz);
     renderWeek(prev.closest('#view-container'), callbacks);
   });
 
@@ -241,7 +245,7 @@ function buildNavBar(wStart, callbacks) {
   next.className = 'nav-arrow';
   next.textContent = '›';
   next.addEventListener('click', () => {
-    state.selectedDate = new Date(wStart.getTime() + 7 * 86400000);
+    state.selectedDate = shiftLabel(wStart, 7);
     renderWeek(next.closest('#view-container'), callbacks);
   });
 
