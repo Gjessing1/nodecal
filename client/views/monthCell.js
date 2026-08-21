@@ -15,16 +15,16 @@ import { buildCellFlag, buildTaskPill } from './monthCellFooter.js';
 /**
  * @param {Date} day
  * @param {number} curMonth
- * @param {Date} today
+ * @param {string} todayDateStr - today in the configured zone, 'YYYY-MM-DD'
  * @param {import('./monthRow.js').CellLayout} layout - this cell's chip rows
  * @param {any} cb - the month view's callbacks
  */
-export function buildDayCell(day, curMonth, today, layout, cb) {
-  const isToday = day.toDateString() === today.toDateString();
+export function buildDayCell(day, curMonth, todayDateStr, layout, cb) {
   const isOther = day.getMonth() !== curMonth;
   const dow = day.getDay();
   const isWeekend = (dow === 0 || dow === 6) && state.config.showWeekendBg !== false;
   const dayStr = localDateStr(day);
+  const isToday = dayStr === todayDateStr;
   // The grid rows start on Monday, so this is the cell's column in its week row.
   const colIdx = (dow + 6) % 7;
   // Tapping anything in the cell that is not an event chip opens the day popup,

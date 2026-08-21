@@ -17,6 +17,7 @@ import { showDayPopup } from './dayPopup.js';
 import { taskSourceVisible } from '../app/taskUtils.js';
 import { buildAllDayRow } from './weekAllDay.js';
 import { clipEventToDay } from './eventSegment.js';
+import { dayWindow, timeOnDay, todayStr } from '../app/dayWindow.js';
 
 let timerId = null;
 let _container = null;
@@ -52,7 +53,11 @@ export function renderWeek(container, callbacks) {
     d.setDate(d.getDate() + i);
     return d;
   });
-  const today = new Date();
+  const tz = state.config.timezone;
+  // "Today" is the current date in the configured zone, not the browser's — near
+  // midnight the two are different days, and the column marked today has to be
+  // the one the now-line is drawn in.
+  const todayDateStr = todayStr(tz);
 
   // Re-rendering the same week (completing a task, editing an event) rebuilds the grid;
   // keep the scroll position instead of snapping back to the current time.
@@ -91,7 +96,7 @@ export function renderWeek(container, callbacks) {
   }
 
   // Day-column headers (date numbers open the day popup on tap)
-  container.appendChild(buildDayHeaders(days, today, callbacks));
+  container.appendChild(buildDayHeaders(days, todayDateStr, callbacks));
 
   // Scrollable time grid
   const scroll = document.createElement('div');
@@ -112,8 +117,8 @@ export function renderWeek(container, callbacks) {
     col.appendChild(buildHourLines());
     col.appendChild(buildNightOverlay());
 
-    const tz = state.config.timezone;
-    const isToday = day.toDateString() === today.toDateString();
+    const dayStr = localDateStr(day);
+    const isToday = dayStr === todayDateStr;
     if (isToday) {
       timeLine = buildCurrentTimeLine(tz);
       col.appendChild(timeLine);
@@ -122,10 +127,10 @@ export function renderWeek(container, callbacks) {
     // Blocks are clipped to their own column, so an event running past midnight
     // continues at the top of the next day instead of being redrawn there at
     // the clock time it started at.
-    const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
+    const { start: windowStart, end: windowEnd } = dayWindow(dayStr, tz);
     for (const ev of state.events) {
       if (ev.allDay || state.hiddenCalendars.has(ev.calendarId)) continue;
-      const segment = clipEventToDay(ev, day, dayEnd);
+      const segment = clipEventToDay(ev, windowStart, windowEnd);
       if (!segment) continue;
       const cal = calendarById(ev.calendarId);
       col.appendChild(
@@ -181,11 +186,8 @@ export function renderWeek(container, callbacks) {
         const dayIdx = Math.max(0, Math.min(6, Math.floor(x / colW)));
         const y = clientY - gridRect.top;
         const totalMinutes = Math.floor((y / HOUR_HEIGHT) * 2) * 30;
-        const day = days[dayIdx];
-        const eventDate = new Date(
-          day.getTime() + Math.min(Math.max(totalMinutes, 0), 23 * 60) * 60000,
-        );
-        onLongPress(eventDate);
+        const dayStr = localDateStr(days[dayIdx]);
+        onLongPress(timeOnDay(dayStr, Math.min(Math.max(totalMinutes, 0), 23 * 60), tz));
       },
     });
   }
@@ -196,12 +198,12 @@ export function renderWeek(container, callbacks) {
       scroll.scrollTop = prevScrollTop;
       return;
     }
-    const offset = Math.max(0, timeToTop(today, state.config.timezone) - 128);
+    const offset = Math.max(0, timeToTop(new Date(), tz) - 128);
     scroll.scrollTop = offset;
   });
 
   if (timeLine) {
-    timerId = setInterval(() => updateCurrentTimeLine(timeLine, state.config.timezone), 60000);
+    timerId = setInterval(() => updateCurrentTimeLine(timeLine, tz), 60000);
   }
 }
 
@@ -250,7 +252,7 @@ function buildNavBar(wStart, callbacks) {
   return nav;
 }
 
-function buildDayHeaders(days, today, callbacks) {
+function buildDayHeaders(days, todayDateStr, callbacks) {
   const row = document.createElement('div');
   row.className = 'week-day-headers';
   const spacer = document.createElement('div');
@@ -259,8 +261,7 @@ function buildDayHeaders(days, today, callbacks) {
   for (const day of days) {
     const dayStr = localDateStr(day);
     const cell = document.createElement('div');
-    cell.className =
-      'week-day-header' + (day.toDateString() === today.toDateString() ? ' today' : '');
+    cell.className = 'week-day-header' + (dayStr === todayDateStr ? ' today' : '');
     const wx = weatherBadge(
       localDateStr(day),
       state.weather,

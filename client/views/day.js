@@ -1,5 +1,6 @@
 import { state, calendarById } from '../app/state.js';
 import { localDateStr, getISOWeek, weatherBadge } from '../app/utils.js';
+import { dayWindow, timeOnDay, todayStr } from '../app/dayWindow.js';
 import { showDatePicker } from '../components/datePicker.js';
 import {
   buildTimeColumn,
@@ -34,10 +35,15 @@ export function renderDay(container, callbacks) {
     timerId = null;
   }
 
+  const tz = state.config.timezone;
   const date = state.selectedDate;
-  const isToday = date.toDateString() === new Date().toDateString();
-  const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
+  // The label for this column, and the instants it actually spans. The label is
+  // browser-local midnight because that is what localDateStr and the nav read;
+  // the window is the configured zone's, because that is what positions blocks.
+  const dayLabel = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const dayStr = localDateStr(dayLabel);
+  const isToday = dayStr === todayStr(tz);
+  const { start: windowStart, end: windowEnd } = dayWindow(dayStr, tz);
 
   // One entry per event visible in the column, already clipped to it. An event
   // crossing midnight lands in two days as two segments rather than one block
@@ -45,11 +51,9 @@ export function renderDay(container, callbacks) {
   const daySegments = [];
   for (const ev of state.events) {
     if (ev.allDay || state.hiddenCalendars.has(ev.calendarId)) continue;
-    const segment = clipEventToDay(ev, dayStart, dayEnd);
+    const segment = clipEventToDay(ev, windowStart, windowEnd);
     if (segment) daySegments.push({ ev, segment });
   }
-
-  const dayStr = localDateStr(dayStart);
   const allDayEvents = state.events.filter((ev) => {
     if (state.hiddenCalendars.has(ev.calendarId)) return false;
     if (!ev.allDay) return false;
@@ -99,7 +103,6 @@ export function renderDay(container, callbacks) {
   eventsCol.appendChild(buildHourLines());
   eventsCol.appendChild(buildNightOverlay());
 
-  const tz = state.config.timezone;
   const timeLine = buildCurrentTimeLine(tz);
   eventsCol.appendChild(timeLine);
 
@@ -123,7 +126,7 @@ export function renderDay(container, callbacks) {
   // Drag-and-drop
   if (onEventMove && onEventResize) {
     initDnd(wrapper, scroll, {
-      getDayFromX: () => dayStart,
+      getDayFromX: () => dayLabel,
       onMove: onEventMove,
       onResize: onEventResize,
     });
@@ -133,11 +136,11 @@ export function renderDay(container, callbacks) {
   initSwipe(
     scroll,
     () => {
-      state.selectedDate = new Date(dayStart.getTime() - 86400000);
+      state.selectedDate = new Date(dayLabel.getTime() - 86400000);
       renderDay(container, callbacks);
     },
     () => {
-      state.selectedDate = new Date(dayStart.getTime() + 86400000);
+      state.selectedDate = new Date(dayLabel.getTime() + 86400000);
       renderDay(container, callbacks);
     },
   );
@@ -150,10 +153,7 @@ export function renderDay(container, callbacks) {
         const rect = eventsCol.getBoundingClientRect();
         const y = clientY - rect.top;
         const totalMinutes = Math.floor((y / HOUR_HEIGHT) * 2) * 30;
-        const eventDate = new Date(
-          dayStart.getTime() + Math.min(Math.max(totalMinutes, 0), 23 * 60) * 60000,
-        );
-        onLongPress(eventDate);
+        onLongPress(timeOnDay(dayStr, Math.min(Math.max(totalMinutes, 0), 23 * 60), tz));
       },
     });
   }
@@ -164,7 +164,7 @@ export function renderDay(container, callbacks) {
       scroll.scrollTop = prevScrollTop;
       return;
     }
-    const scrollTarget = isToday ? new Date() : new Date(dayStart.getTime() + 8 * 3600000);
+    const scrollTarget = isToday ? new Date() : timeOnDay(dayStr, 8 * 60, tz);
     scroll.scrollTop = Math.max(0, timeToTop(scrollTarget, tz) - 128);
   });
   if (isToday) {

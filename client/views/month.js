@@ -4,6 +4,7 @@ import { getISOWeek, localDateStr } from '../app/utils.js';
 import { buildDayCell } from './monthCell.js';
 import { buildNavBar, buildWeekDayHeader, goToMonth } from './monthNav.js';
 import { layoutWeekRow } from './monthRow.js';
+import { todayStr } from '../app/dayWindow.js';
 
 /**
  * The month grid.
@@ -28,7 +29,7 @@ export function renderMonth(container, cb) {
   const anchor = state.selectedDate;
   const year = anchor.getFullYear();
   const month = anchor.getMonth();
-  const today = new Date();
+  const todayDateStr = todayStr(state.config.timezone);
   const rerender = () => renderMonth(container, cb);
 
   // The 42 displayed days, which run from the Monday before the 1st into the
@@ -41,7 +42,7 @@ export function renderMonth(container, cb) {
   container.appendChild(buildWeekDayHeader());
 
   const monthEvents = monthEventPool(gridStart);
-  const grid = buildGrid(gridStart, month, today, monthEvents, cb);
+  const grid = buildGrid(gridStart, month, todayDateStr, monthEvents, cb);
   container.appendChild(grid);
 
   if (cb.onEventMove) {
@@ -81,7 +82,7 @@ function monthEventPool(gridStart) {
   });
 }
 
-function buildGrid(gridStart, month, today, monthEvents, cb) {
+function buildGrid(gridStart, month, todayDateStr, monthEvents, cb) {
   const showWN = state.config.showWeekNumbersMonth ?? state.config.showWeekNumbers;
   const grid = document.createElement('div');
   grid.className = 'month-grid' + (showWN ? ' with-weeknum' : '');
@@ -99,7 +100,7 @@ function buildGrid(gridStart, month, today, monthEvents, cb) {
     // chip row in every cell it crosses and no single cell can know that.
     const layouts = layoutWeekRow(days.map(localDateStr), monthEvents, maxRows);
     for (let i = 0; i < days.length; i++) {
-      grid.appendChild(buildDayCell(days[i], month, today, layouts[i], cb));
+      grid.appendChild(buildDayCell(days[i], month, todayDateStr, layouts[i], cb));
     }
   }
   return grid;

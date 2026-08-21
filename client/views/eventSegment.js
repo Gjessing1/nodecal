@@ -4,11 +4,11 @@
 // day — otherwise Tuesday's block is drawn at Monday's clock time, four hours
 // long, and reads as a second event.
 //
-// The day window is browser-local, matching how day.js and week.js bucket events
-// into columns. `state.config.timezone` then positions the block inside the
-// column (timeGrid.timeToTop); the two only agree while the configured zone is
-// the device's, a divergence tracked under "Today/now indicator polish" in
-// docs/ROADMAP.md and deliberately not widened here.
+// The window is whatever day.js and week.js hand in, and both build it in the
+// configured timezone (app/dayWindow.js) — the same zone timeGrid.timeToTop
+// positions the block inside the column in. Passing a browser-local window here
+// is what used to file an event under one day and draw it at another day's
+// height whenever TIMEZONE was not the device's zone.
 
 /**
  * @typedef {object} EventSegment
@@ -22,8 +22,8 @@
  * Clip a timed event to one day column.
  *
  * @param {any} ev - a timed event (all-day events belong in the all-day strip)
- * @param {Date} dayStart - local midnight opening the column
- * @param {Date} dayEnd - local midnight closing it; not always +24h, because of DST
+ * @param {Date} dayStart - the instant opening the column, in the configured zone
+ * @param {Date} dayEnd - the instant closing it; not always +24h, because of DST
  * @returns {EventSegment | null} null when the event misses the day entirely
  */
 export function clipEventToDay(ev, dayStart, dayEnd) {
