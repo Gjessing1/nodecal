@@ -5,7 +5,7 @@
 // The service worker detects that but cannot act on it: only a top-level
 // navigation is allowed to follow such a redirect. So the worker posts
 // AUTH_REQUIRED and the page reloads — that navigation goes to the network
-// (see shellNavigation in public/service-worker.js) and lands on the login form.
+// (see shellNavigation in client/service-worker.js) and lands on the login form.
 
 const RELOAD_GUARD_KEY = 'nc-auth-reload';
 // A reload that comes back still unauthenticated would ask again, so bounce at

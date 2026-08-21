@@ -28,13 +28,12 @@ function opaqueRedirect() {
 }
 
 async function seedShell(worker, path, body) {
-  const cache = await worker.caches.open('nodecal-shell-testbuild');
-  await cache.put(path, makeResponse({ body }));
+  worker.precached.set(path, makeResponse({ body }));
 }
 
 test('navigation goes to the network even when the shell is cached', async () => {
   const worker = loadWorker({ fetch: async () => makeResponse({ body: 'FRESH' }) });
-  await seedShell(worker, '/', 'CACHED');
+  await seedShell(worker, '/index.html', 'CACHED');
 
   const { response } = await dispatchFetch(worker, navRequest());
 
@@ -44,7 +43,7 @@ test('navigation goes to the network even when the shell is cached', async () =>
 
 test('navigation passes the proxy redirect through so the browser can follow it', async () => {
   const worker = loadWorker({ fetch: async () => opaqueRedirect() });
-  await seedShell(worker, '/', 'CACHED');
+  await seedShell(worker, '/index.html', 'CACHED');
 
   const { response } = await dispatchFetch(worker, navRequest());
 
@@ -57,7 +56,7 @@ test('navigation falls back to the cached shell when offline', async () => {
       throw new TypeError('Failed to fetch');
     },
   });
-  await seedShell(worker, '/', 'CACHED');
+  await seedShell(worker, '/index.html', 'CACHED');
 
   const { response } = await dispatchFetch(worker, navRequest('/agenda'));
 
@@ -148,8 +147,7 @@ test('a redirected response is never written to the shell cache', async () => {
 
   await dispatchFetch(worker, scriptRequest('/client/app/theme.js'));
 
-  const cache = await worker.caches.open('nodecal-shell-testbuild');
-  assert.strictEqual(await cache.match('/client/app/theme.js'), undefined);
+  assert.strictEqual(worker.precached.get('/client/app/theme.js'), undefined);
 });
 
 test('a 401 on an API read signals auth instead of caching the error', async () => {

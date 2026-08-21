@@ -1,18 +1,8 @@
 import { state } from '../app/state.js';
 
 async function loadRRule() {
-  // rrule's ESM build uses bare specifiers that browsers can't resolve — load the UMD
-  // bundle as a script instead, which sets window.rrule
-  const w = /** @type {any} */ (window);
-  if (w.rrule) return w.rrule;
-  await new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = '/rrule/rrule.js';
-    s.onload = resolve;
-    s.onerror = reject;
-    document.head.appendChild(s);
-  });
-  return /** @type {any} */ (window).rrule || null;
+  // Kept lazy because recurrence previews are not needed during ordinary app boot.
+  return import('rrule');
 }
 
 /**

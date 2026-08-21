@@ -9,7 +9,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Nodecal" />
     <title>Nodecal</title>
-    <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
     <link rel="apple-touch-icon" href="/icons/icon.svg" />
     <link rel="stylesheet" href="/client/styles/tokens.css" />
@@ -24,7 +23,7 @@
         var t = localStorage.getItem('nc-theme');
         if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t;
       })();
-      // Service worker registration lives in client/app/swUpdate.js
+      // Service worker registration lives in client/app/swUpdate.js.
     </script>
   </head>
   <body>

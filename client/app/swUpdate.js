@@ -1,7 +1,7 @@
 // Service-worker registration + update lifecycle.
 //
-// The server bakes a content hash into /service-worker.js, so a deploy makes
-// the fetched script differ and the browser installs the new worker. This
+// Vite builds /service-worker.js with Workbox's revisioned asset manifest, so
+// a changed bundle makes the worker differ and the browser installs it. This
 // module closes the two gaps that used to require reinstalling the PWA:
 //  - resident pages (a home-screen PWA resumes from memory for days without
 //    re-running this module) re-check on foreground/online and hourly;
@@ -18,6 +18,9 @@ const BOOT_AUTO_MS = 10 * 1000;
 const bootTime = Date.now();
 
 export function initSwUpdate() {
+  // Vite's dev server deliberately has no worker; keeping an installed
+  // production worker active here would hide source changes behind its cache.
+  if (import.meta.env.DEV) return;
   if (!('serviceWorker' in navigator)) return;
 
   // Reload exactly once when the new worker takes control, so every module on

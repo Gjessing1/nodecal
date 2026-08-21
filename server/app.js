@@ -5,36 +5,23 @@ const config = require('./config');
 const { syncIncremental } = require('./caldav/sync');
 const store = require('./cache/store');
 const { authMiddleware } = require('./middleware/auth');
-const { getBuildInfo } = require('./buildInfo');
+const { getBuildId } = require('./buildId');
 const { startPushScheduler } = require('./push/scheduler');
 const { registerAppReleaseRoutes } = require('./appRelease');
 
 const app = express();
 app.use(express.json());
 
-// The service worker is served with the build id and full asset list baked in,
-// so its bytes change on every deploy that touches client code — that byte
-// difference is what triggers the browser's update flow. Registered before
-// express.static so this wins over the raw template file in public/.
-const swTemplate = fs.readFileSync(path.join(__dirname, '../public/service-worker.js'), 'utf8');
-app.get('/service-worker.js', (req, res) => {
-  const { buildId, assets } = getBuildInfo();
-  res.type('application/javascript');
-  res.set('Cache-Control', 'no-cache');
-  res.send(
-    `self.__BUILD__ = ${JSON.stringify(buildId)};\nself.__ASSETS__ = ${JSON.stringify(assets)};\n${swTemplate}`,
-  );
-});
-
-// index.html must always be revalidated so browsers without the service worker
-// (or before it takes control) never sit on a stale shell.
+// HTML and the generated worker always revalidate. Vite's hashed bundles are
+// immutable and can stay in the browser cache indefinitely.
 function setStaticHeaders(res, filePath) {
-  if (filePath.endsWith('index.html')) res.set('Cache-Control', 'no-cache');
+  if (filePath.endsWith('index.html') || filePath.endsWith('service-worker.js')) {
+    res.set('Cache-Control', 'no-cache');
+  } else if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+    res.set('Cache-Control', 'public, max-age=31536000, immutable');
+  }
 }
-app.use(express.static(path.join(__dirname, '../public'), { setHeaders: setStaticHeaders }));
-app.use('/client', express.static(path.join(__dirname, '../client')));
-// Serve rrule UMD bundle — the ESM build uses bare specifiers that browsers can't resolve
-app.use('/rrule', express.static(path.join(__dirname, '../node_modules/rrule/dist/es5')));
+app.use(express.static(path.join(__dirname, '../dist'), { setHeaders: setStaticHeaders }));
 
 // Auth status — no auth required, used by client to gate API calls without 401 noise
 const { isAuthenticated } = require('./middleware/auth');
@@ -71,7 +58,7 @@ function healthHandler(req, res) {
   res.json({
     status: 'ok',
     version: process.env.npm_package_version,
-    build: getBuildInfo().buildId,
+    build: getBuildId(),
     ...store.getSyncState(),
   });
 }
@@ -90,6 +77,7 @@ function getSyncIntervalMs() {
 }
 
 async function start() {
+  const buildId = getBuildId();
   try {
     await syncIncremental();
   } catch (err) {
@@ -98,7 +86,7 @@ async function start() {
   }
 
   app.listen(config.app.port, () => {
-    console.log(`Nodecal running on port ${config.app.port} (build ${getBuildInfo().buildId})`);
+    console.log(`Nodecal running on port ${config.app.port} (build ${buildId})`);
   });
 
   // Background auto-sync — interval read from settings on each tick (default 2 min)

@@ -12,7 +12,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
-RUN npm run format:check && npm run lint && npm run typecheck && NODECAL_SKIP_ANDROID_TESTS=1 npm test
+RUN npm run format:check && npm run lint && npm run typecheck && NODECAL_SKIP_ANDROID_TESTS=1 npm test && npm run build
 
 FROM node:22-alpine
 WORKDIR /app
@@ -23,6 +23,7 @@ RUN addgroup -S nodecal && adduser -S nodecal -G nodecal
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+COPY --from=check /app/dist ./dist
 
 # Pull one file from the check stage so the final image cannot build unless the
 # checks passed (stages otherwise build independently under BuildKit).

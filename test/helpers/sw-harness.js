@@ -1,4 +1,4 @@
-// Loads public/service-worker.js into a vm context with just enough of the
+// Loads client/service-worker.js into a vm context with just enough of the
 // ServiceWorkerGlobalScope to drive its fetch handler from node:test. The
 // stubs mimic only what the worker actually touches on a Response — status,
 // type, redirected, url, clone — so a test can hand it an SSO redirect or an
@@ -71,14 +71,26 @@ function makeCaches() {
  * @param {{ fetch: (request: any) => Promise<any>, assets?: string[] }} opts
  */
 function loadWorker(opts) {
-  const source = fs.readFileSync(path.join(__dirname, '../../public/service-worker.js'), 'utf8');
+  const sources = [
+    '../../client/sw/auth.js',
+    '../../client/sw/dataCache.js',
+    '../../client/sw/shell.js',
+    '../../client/sw/notifications.js',
+    '../../client/service-worker.js',
+  ];
+  const source = sources
+    .map((relativePath) => fs.readFileSync(path.join(__dirname, relativePath), 'utf8'))
+    .map((moduleSource) =>
+      moduleSource.replace(/^import[\s\S]*?;\n/gm, '').replace(/^export /gm, ''),
+    )
+    .join('\n');
   const listeners = new Map();
   const posted = [];
   const caches = makeCaches();
+  const precached = new Map();
 
   const self = {
-    __BUILD__: 'testbuild',
-    __ASSETS__: opts.assets ?? ['/'],
+    __WB_MANIFEST: opts.assets ?? [],
     location: { origin: ORIGIN },
     addEventListener(type, fn) {
       listeners.set(type, fn);
@@ -104,12 +116,15 @@ function loadWorker(opts) {
     URL,
     setTimeout,
     console,
+    precache() {},
+    cleanupOutdatedCaches() {},
+    async matchPrecache(request) {
+      return precached.get(cacheKey(request));
+    },
   };
-  // The worker reads self.__BUILD__/__ASSETS__, which server/app.js normally
-  // prepends at serve time; the stub above supplies them instead.
   vm.runInNewContext(source, sandbox);
 
-  return { listeners, posted, caches, self };
+  return { listeners, posted, caches, precached, self };
 }
 
 /**

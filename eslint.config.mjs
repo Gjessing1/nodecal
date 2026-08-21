@@ -5,7 +5,7 @@ import js from '@eslint/js';
 import globals from 'globals';
 
 export default [
-  { ignores: ['node_modules/**', 'docs/**', 'android/**'] },
+  { ignores: ['node_modules/**', 'dist/**', 'docs/**', 'android/**'] },
   js.configs.recommended,
   {
     // ES-module client code running in the browser
@@ -17,11 +17,11 @@ export default [
     },
   },
   {
-    // Classic script running in the service-worker scope
-    files: ['public/service-worker.js'],
+    // Vite-built module running in the service-worker scope
+    files: ['client/service-worker.js', 'client/sw/**/*.js'],
     languageOptions: {
       ecmaVersion: 2023,
-      sourceType: 'script',
+      sourceType: 'module',
       globals: globals.serviceworker,
     },
   },
@@ -31,6 +31,15 @@ export default [
     languageOptions: {
       ecmaVersion: 2023,
       sourceType: 'commonjs',
+      globals: globals.node,
+    },
+  },
+  {
+    // ESM build and development tooling on Node
+    files: ['scripts/**/*.mjs', 'vite.config.mjs'],
+    languageOptions: {
+      ecmaVersion: 2023,
+      sourceType: 'module',
       globals: globals.node,
     },
   },

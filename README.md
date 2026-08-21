@@ -48,7 +48,7 @@ When a newer APK is published, the app shows a **Download** notice and also list
 
 ## Publish an Android release
 
-Requirements are Node.js 22+, a JDK, and an Android SDK. On this host the SDK environment is loaded automatically from `/home/gjessing/android-sdk/env.sh`; elsewhere, export `ANDROID_HOME` and `JAVA_HOME`.
+Requirements are Node.js 22.12+, a JDK, and an Android SDK. On this host the SDK environment is loaded automatically from `/home/gjessing/android-sdk/env.sh`; elsewhere, export `ANDROID_HOME` and `JAVA_HOME`.
 
 Create `~/.config/nodecal/keystore.env` with the release-signing values (do not commit this file):
 
@@ -84,8 +84,11 @@ Copy the required values into `.env` (`CALDAV_BASEURL`, `CALDAV_USERNAME`, and `
 
 ```bash
 npm install
+npm run build
 npm start
 ```
+
+For local web development, `npm run dev` starts the watched API server on port 3000 and Vite on port 5173.
 
 Docker users can use the included `docker-compose.yml`; it exposes Nodecal on host port `3042` and persists configuration under `/mnt/data/nodecal/config`.
 
@@ -96,4 +99,5 @@ npm run format:check
 npm run lint
 npm run typecheck
 npm test
+npm run build
 ```
