@@ -10,7 +10,8 @@ import { formatShortDate } from '../app/utils.js';
 
 export function buildTaskItem(task, { onComplete, onStar, onClick, onSnooze, showDue = false }) {
   const li = document.createElement('li');
-  li.className = 'task-item' + (task.status === 'COMPLETED' ? ' task-done' : '');
+  li.className =
+    'flex items-start gap-sm border-b border-border px-md py-sm transition-colors duration-100 active:bg-surface';
   li.dataset.id = task.id;
 
   // Checkbox
@@ -32,16 +33,17 @@ export function buildTaskItem(task, { onComplete, onStar, onClick, onSnooze, sho
 
   // Body
   const body = document.createElement('div');
-  body.className = 'task-body';
+  body.className = 'min-w-0 flex-1 cursor-pointer';
   if (onClick) body.addEventListener('click', () => onClick(task));
 
   const title = document.createElement('span');
-  title.className = 'task-title';
+  title.className =
+    'block truncate text-md' + (task.status === 'COMPLETED' ? ' text-text-muted line-through' : '');
   title.textContent = task.title;
 
   if (task.description) {
     const notes = document.createElement('span');
-    notes.className = 'task-notes';
+    notes.className = 'mt-hairline line-clamp-2 text-sm text-text-muted';
     notes.textContent = task.description;
     body.appendChild(title);
     body.appendChild(notes);
@@ -50,18 +52,18 @@ export function buildTaskItem(task, { onComplete, onStar, onClick, onSnooze, sho
   }
 
   const meta = document.createElement('div');
-  meta.className = 'task-meta';
+  meta.className = 'mt-2xs flex items-center gap-sm';
 
   if (showDue && task.due) {
     const badge = document.createElement('span');
     const isOverdue = task.status !== 'COMPLETED' && isDueOverdue(task.due);
-    badge.className = 'task-due-badge' + (isOverdue ? ' overdue' : '');
+    badge.className = 'text-sm ' + (isOverdue ? 'font-medium text-danger' : 'text-text-muted');
     badge.textContent = formatDue(task.due);
     meta.appendChild(badge);
   }
   if (task.recurring) {
     const rec = document.createElement('span');
-    rec.className = 'task-recurring-icon';
+    rec.className = 'text-sm text-text-muted';
     rec.textContent = '↻';
     meta.appendChild(rec);
   }
@@ -72,7 +74,7 @@ export function buildTaskItem(task, { onComplete, onStar, onClick, onSnooze, sho
   const visCats = visibleCategories(task.categories || [], hidden);
   if (visCats.length) {
     const chips = document.createElement('div');
-    chips.className = 'task-cats';
+    chips.className = 'mt-pill-y flex flex-wrap gap-xs';
     for (const cat of visCats) {
       const chip = document.createElement('span');
       chip.className = 'task-cat-chip';
@@ -88,7 +90,7 @@ export function buildTaskItem(task, { onComplete, onStar, onClick, onSnooze, sho
   // Bell — shown before snooze when reminder is set
   if (task.taskReminder && task.taskReminder !== 'none') {
     const bell = document.createElement('span');
-    bell.className = 'task-reminder-icon';
+    bell.className = 'flex shrink-0 self-center items-center px-2xs text-caption opacity-70';
     bell.textContent = '🔔';
     bell.title = 'Reminder set';
     li.appendChild(bell);
@@ -97,7 +99,8 @@ export function buildTaskItem(task, { onComplete, onStar, onClick, onSnooze, sho
   // Snooze (+1 day) — only for tasks with a due date
   if (task.due && onSnooze && task.status !== 'COMPLETED') {
     const snooze = document.createElement('button');
-    snooze.className = 'task-snooze';
+    snooze.className =
+      'shrink-0 self-center whitespace-nowrap rounded-sm border border-border px-field-y py-2xs text-xs text-text-muted transition-colors hover:border-accent hover:text-accent';
     snooze.textContent = '+1d';
     snooze.setAttribute('aria-label', 'Defer by 1 day');
     snooze.title = 'Defer to tomorrow';
@@ -110,7 +113,9 @@ export function buildTaskItem(task, { onComplete, onStar, onClick, onSnooze, sho
 
   // Star
   const star = document.createElement(onStar ? 'button' : 'span');
-  star.className = 'task-star' + (task.important ? ' starred' : '');
+  star.className =
+    'flex size-8 shrink-0 items-center justify-center self-center text-lg transition-colors hover:text-star ' +
+    (task.important ? 'text-star' : 'text-border');
   star.textContent = '★';
   if (onStar) {
     star.setAttribute('aria-label', task.important ? 'Remove important' : 'Mark important');

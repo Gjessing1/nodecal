@@ -4,6 +4,11 @@ import { getAllCategories, groupTasksByCategory, taskSourceVisible } from '../ap
 import { formatShortDate, localDateStr } from '../app/utils.js';
 import { mountTaskQuickAdd } from '../components/taskQuickAdd.js';
 
+const FILTER_ROW_CLASSES =
+  'flex shrink-0 items-center gap-xs overflow-x-auto border-b border-border px-md py-xs [scrollbar-width:none] empty:hidden';
+const FILTER_CHIP_CLASSES =
+  'shrink-0 whitespace-nowrap rounded-lg border border-border px-control py-pill-y text-sm text-text-muted transition-colors duration-100 aria-pressed:border-accent aria-pressed:bg-accent-light aria-pressed:text-accent';
+
 // Persist filter state across renders so toggling a task doesn't reset UI state
 const _persist = {
   showDone: false,
@@ -26,7 +31,7 @@ export function renderTasks(container, callbacks) {
   container.innerHTML = '';
 
   const wrap = document.createElement('div');
-  wrap.className = 'tasks-view';
+  wrap.className = 'tasks-view flex h-full flex-col overflow-hidden';
 
   const filterState = { showDone: _persist.showDone, starredOnly: _persist.starredOnly };
   let currentGroupBy = _persist.groupBy;
@@ -34,13 +39,14 @@ export function renderTasks(container, callbacks) {
 
   // ── Controls row ───────────────────────────────────────────
   const controls = document.createElement('div');
-  controls.className = 'tasks-controls';
+  controls.className =
+    'flex shrink-0 items-center justify-between gap-sm border-b border-border px-md py-sm';
 
   const leftFilters = document.createElement('div');
-  leftFilters.className = 'tasks-filters';
+  leftFilters.className = 'flex items-center gap-md';
 
   const showDoneLabel = document.createElement('label');
-  showDoneLabel.className = 'tasks-show-done';
+  showDoneLabel.className = 'flex cursor-pointer items-center gap-sm text-sm text-text-muted';
   const showDoneCheck = document.createElement('input');
   showDoneCheck.type = 'checkbox';
   showDoneCheck.checked = _persist.showDone;
@@ -52,7 +58,7 @@ export function renderTasks(container, callbacks) {
   showDoneLabel.appendChild(document.createTextNode(' Done'));
 
   const starredOnlyLabel = document.createElement('label');
-  starredOnlyLabel.className = 'tasks-show-done';
+  starredOnlyLabel.className = 'flex cursor-pointer items-center gap-sm text-sm text-text-muted';
   const starredOnlyCheck = document.createElement('input');
   starredOnlyCheck.type = 'checkbox';
   starredOnlyCheck.checked = _persist.starredOnly;
@@ -68,10 +74,10 @@ export function renderTasks(container, callbacks) {
   leftFilters.appendChild(starredOnlyLabel);
 
   const rightControls = document.createElement('div');
-  rightControls.className = 'tasks-right-controls';
+  rightControls.className = 'flex items-center gap-sm';
 
   const groupSel = document.createElement('select');
-  groupSel.className = 'tasks-sort-select';
+  groupSel.className = 'rounded-sm px-sm py-xs text-sm';
   groupSel.innerHTML = `
     <option value="date">Group: Date</option>
     <option value="category">Group: Category</option>
@@ -82,7 +88,7 @@ export function renderTasks(container, callbacks) {
   });
 
   const sortSel = document.createElement('select');
-  sortSel.className = 'tasks-sort-select';
+  sortSel.className = 'rounded-sm px-sm py-xs text-sm';
   sortSel.innerHTML = `
     <option value="due">Sort: Due</option>
     <option value="starred">Sort: Starred</option>
@@ -106,10 +112,10 @@ export function renderTasks(container, callbacks) {
   // calendars currently checked in the drawer). Created once so typing keeps
   // focus — rerender() never rebuilds this input.
   const searchRow = document.createElement('div');
-  searchRow.className = 'tasks-search-row';
+  searchRow.className = 'shrink-0 border-b border-border px-md py-xs';
   const searchInput = document.createElement('input');
   searchInput.type = 'search';
-  searchInput.className = 'tasks-search-input';
+  searchInput.className = 'w-full rounded-sm border border-border px-control py-field-y text-sm';
   searchInput.placeholder = 'Search tasks…';
   searchInput.value = _persist.query;
   searchInput.addEventListener('input', () => {
@@ -129,7 +135,7 @@ export function renderTasks(container, callbacks) {
   // ── Source filter (only when multiple sources) ──────────────
   let currentSourceFilter = _persist.filterSource;
   const sourceFilterRow = document.createElement('div');
-  sourceFilterRow.className = 'tasks-cat-filter-row';
+  sourceFilterRow.className = FILTER_ROW_CLASSES;
 
   function buildSourceFilter() {
     sourceFilterRow.innerHTML = '';
@@ -139,12 +145,13 @@ export function renderTasks(container, callbacks) {
     if (!sources || sources.length < 2) return;
 
     const label = document.createElement('span');
-    label.className = 'tasks-cat-filter-label';
+    label.className = 'shrink-0 text-sm text-text-muted';
     label.textContent = 'Source:';
     sourceFilterRow.appendChild(label);
 
     const allChip = document.createElement('button');
-    allChip.className = 'tasks-cat-chip-filter' + (!currentSourceFilter ? ' active' : '');
+    allChip.className = FILTER_CHIP_CLASSES;
+    allChip.setAttribute('aria-pressed', String(!currentSourceFilter));
     allChip.textContent = 'All';
     allChip.addEventListener('click', () => {
       currentSourceFilter = _persist.filterSource = '';
@@ -155,7 +162,8 @@ export function renderTasks(container, callbacks) {
 
     for (const src of sources) {
       const chip = document.createElement('button');
-      chip.className = 'tasks-cat-chip-filter' + (currentSourceFilter === src.url ? ' active' : '');
+      chip.className = FILTER_CHIP_CLASSES;
+      chip.setAttribute('aria-pressed', String(currentSourceFilter === src.url));
       chip.textContent = src.name || src.url;
       chip.addEventListener('click', () => {
         currentSourceFilter = _persist.filterSource =
@@ -170,7 +178,7 @@ export function renderTasks(container, callbacks) {
 
   // ── Category filter row ─────────────────────────────────────
   const catFilterRow = document.createElement('div');
-  catFilterRow.className = 'tasks-cat-filter-row';
+  catFilterRow.className = FILTER_ROW_CLASSES;
 
   function buildCatFilter() {
     catFilterRow.innerHTML = '';
@@ -180,12 +188,13 @@ export function renderTasks(container, callbacks) {
     if (!allCats.length) return;
 
     const label = document.createElement('span');
-    label.className = 'tasks-cat-filter-label';
+    label.className = 'shrink-0 text-sm text-text-muted';
     label.textContent = 'Filter:';
     catFilterRow.appendChild(label);
 
     const allChip = document.createElement('button');
-    allChip.className = 'tasks-cat-chip-filter' + (!currentFilterCat ? ' active' : '');
+    allChip.className = FILTER_CHIP_CLASSES;
+    allChip.setAttribute('aria-pressed', String(!currentFilterCat));
     allChip.textContent = 'All';
     allChip.addEventListener('click', () => {
       currentFilterCat = _persist.filterCat = '';
@@ -196,7 +205,8 @@ export function renderTasks(container, callbacks) {
 
     for (const cat of allCats) {
       const chip = document.createElement('button');
-      chip.className = 'tasks-cat-chip-filter' + (currentFilterCat === cat ? ' active' : '');
+      chip.className = FILTER_CHIP_CLASSES;
+      chip.setAttribute('aria-pressed', String(currentFilterCat === cat));
       chip.textContent = cat;
       chip.addEventListener('click', () => {
         currentFilterCat = _persist.filterCat = currentFilterCat === cat ? '' : cat;
@@ -210,7 +220,7 @@ export function renderTasks(container, callbacks) {
 
   // ── Task list ───────────────────────────────────────────────
   const list = document.createElement('div');
-  list.className = 'tasks-list';
+  list.className = 'tasks-list min-h-0 flex-1 overflow-y-auto pb-sm';
 
   function rerender() {
     buildSourceFilter();
@@ -377,15 +387,17 @@ function renderGroups(container, groups, callbacks, totalCount, showDue = false)
     if (!group.items.length) continue;
     isEmpty = false;
     const section = document.createElement('section');
-    section.className = 'tasks-group';
+    section.className = 'mt-md';
 
     const heading = document.createElement('h3');
-    heading.className = 'tasks-group-label' + (group.overdue ? ' overdue' : '');
+    heading.className =
+      'px-md pb-xs text-sm font-semibold tracking-wider uppercase ' +
+      (group.overdue ? 'text-danger' : 'text-text-muted');
     heading.textContent = group.label;
     section.appendChild(heading);
 
     const ul = document.createElement('ul');
-    ul.className = 'tasks-group-list';
+    ul.className = 'list-none';
     for (const task of group.items) {
       ul.appendChild(
         buildTaskItem(task, {
@@ -403,7 +415,7 @@ function renderGroups(container, groups, callbacks, totalCount, showDue = false)
 
   if (isEmpty) {
     const empty = document.createElement('p');
-    empty.className = 'tasks-empty';
+    empty.className = 'px-md py-xl text-center text-md text-text-muted';
     if (_persist.query.trim()) {
       empty.textContent = 'No search results for your query.';
     } else {

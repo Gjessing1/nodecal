@@ -4,6 +4,9 @@ import { localDateStr } from '../app/utils.js';
 import { effectiveTaskSource, rememberTaskSource } from '../app/profileTargets.js';
 import { openTaskModal } from './taskModal.js';
 
+const DATE_CHIP_CLASSES =
+  'rounded-lg border border-border px-chip-x py-xs text-sm text-text-muted transition-colors duration-100 aria-pressed:border-accent aria-pressed:bg-accent-light aria-pressed:text-accent';
+
 let _quickAddEl = null;
 
 export function destroyTaskQuickAdd() {
@@ -29,16 +32,16 @@ export function mountTaskQuickAdd(callbacks) {
 
 function buildQuickAdd(callbacks) {
   const bar = document.createElement('div');
-  bar.className = 'tasks-quickadd';
+  bar.className =
+    'fixed right-0 bottom-[calc(var(--nav-height)+var(--app-safe-area-bottom))] left-0 z-50 border-t border-border bg-bg pt-xs pr-[calc(var(--spacing-md)+var(--app-safe-area-right))] pb-sm pl-[calc(var(--spacing-md)+var(--app-safe-area-left))]';
 
   const inputWrap = document.createElement('div');
-  inputWrap.className = 'tasks-quickadd-input-wrap';
-  inputWrap.style.position = 'relative';
+  inputWrap.className = 'relative flex-1';
 
   const input = document.createElement('input');
   input.type = 'text';
   input.id = 'task-quick-add-input';
-  input.className = 'tasks-quickadd-input';
+  input.className = 'w-full rounded-md px-md py-sm text-md';
   input.placeholder = 'Add a task… e.g. "buy milk tomorrow #groceries"';
 
   const autocompleteList = document.createElement('ul');
@@ -162,7 +165,7 @@ function buildQuickAdd(callbacks) {
   inputWrap.appendChild(nlpFb);
 
   const dates = document.createElement('div');
-  dates.className = 'tasks-quickadd-dates';
+  dates.className = 'mt-xs flex flex-wrap gap-sm';
 
   let selectedDue = null;
   const today = localDateStr(new Date());
@@ -170,7 +173,8 @@ function buildQuickAdd(callbacks) {
 
   function makeShortcut(label, value) {
     const btn = document.createElement('button');
-    btn.className = 'tasks-date-shortcut';
+    btn.className = DATE_CHIP_CLASSES;
+    btn.setAttribute('aria-pressed', 'false');
     btn.textContent = label;
     // Prevent focus theft: keep mobile keyboard visible when tapping date shortcuts
     btn.addEventListener('mousedown', (e) => e.preventDefault());
@@ -185,12 +189,13 @@ function buildQuickAdd(callbacks) {
   const todayBtn = makeShortcut('Today', today);
   const tomorrowBtn = makeShortcut('Tomorrow', tomorrow);
   const pickBtn = document.createElement('button');
-  pickBtn.className = 'tasks-date-shortcut';
+  pickBtn.className = DATE_CHIP_CLASSES;
+  pickBtn.setAttribute('aria-pressed', 'false');
   pickBtn.textContent = 'Pick date';
 
   const datePicker = document.createElement('input');
   datePicker.type = 'date';
-  datePicker.className = 'tasks-date-picker-hidden';
+  datePicker.className = 'pointer-events-none absolute size-px opacity-0';
   datePicker.addEventListener('change', () => {
     if (datePicker.value) {
       selectedDue = datePicker.value;
@@ -204,13 +209,13 @@ function buildQuickAdd(callbacks) {
   });
 
   function updateActive() {
-    todayBtn.classList.toggle('active', selectedDue === today);
-    tomorrowBtn.classList.toggle('active', selectedDue === tomorrow);
-    pickBtn.classList.toggle(
-      'active',
-      selectedDue && selectedDue !== today && selectedDue !== tomorrow,
-    );
-    if (pickBtn.classList.contains('active') && selectedDue) {
+    const todayActive = selectedDue === today;
+    const tomorrowActive = selectedDue === tomorrow;
+    const pickerActive = Boolean(selectedDue && !todayActive && !tomorrowActive);
+    todayBtn.setAttribute('aria-pressed', String(todayActive));
+    tomorrowBtn.setAttribute('aria-pressed', String(tomorrowActive));
+    pickBtn.setAttribute('aria-pressed', String(pickerActive));
+    if (pickerActive && selectedDue) {
       const d = new Date(selectedDue + 'T00:00:00');
       pickBtn.textContent = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     } else {
@@ -228,7 +233,7 @@ function buildQuickAdd(callbacks) {
   // tasks land.
   let selectedSource = effectiveTaskSource() || null;
   const sourceRow = document.createElement('div');
-  sourceRow.className = 'tasks-quickadd-dates';
+  sourceRow.className = 'mt-xs flex flex-wrap gap-sm';
   sourceRow.style.display = 'none';
 
   function buildSourceSelector() {
@@ -240,12 +245,13 @@ function buildQuickAdd(callbacks) {
     sourceRow.style.display = '';
     sourceRow.innerHTML = '';
     const lbl = document.createElement('span');
-    lbl.className = 'tasks-cat-filter-label';
+    lbl.className = 'shrink-0 text-sm text-text-muted';
     lbl.textContent = 'To:';
     sourceRow.appendChild(lbl);
     for (const src of sources) {
       const btn = document.createElement('button');
-      btn.className = 'tasks-date-shortcut' + (selectedSource === src.url ? ' active' : '');
+      btn.className = DATE_CHIP_CLASSES;
+      btn.setAttribute('aria-pressed', String(selectedSource === src.url));
       btn.textContent = src.name || src.url;
       btn.addEventListener('click', () => {
         selectedSource = selectedSource === src.url ? null : src.url;
@@ -324,13 +330,15 @@ function buildQuickAdd(callbacks) {
   }
 
   const submitBtn = document.createElement('button');
-  submitBtn.className = 'tasks-quickadd-submit';
+  submitBtn.className =
+    'flex size-touch shrink-0 items-center justify-center rounded-full bg-accent text-icon text-on-accent';
   submitBtn.textContent = '↵';
   submitBtn.setAttribute('aria-label', 'Quick add task');
   submitBtn.addEventListener('click', submit);
 
   const newBtn = document.createElement('button');
-  newBtn.className = 'tasks-quickadd-new';
+  newBtn.className =
+    'flex size-touch shrink-0 items-center justify-center rounded-full border border-border bg-surface text-xl leading-none text-accent hover:bg-accent-light';
   newBtn.textContent = '+';
   newBtn.setAttribute('aria-label', 'New task (full form)');
   newBtn.addEventListener('click', () => {
@@ -341,7 +349,7 @@ function buildQuickAdd(callbacks) {
   });
 
   const row = document.createElement('div');
-  row.className = 'tasks-quickadd-row';
+  row.className = 'mt-xs flex gap-sm';
   row.appendChild(inputWrap);
   row.appendChild(submitBtn);
   row.appendChild(newBtn);

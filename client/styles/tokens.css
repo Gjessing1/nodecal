@@ -16,21 +16,29 @@
   --color-overlay: rgba(0, 0, 0, 0.4);
   --color-overlay-soft: rgba(0, 0, 0, 0.35);
   --color-danger: #dc2626;
+  --color-star: #f59e0b;
   --color-today-bg: #eff6ff;
   --color-today-text: #1d4ed8;
   --color-weekend-bg: #f4f5f7;
 
   --spacing-xs: 4px;
   --spacing-2xs: 2px;
+  --spacing-hairline: 1px;
   --spacing-sm: 8px;
   --spacing-md: 16px;
   --spacing-lg: 24px;
   --spacing-xl: 40px;
   --spacing-control: 10px;
+  --spacing-chip-x: 12px;
   --spacing-pill-y: 3px;
   --spacing-event-dot-offset: 5px;
+  --spacing-field-y: 6px;
+  --spacing-touch: 44px;
 
   --text-sm: 13px;
+  --text-xs: 11px;
+  --text-caption: 12px;
+  --text-icon: 20px;
   --text-md: 15px;
   --text-lg: 18px;
   --text-xl: 22px;
