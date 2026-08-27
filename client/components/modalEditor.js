@@ -314,7 +314,7 @@ function renderForm(event, defaultDate, explicitTime = false) {
     sheet.querySelector('#f-end-time-wrap .tp-wrap')?.updateTime?.(newEndVal);
   }
 
-  // ── Time pickers (dial, all platforms) ───────────────────────────────────────
+  // ── Time pickers (typed on desktop, dial on touch) ───────────────────────────
   let prevStartVal = toTimeInputValue(start, tz);
   startWrap.appendChild(
     buildTimePicker('f-start-time', start, tz, (newVal) => {
@@ -621,7 +621,7 @@ async function applyNlp(text) {
       const etEl = sheet.querySelector('#f-end-time');
       if (stEl) stEl.value = startTimeVal;
       if (etEl) etEl.value = endTimeVal;
-      // Update visual dial display if present
+      // Update the visible time fields
       sheet.querySelector('#f-start-time-wrap .tp-wrap')?.updateTime?.(startTimeVal);
       sheet.querySelector('#f-end-time-wrap .tp-wrap')?.updateTime?.(endTimeVal);
       sheet.querySelector('#f-allday').checked = false;
