@@ -25,13 +25,17 @@ export function showDayPopup(day, dayStr, cb) {
   overlay.className = 'fixed inset-0 z-[150] flex items-center justify-center bg-overlay-soft p-md';
   overlay.addEventListener('click', () => overlay.remove());
 
+  // The panel itself never scrolls: its rounded corners would clip whatever row
+  // happened to be passing under them. Only the middle list scrolls, between a
+  // pinned heading and a pinned action row.
   const panel = document.createElement('div');
   panel.className =
-    'max-h-[70dvh] w-full max-w-popup overflow-y-auto rounded-lg bg-bg p-md shadow-popup';
+    'flex max-h-[70dvh] w-full max-w-popup flex-col overflow-hidden rounded-lg bg-bg shadow-popup';
   panel.addEventListener('click', (e) => e.stopPropagation());
 
   const heading = document.createElement('div');
-  heading.className = 'mb-md flex items-start justify-between gap-sm text-md font-semibold';
+  heading.className =
+    'flex shrink-0 items-start justify-between gap-sm px-md pt-md pb-sm text-md font-semibold';
   const headingLeft = document.createElement('div');
   headingLeft.className = 'flex flex-col gap-2xs';
   headingLeft.textContent = day.toLocaleDateString('en-US', {
@@ -58,15 +62,19 @@ export function showDayPopup(day, dayStr, cb) {
   heading.appendChild(closeBtn);
   panel.appendChild(heading);
 
+  const body = document.createElement('div');
+  body.className = 'min-h-0 flex-1 overflow-y-auto overscroll-contain px-md';
+  panel.appendChild(body);
+
   if (!dayEvs.length && !tasks.length) {
     const empty = document.createElement('p');
     empty.className = 'py-sm text-sm text-text-muted';
     empty.textContent = 'Nothing scheduled';
-    panel.appendChild(empty);
+    body.appendChild(empty);
   }
 
   for (const ev of dayEvs) {
-    panel.appendChild(
+    body.appendChild(
       buildEventRow(ev, (e) => {
         overlay.remove();
         onEventClick(e);
@@ -75,7 +83,7 @@ export function showDayPopup(day, dayStr, cb) {
   }
 
   for (const task of tasks) {
-    panel.appendChild(
+    body.appendChild(
       buildTaskRow(
         task,
         onTaskComplete &&
@@ -92,7 +100,7 @@ export function showDayPopup(day, dayStr, cb) {
   }
 
   const footer = document.createElement('div');
-  footer.className = 'mt-sm flex gap-sm';
+  footer.className = 'flex shrink-0 gap-sm border-t border-border px-md py-sm';
   if (onNewEvent) {
     const btn = document.createElement('button');
     btn.className = 'btn btn-ghost flex-1 text-sm text-accent';
@@ -124,6 +132,9 @@ export function showDayPopup(day, dayStr, cb) {
     footer.appendChild(btn);
   }
   if (footer.children.length) panel.appendChild(footer);
+  // Without an action row the list is the panel's last band, so it carries the
+  // bottom padding the footer would otherwise have provided.
+  else body.classList.add('pb-md');
 
   overlay.appendChild(panel);
   document.getElementById('app')?.appendChild(overlay);
