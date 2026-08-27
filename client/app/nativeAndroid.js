@@ -40,6 +40,40 @@ export async function setNativeSystemBarStyle(darkBackground) {
   }
 }
 
+/**
+ * Android WebView answers `prefers-color-scheme` with whatever the app theme was
+ * when the process started. The activity handles `uiMode` config changes itself
+ * (so a day/night switch does not tear down the WebView), which means the media
+ * query keeps its stale answer until the app is force-closed. Native reports the
+ * live setting instead.
+ *
+ * @returns {Promise<boolean | null>} true when the system is dark, null when
+ *   this shell is too old to answer and the media query should be trusted.
+ */
+export async function getNativeSystemTheme() {
+  const plugin = nativePlugin();
+  if (typeof plugin?.getSystemTheme !== 'function') return null;
+  try {
+    const result = await plugin.getSystemTheme();
+    return typeof result?.dark === 'boolean' ? result.dark : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Subscribe to the system switching between day and night while the app runs.
+ * Silently does nothing on a shell that never emits the event.
+ * @param {(dark: boolean) => void} onChange
+ */
+export function onNativeSystemTheme(onChange) {
+  const plugin = nativePlugin();
+  if (typeof plugin?.addListener !== 'function') return;
+  plugin.addListener('systemThemeChanged', (event) => {
+    if (typeof event?.dark === 'boolean') onChange(event.dark);
+  });
+}
+
 // ── Reminders ─────────────────────────────────────────────
 //
 // Android WebView implements neither the Notification nor the Push API, so the

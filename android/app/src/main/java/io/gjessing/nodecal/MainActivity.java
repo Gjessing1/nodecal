@@ -1,6 +1,7 @@
 package io.gjessing.nodecal;
 
 import android.content.pm.ApplicationInfo;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.text.InputType;
 import android.util.Log;
@@ -24,6 +25,9 @@ public class MainActivity extends BridgeActivity {
     private final NodecalDeepLink deepLink = new NodecalDeepLink(this);
     private boolean connectionDialogVisible;
     private boolean setupDialogVisible;
+    // The night mode the web app was last told about. UI_MODE_NIGHT_UNDEFINED
+    // until onCreate reads the real one, so the first change always reports.
+    private int reportedNightMode = Configuration.UI_MODE_NIGHT_UNDEFINED;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -46,7 +50,23 @@ public class MainActivity extends BridgeActivity {
         } else if (bridge != null) {
             bridge.getWebView().post(() -> showServerSetup(false));
         }
+        reportedNightMode = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
         deepLink.accept(getIntent());
+    }
+
+    /**
+     * The manifest lists uiMode in configChanges, so a day/night switch keeps
+     * this activity — and its WebView, and everything the user had open — alive.
+     * Nothing then re-evaluates the WebView's prefers-color-scheme, so the web
+     * app is told directly instead.
+     */
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        int nightMode = newConfig.uiMode & Configuration.UI_MODE_NIGHT_MASK;
+        if (nightMode == reportedNightMode) return;
+        reportedNightMode = nightMode;
+        NodecalNativePlugin.notifySystemTheme(bridge, nightMode == Configuration.UI_MODE_NIGHT_YES);
     }
 
     /** singleTask: a notification tapped while the app is alive lands here. */

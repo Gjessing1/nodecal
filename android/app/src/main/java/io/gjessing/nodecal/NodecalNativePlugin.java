@@ -3,14 +3,17 @@ package io.gjessing.nodecal;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
+import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.pm.PackageInfoCompat;
+import com.getcapacitor.Bridge;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
+import com.getcapacitor.PluginHandle;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
@@ -78,6 +81,37 @@ public class NodecalNativePlugin extends Plugin {
         } catch (Exception error) {
             call.reject("No app can open this link", error);
         }
+    }
+
+    // ── System theme ────────────────────────────────────────────────────────
+    //
+    // MainActivity handles uiMode config changes itself so a day/night switch
+    // does not tear the WebView down mid-session. The price is that the WebView
+    // keeps answering prefers-color-scheme with whatever was true at process
+    // start, which is why the app used to need a force-close to follow the
+    // system. The web app asks here instead, and gets told when it changes.
+
+    @PluginMethod
+    public void getSystemTheme(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("dark", isNightMode(getContext().getResources().getConfiguration()));
+        call.resolve(result);
+    }
+
+    /** @return true when the configuration is in night mode. */
+    static boolean isNightMode(Configuration configuration) {
+        return (configuration.uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+    }
+
+    /** Tell the web app the system switched between day and night. */
+    static void notifySystemTheme(Bridge bridge, boolean dark) {
+        if (bridge == null) return;
+        PluginHandle handle = bridge.getPlugin("NodecalNative");
+        Plugin plugin = handle == null ? null : handle.getInstance();
+        if (!(plugin instanceof NodecalNativePlugin)) return;
+        JSObject data = new JSObject();
+        data.put("dark", dark);
+        ((NodecalNativePlugin) plugin).notifyListeners("systemThemeChanged", data);
     }
 
     // ── Reminders ───────────────────────────────────────────────────────────
