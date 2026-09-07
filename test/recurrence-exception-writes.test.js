@@ -158,6 +158,36 @@ describe('editing one occurrence', () => {
     assert.equal(override.title, 'Standup (room 2)');
     assert.equal(store.getOverrides().length, 1);
   });
+
+  it('detaches one occurrence when it moves to another calendar', async () => {
+    let moved = {};
+    await withServer(async (base) => {
+      const res = await fetch(`${base}/events/series-123`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uid: 'series-123',
+          recurringScope: 'single',
+          occurrenceDate: '2026-08-24T10:00:00.000Z',
+          calendarId: '/cal2/',
+          title: 'Standup elsewhere',
+          start: '2026-08-24T12:00:00.000Z',
+          end: '2026-08-24T13:00:00.000Z',
+        }),
+      });
+      assert.equal(res.status, 201);
+      moved = await res.json();
+    });
+
+    assert.equal(moved.calendarId, '/cal2/');
+    assert.equal(moved.recurring, false);
+    assert.notEqual(moved.uid, SERIES.uid);
+    assert.match(requests[0].url, /\/cal2\/.*\.ics$/);
+    assert.equal(requests[1].url, SERIES.href);
+    const source = lastPutVevents();
+    assert.equal(source.length, 1);
+    assert.deepEqual(source[0].exdates, ['20260824T100000Z']);
+  });
 });
 
 describe('deleting one occurrence', () => {
@@ -210,5 +240,75 @@ describe('deleting one occurrence', () => {
     // Removing the UID-keyed record alone used to leave the override behind,
     // pointing at a resource that no longer exists.
     assert.equal(store.getEventCount(), 0);
+  });
+});
+
+describe('moving a recurring series', () => {
+  beforeEach(() => {
+    store.clearEvents();
+    store.setEventSilent(SERIES);
+    store.setEventSilent({
+      ...SERIES,
+      rrule: null,
+      recurrenceId: '2026-08-24T10:00:00.000Z',
+      start: '2026-08-24T12:00:00.000Z',
+      end: '2026-08-24T13:00:00.000Z',
+    });
+    stubCaldav();
+  });
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+    store.clearEvents();
+  });
+
+  it('moves the master and its overrides together for all-events scope', async () => {
+    await withServer(async (base) => {
+      const res = await fetch(`${base}/events/series-123`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uid: SERIES.uid,
+          recurringScope: 'all',
+          calendarId: '/cal2/',
+          title: 'Moved series',
+        }),
+      });
+      assert.equal(res.status, 200);
+      assert.equal((await res.json()).calendarId, '/cal2/');
+    });
+
+    assert.match(requests[0].url, /\/cal2\/series-123\.ics$/);
+    assert.equal(parseIcs(requests[0].body, { timezone: 'UTC' }).length, 2);
+    assert.deepEqual(
+      requests.map((request) => request.method),
+      ['PUT', 'DELETE'],
+    );
+    assert.equal(store.getEvent(SERIES.uid).calendarId, '/cal2/');
+    assert.equal(store.getOverrides()[0].calendarId, '/cal2/');
+  });
+
+  it('starts this-and-following in the selected calendar before trimming the source', async () => {
+    await withServer(async (base) => {
+      const res = await fetch(`${base}/events/series-123`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uid: SERIES.uid,
+          recurringScope: 'future',
+          occurrenceDate: '2026-08-31T10:00:00.000Z',
+          calendarId: '/cal2/',
+          title: 'Future elsewhere',
+          start: '2026-08-31T10:00:00.000Z',
+          end: '2026-08-31T11:00:00.000Z',
+        }),
+      });
+      assert.equal(res.status, 201);
+      assert.equal((await res.json()).calendarId, '/cal2/');
+    });
+
+    assert.match(requests[0].url, /\/cal2\/.*\.ics$/);
+    assert.equal(requests[1].url, SERIES.href);
+    assert.equal(requests[0].method, 'PUT');
+    assert.equal(requests[1].method, 'PUT');
   });
 });

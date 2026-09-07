@@ -12,6 +12,7 @@ const {
   withExdate,
 } = require('../caldav/exceptions');
 const { currentOverrides, writeSeries } = require('../caldav/seriesResource');
+const { relocateEvent } = require('../caldav/relocate');
 const store = require('../cache/store');
 
 const router = Router();
@@ -110,9 +111,16 @@ router.put('/events/:id', async (req, res) => {
 
     // Simple update (non-recurring, or 'all' scope on recurring base)
     const updated = { ...existing, ...filterChanges(changes) };
+    if (existing.rrule) {
+      const written = await writeSeries(updated, currentOverrides(existing), existing);
+      return res.json(toApiShape(written.base));
+    }
+
     const ics = serializeEvent(updated);
     let written;
-    if (existing.href) {
+    if (updated.calendarId !== existing.calendarId) {
+      written = await relocateEvent(existing, updated, ics);
+    } else if (existing.href) {
       written = await putEventAtHref(existing.href, ics, existing.etag);
     } else {
       written = await putEvent(existing.calendarId, existing.uid, ics, existing.etag);
@@ -190,12 +198,11 @@ router.delete('/events/:id', async (req, res) => {
  */
 async function handleSingleOccurrenceEdit(base, changes, instant, res) {
   const overrides = currentOverrides(base);
-  const override = buildOverride(
-    base,
-    overrideAt(overrides, instant),
-    filterChanges(changes),
-    instant,
-  );
+  const filtered = filterChanges(changes);
+  if (filtered.calendarId && filtered.calendarId !== base.calendarId) {
+    return handleSingleOccurrenceRelocation(base, overrides, filtered, instant, res);
+  }
+  const override = buildOverride(base, overrideAt(overrides, instant), filtered, instant);
   const written = await writeSeries(base, mergeOverride(overrides, override));
   const stored = written.overrides.find(replacesThisOccurrence) || override;
   res.status(201).json(toApiShape({ ...stored, ...occurrenceIdentity(stored) }));
@@ -206,6 +213,57 @@ async function handleSingleOccurrenceEdit(base, changes, instant, res) {
 }
 
 /**
+ * A recurrence override cannot live in a different CalDAV collection from its
+ * master. Moving one occurrence therefore detaches it under a fresh UID and
+ * adds an EXDATE to the source series. The copy is created first and rolled
+ * back if rewriting the source series fails, so a failed move cannot lose the
+ * occurrence.
+ */
+async function handleSingleOccurrenceRelocation(base, overrides, changes, instant, res) {
+  const uid = crypto.randomUUID();
+  const detached = {
+    ...base,
+    ...changes,
+    uid,
+    rrule: null,
+    recurrenceId: null,
+    exdates: null,
+  };
+  delete detached.id;
+  delete detached.href;
+  delete detached.etag;
+  delete detached.recurring;
+  delete detached.occurrenceDate;
+
+  const ics = serializeEvent(detached);
+  const written = await putEvent(detached.calendarId, uid, ics);
+  try {
+    await writeSeries(withExdate(base, instant), withoutOverride(overrides, instant));
+  } catch (seriesError) {
+    try {
+      await deleteEvent(written.href, written.etag);
+    } catch (rollbackError) {
+      throw new Error(
+        `Occurrence move left a destination copy after rollback failed: ${seriesError.message}; ${rollbackError.message}`,
+        { cause: rollbackError },
+      );
+    }
+    throw seriesError;
+  }
+
+  const now = new Date().toISOString();
+  const stored = {
+    ...detached,
+    href: written.href,
+    etag: written.etag,
+    localModifiedAt: now,
+    lastSyncedAt: now,
+  };
+  store.setEvent(stored);
+  res.status(201).json(toApiShape(stored));
+}
+
+/**
  * "This and following" — cap the old series and start a new one here.
  * @param {object} base - the master event
  * @param {object} changes
@@ -213,26 +271,46 @@ async function handleSingleOccurrenceEdit(base, changes, instant, res) {
  * @param {import('express').Response} res
  */
 async function handleFutureEdit(base, changes, instant, res) {
-  const now = new Date().toISOString();
-  // 1. Trim the base series UNTIL to just before this occurrence. Overrides at
-  //    or after the split go with it: they replace occurrences the trimmed
-  //    series no longer has, and the new series below covers those dates.
-  const until = new Date(new Date(instant).getTime() - 1000);
-  const updatedBase = { ...base, rrule: setRruleUntil(base.rrule, until) };
-  await writeSeries(updatedBase, overridesBefore(currentOverrides(base), instant));
-
-  // 2. Create a new recurring series from this occurrence onward
+  // Build and create the new series before trimming the old one. If the target
+  // calendar rejects it, the original recurrence remains completely intact.
   const newUid = crypto.randomUUID();
   const newEvent = {
     uid: newUid,
     calendarId: base.calendarId,
     allDay: base.allDay,
-    rrule: base.rrule, // fallback to original rule; overridden below if user changed it
+    rrule: base.rrule,
     ...filterChanges(changes),
   };
   const newIcs = serializeEvent(newEvent);
-  const { href: nHref, etag: nEtag } = await putEvent(base.calendarId, newUid, newIcs);
-  const stored = { ...newEvent, href: nHref, etag: nEtag, localModifiedAt: now, lastSyncedAt: now };
+  const written = await putEvent(newEvent.calendarId, newUid, newIcs);
+
+  // Trim the base series UNTIL to just before this occurrence. Overrides at or
+  // after the split go with it: they replace occurrences the trimmed series no
+  // longer has, and the new series covers those dates.
+  const until = new Date(new Date(instant).getTime() - 1000);
+  const updatedBase = { ...base, rrule: setRruleUntil(base.rrule, until) };
+  try {
+    await writeSeries(updatedBase, overridesBefore(currentOverrides(base), instant));
+  } catch (seriesError) {
+    try {
+      await deleteEvent(written.href, written.etag);
+    } catch (rollbackError) {
+      throw new Error(
+        `Series split left a destination copy after rollback failed: ${seriesError.message}; ${rollbackError.message}`,
+        { cause: rollbackError },
+      );
+    }
+    throw seriesError;
+  }
+
+  const now = new Date().toISOString();
+  const stored = {
+    ...newEvent,
+    href: written.href,
+    etag: written.etag,
+    localModifiedAt: now,
+    lastSyncedAt: now,
+  };
   store.setEvent(stored);
   res.status(201).json(toApiShape(stored));
 }
@@ -279,6 +357,7 @@ function filterChanges(changes) {
     'rrule',
     'alarmMinutes',
     'categories',
+    'calendarId',
   ];
   const out = {};
   for (const k of allowed) {

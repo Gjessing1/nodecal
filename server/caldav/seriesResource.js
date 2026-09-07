@@ -1,4 +1,5 @@
 const { putEvent, putEventAtHref } = require('./client');
+const { relocateEvent } = require('./relocate');
 const { serializeEvents } = require('./parser');
 const store = require('../cache/store');
 
@@ -30,24 +31,38 @@ function currentOverrides(base) {
  * records for it.
  * @param {object} base - the master event, with any EXDATE edits already applied
  * @param {Array<object>} overrides - the overrides that survive the change
+ * @param {object} [source=base] - record before editing, used when the series moves calendars
  * @returns {Promise<{base: object, overrides: Array<object>}>}
  */
-async function writeSeries(base, overrides) {
+async function writeSeries(base, overrides, source = base) {
   const ics = serializeEvents([base, ...overrides]);
-  const { href, etag } = base.href
-    ? await putEventAtHref(base.href, ics, base.etag)
-    : await putEvent(base.calendarId, base.uid, ics, base.etag);
+  let written;
+  if (source.calendarId !== base.calendarId) {
+    written = await relocateEvent(source, base, ics);
+  } else if (source.href) {
+    written = await putEventAtHref(source.href, ics, source.etag);
+  } else {
+    written = await putEvent(base.calendarId, base.uid, ics, base.etag);
+  }
+  const { href, etag } = written;
 
   // Stamped like every other write path so syncIncremental's overwrite guard
   // can tell these from a stale remote copy.
   const now = new Date().toISOString();
   function stamp(ev) {
-    return { ...ev, href, etag, localModifiedAt: now, lastSyncedAt: now };
+    return {
+      ...ev,
+      calendarId: base.calendarId,
+      href,
+      etag,
+      localModifiedAt: now,
+      lastSyncedAt: now,
+    };
   }
 
   const storedBase = stamp(base);
   const storedOverrides = overrides.map(stamp);
-  if (base.href) store.removeEventsByHrefSilent(base.href);
+  if (source.href) store.removeEventsByHrefSilent(source.href);
   store.removeEventSilent(store.eventKey(base));
   for (const ov of currentOverrides(base)) store.removeEventSilent(store.eventKey(ov));
   store.setEventSilent(storedBase);

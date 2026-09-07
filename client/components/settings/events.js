@@ -19,7 +19,7 @@ export function renderEventsSection(pane, draft) {
 
   pane.appendChild(
     row(
-      field('Default time (future dates)', picker),
+      field('Default time', picker),
       field(
         'Default duration (minutes)',
         numberInput(

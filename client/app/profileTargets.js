@@ -60,6 +60,20 @@ export function resolveEventCalendar() {
 }
 
 /**
+ * Resolve the full event editor's default. Unlike quick-add, the editor offers
+ * calendars hidden from the active profile, so a deliberately configured
+ * default must not be replaced merely because that calendar is not visible in
+ * the current view.
+ * @returns {string | undefined}
+ */
+export function resolveEditorCalendar() {
+  const offered = eventCalendars();
+  const wanted = effectiveEventCalendar();
+  if (wanted && offered.some((c) => c.id === wanted)) return wanted;
+  return offered[0]?.id;
+}
+
+/**
  * Collection URLs registered as task sources. Radicale advertises VEVENT support
  * on a task collection too, so `supported-calendar-component-set` cannot tell
  * them apart — being a registered task source is the only signal we have that a

@@ -12,6 +12,9 @@ const stateUrl = pathToFileURL(path.join(__dirname, '..', 'client', 'app', 'stat
 const targetsUrl = pathToFileURL(
   path.join(__dirname, '..', 'client', 'app', 'profileTargets.js'),
 ).href;
+const calendarSettingsUrl = pathToFileURL(
+  path.join(__dirname, '..', 'client', 'components', 'settings', 'calendars.js'),
+).href;
 
 const CAL = 'http://dav.test/user/kalender/';
 const BIRTHDAYS = 'http://dav.test/user/birthdays/';
@@ -54,6 +57,17 @@ test('a hidden calendar is still left out of the quick-add', async () => {
   assert.deepStrictEqual(ids, [CAL]);
 });
 
+test('the full editor still honors a configured calendar hidden from the active view', async () => {
+  const { state, targets } = await load({
+    calendars: ALL,
+    taskSources: SOURCES,
+    hidden: [CAL],
+  });
+  state.config.defaultCalendar = CAL;
+  assert.strictEqual(targets.resolveEventCalendar(), BIRTHDAYS);
+  assert.strictEqual(targets.resolveEditorCalendar(), CAL);
+});
+
 test('a collection holding both tasks and events stays offered when it is the only one', async () => {
   const { targets } = await load({
     calendars: [{ id: CAL, name: 'Kalender' }],
@@ -78,5 +92,26 @@ test('an event already living in a task list keeps its own calendar in the edito
 test('resolveEventCalendar never lands on a task list', async () => {
   const { state, targets } = await load({ calendars: ALL, taskSources: SOURCES });
   state.config.defaultCalendar = TASKS_WORK;
+  assert.strictEqual(targets.resolveEventCalendar(), CAL);
+});
+
+test('calendar settings show the active profile override instead of a misleading global value', async () => {
+  const { state } = await load({ calendars: ALL, taskSources: SOURCES });
+  const { effectiveDraftCalendar } = await import(calendarSettingsUrl);
+  state.config.defaultCalendar = CAL;
+  state.config.profiles.single.defaultEventCalendar = BIRTHDAYS;
+  assert.strictEqual(effectiveDraftCalendar(state.config), BIRTHDAYS);
+});
+
+test('choosing the main default clears the active profile override', async () => {
+  const { state, targets } = await load({ calendars: ALL, taskSources: SOURCES });
+  const { setDraftCalendar } = await import(calendarSettingsUrl);
+  state.config.defaultCalendar = BIRTHDAYS;
+  state.config.profiles.single.defaultEventCalendar = BIRTHDAYS;
+
+  setDraftCalendar(state.config, CAL);
+
+  assert.strictEqual(state.config.defaultCalendar, CAL);
+  assert.strictEqual(state.config.profiles.single.defaultEventCalendar, '');
   assert.strictEqual(targets.resolveEventCalendar(), CAL);
 });

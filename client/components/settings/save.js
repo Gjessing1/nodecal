@@ -20,6 +20,7 @@ const SAVED_KEYS = [
   'showWeekNumbersAgenda',
   'showWeekendBg',
   'taskSortOrder',
+  'defaultCalendar',
   'defaultTaskSource',
   'hiddenCategories',
   'hiddenEventCategories',
@@ -73,7 +74,6 @@ function buildPayload(draft) {
   payload.showWeekNumbers = summarise(draft, WEEK_NUMBERS_ON_VIEW, 'showWeekNumbers');
   payload.taskSources = draft.taskSources || [];
   payload.icsFeeds = usableIcsFeeds(draft);
-  if (draft.defaultCalendar) payload.defaultCalendar = draft.defaultCalendar;
   return payload;
 }
 
@@ -110,7 +110,7 @@ export async function saveSettings(draft) {
     return false;
   }
 
-  setConfig({ ...payload, defaultCalendar: draft.defaultCalendar || null });
+  setConfig(payload);
   setTaskSources(payload.taskSources);
   return true;
 }

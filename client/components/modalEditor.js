@@ -11,7 +11,7 @@ import {
   scopeFieldHtml,
 } from './modalHelpers.js';
 import { getAllEventCategories } from '../app/eventUtils.js';
-import { eventCalendars, resolveEventCalendar } from '../app/profileTargets.js';
+import { eventCalendars, resolveEditorCalendar } from '../app/profileTargets.js';
 import { showDeleteScopeDialog } from './deleteScopeDialog.js';
 import { trapFocus } from './focusTrap.js';
 import { todayLabel } from '../app/dayWindow.js';
@@ -190,7 +190,7 @@ function renderForm(event, defaultDate, explicitTime = false) {
   // For all-day events, slice the UTC date string directly — never convert through local timezone.
   const allDayDateVal = event?.allDay ? event.start.slice(0, 10) : toDateInputValue(start, tz);
   // Default calendar: prefer event's calendar, then the profile/global default, then first available
-  const defaultCalId = event?.calendarId || resolveEventCalendar();
+  const defaultCalId = event?.calendarId || resolveEditorCalendar();
 
   sheet.innerHTML = `
     <div class="modal-handle"></div>

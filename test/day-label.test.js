@@ -71,38 +71,33 @@ test('shiftLabel moves whole weeks and back', async () => {
 test("computeDefaultStart uses the label's own date, whatever the zone gap", async () => {
   const { computeDefaultStart } = await import(DEFAULT_START_URL);
   const { labelForDateStr } = await import(WINDOW_URL);
-  // The user tapped Aug 21. It is Aug 20 20:00 UTC — already Aug 21 in Oslo,
-  // still Aug 20 in New York. Neither may move the event off the tapped day.
-  const now = new Date('2026-08-20T20:00:00Z');
+  // The user tapped Aug 21. Every zone must keep that label and apply 09:00 as
+  // a wall-clock preference, regardless of which UTC instant it maps to.
   const label = labelForDateStr('2026-08-21');
   assert.equal(
-    computeDefaultStart(label, 'Europe/Oslo', '09:00', now).toISOString(),
+    computeDefaultStart(label, 'Europe/Oslo', '09:00').toISOString(),
     '2026-08-21T07:00:00.000Z',
   );
   assert.equal(
-    computeDefaultStart(label, 'America/New_York', '09:00', now).toISOString(),
+    computeDefaultStart(label, 'America/New_York', '09:00').toISOString(),
     '2026-08-21T13:00:00.000Z',
   );
-  // In Auckland it is already 08:00 on Aug 21, so the tapped day *is* today
-  // there and the next-quarter-hour branch is the right answer — still Aug 21.
   assert.equal(
-    computeDefaultStart(label, 'Pacific/Auckland', '09:00', now).toISOString(),
-    '2026-08-20T20:00:00.000Z',
+    computeDefaultStart(label, 'Pacific/Auckland', '09:00').toISOString(),
+    '2026-08-20T21:00:00.000Z',
   );
 });
 
-test('computeDefaultStart rounds up to the next quarter hour on today', async () => {
+test('computeDefaultStart honors the configured time on today', async () => {
   const { computeDefaultStart } = await import(DEFAULT_START_URL);
   const { labelForDateStr } = await import(WINDOW_URL);
-  const now = new Date('2026-08-21T10:07:00Z');
-  const start = computeDefaultStart(labelForDateStr('2026-08-21'), 'UTC', '09:00', now);
-  assert.equal(start.toISOString(), '2026-08-21T10:15:00.000Z');
+  const start = computeDefaultStart(labelForDateStr('2026-08-21'), 'UTC', '13:45');
+  assert.equal(start.toISOString(), '2026-08-21T13:45:00.000Z');
 });
 
 test('computeDefaultStart falls back to 09:00 with no configured default time', async () => {
   const { computeDefaultStart } = await import(DEFAULT_START_URL);
   const { labelForDateStr } = await import(WINDOW_URL);
-  const now = new Date('2026-08-21T10:00:00Z');
-  const start = computeDefaultStart(labelForDateStr('2026-09-01'), 'UTC', undefined, now);
+  const start = computeDefaultStart(labelForDateStr('2026-09-01'), 'UTC', undefined);
   assert.equal(start.toISOString(), '2026-09-01T09:00:00.000Z');
 });
