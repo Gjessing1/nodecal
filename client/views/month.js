@@ -17,7 +17,7 @@ import { todayStr } from '../app/dayWindow.js';
  * @property {(event: any) => void} onEventClick
  * @property {(d: Date) => void} onDayClick
  * @property {((id: string, day: Date, startMin: number) => void) | null} [onEventMove]
- * @property {((d: Date) => void) | null} [onLongPress] - new event on that day
+ * @property {((d: Date) => void) | null} [onNewEvent] - new event on that day
  * @property {((task: any) => void) | null} [onTaskComplete]
  * @property {((task: any) => void) | null} [onTaskClick]
  * @property {((d: Date) => void) | null} [onNewTask]

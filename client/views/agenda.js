@@ -20,9 +20,9 @@ let scrollHandler = null;
  * @param {(event: any) => void} onEventClick
  * @param {(task: any) => void} [onTaskClick]
  * @param {(task: any) => void} [onTaskComplete]
- * @param {(d: Date) => void} [onLongPress] - long-press on a day opens new event for that date
+ * @param {(d: Date) => void} [onNewEvent] - long-press on a day opens a new event for that date
  */
-export function renderAgenda(container, onEventClick, onTaskClick, onTaskComplete, onLongPress) {
+export function renderAgenda(container, onEventClick, onTaskClick, onTaskComplete, onNewEvent) {
   container.innerHTML = '';
   if (scrollHandler) {
     container.removeEventListener('scroll', scrollHandler);
@@ -186,12 +186,12 @@ export function renderAgenda(container, onEventClick, onTaskClick, onTaskComplet
         }
       }
 
-      if (onLongPress) {
+      if (onNewEvent) {
         const capturedDay = new Date(day);
         initLongPressCreate(header, {
           skipSelector: '.event-card,.task-check',
           onLongPress() {
-            onLongPress(capturedDay);
+            onNewEvent(capturedDay);
           },
         });
       }

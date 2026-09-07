@@ -202,6 +202,7 @@ const viewCallbacks = {
   onTaskClick: handleTaskEdit,
   onTaskComplete: handleTaskComplete,
   onNewTask: handleNewTaskForDay,
+  onNewEvent: handleNewEventForDay,
   onLongPress: handleLongPressCreate,
   onDayClick: handleDayClick,
 };
@@ -240,6 +241,7 @@ function render() {
         onEventResize: null,
         onTaskComplete: null,
         onNewTask: null,
+        onNewEvent: null,
         onLongPress: null,
       }
     : viewCallbacks;
@@ -261,7 +263,7 @@ function render() {
       onEventClick: handleEventClick,
       onDayClick: handleDayClick,
       onEventMove: calendarCallbacks.onEventMove,
-      onLongPress: calendarCallbacks.onLongPress,
+      onNewEvent: calendarCallbacks.onNewEvent,
       onTaskComplete: calendarCallbacks.onTaskComplete,
       onTaskClick: handleTaskEdit,
       onNewTask: calendarCallbacks.onNewTask,
@@ -272,7 +274,7 @@ function render() {
       handleEventClick,
       handleTaskEdit,
       calendarCallbacks.onTaskComplete,
-      calendarCallbacks.onLongPress,
+      calendarCallbacks.onNewEvent,
     );
 
   // Browser clamps to the new content height if the list got shorter.
@@ -611,6 +613,11 @@ function handleEventClick(event) {
 function handleLongPressCreate(date) {
   if (offlineWriteBlocked()) return;
   openNewEventModal(date, (data) => saveEvent(null, data), { explicitTime: true });
+}
+
+function handleNewEventForDay(date) {
+  if (offlineWriteBlocked()) return;
+  openNewEventModal(date, (data) => saveEvent(null, data));
 }
 
 function handleDuplicateEvent(event) {

@@ -58,11 +58,11 @@ export function buildDayCell(day, curMonth, todayDateStr, layout, cb) {
   // Chips, pill and date number all stopPropagation, so this is empty space.
   cell.addEventListener('click', onSelect);
 
-  if (cb.onLongPress) {
+  if (cb.onNewEvent) {
     initLongPressCreate(cell, {
       skipSelector: '.month-event-chip,.month-task-pill,.month-day-num',
       onLongPress() {
-        cb.onLongPress(new Date(day));
+        cb.onNewEvent(new Date(day));
       },
     });
   }

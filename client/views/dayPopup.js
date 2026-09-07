@@ -13,8 +13,7 @@ import { dayEvents, dayTasks, buildEventRow, buildTaskRow } from './dayItems.js'
  */
 export function showDayPopup(day, dayStr, cb) {
   const { onEventClick, onDayClick, onTaskComplete, onTaskClick, onNewTask } = cb;
-  // The popup's "+ Event" is the same intent as a long press on a day cell.
-  const onNewEvent = cb.onLongPress;
+  const onNewEvent = cb.onNewEvent;
   document.getElementById('month-day-popup')?.remove();
 
   const dayEvs = dayEvents(day, dayStr);
