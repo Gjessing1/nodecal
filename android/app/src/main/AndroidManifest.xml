@@ -5,6 +5,12 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!--
+      Lets the WebView hand Credential Manager the web origin of a passkey request
+      (WebAuthn browser mode, see MainActivity). Protection level normal: granted at
+      install, nothing to ask for.
+    -->
+    <uses-permission android:name="android.permission.CREDENTIAL_MANAGER_SET_ORIGIN" />
+    <!--
         A calendar is exactly what USE_EXACT_ALARM exists for, and it is granted at
         install so reminders never wait on a settings round trip. It only exists
         from API 33; on 31-32 the revocable SCHEDULE_EXACT_ALARM is the equivalent,

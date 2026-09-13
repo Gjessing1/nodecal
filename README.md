@@ -14,29 +14,11 @@ Android may ask you to allow your browser to install apps from this source. Afte
 
 ### Pocket ID and Bitwarden passkeys
 
-APK version 0.1.2 and later enables Android Credential Manager inside the hosted WebView so TinyAuth can complete a Pocket ID passkey login. Bitwarden passkeys require Android 14 or later. In Bitwarden, open **Settings → Autofill → Passkey management** and select Bitwarden as the preferred passkey provider. Also keep Android System WebView current.
+Passkey requests run in WebView's WebAuthn browser mode (APK 0.1.10 and later): the WebView builds the request for the Pocket ID page it is showing, so the passkey is asserted for the Pocket ID site's own HTTPS origin exactly as it would be in a browser. Bitwarden passkeys require Android 14 or later; in Bitwarden, open **Settings → Autofill → Passkey management** and select Bitwarden as the preferred passkey provider. Also keep Android System WebView current.
 
-Android requires the Pocket ID relying-party domain to associate the website with the installed Nodecal app. Serve `/.well-known/assetlinks.json` from the Pocket ID domain with the package name and SHA-256 fingerprint of the release signing certificate:
+The first passkey login from the app stops with Bitwarden reporting that the browser (Nodecal) is not recognized. Tap **Trust**, then choose the passkey: Bitwarden adds the package and its signing certificate to its locally trusted privileged apps, and later logins go straight through. Trust belongs to the signing certificate, so an APK signed with a different key (a debug build, say) has to be trusted separately.
 
-```json
-[
-  {
-    "relation": [
-      "delegate_permission/common.handle_all_urls",
-      "delegate_permission/common.get_login_creds"
-    ],
-    "target": {
-      "namespace": "android_app",
-      "package_name": "io.gjessing.nodecal",
-      "sha256_cert_fingerprints": ["RELEASE_CERTIFICATE_SHA256"]
-    }
-  }
-]
-```
-
-The URL must return `200 OK` directly (no redirect) with `Content-Type: application/json`. A debug APK has a different certificate fingerprint; add a separate entry while testing it. Nodecal uses WebAuthn's app mode because browser mode is reserved for browser packages explicitly trusted by each credential provider, and an ordinary private APK cannot safely claim arbitrary website origins.
-
-You can obtain the certificate fingerprint with `keytool -list -v -keystore /path/to/nodecal-release.jks -alias nodecal`; use the value labeled `SHA256`.
+No `/.well-known/assetlinks.json` is involved. WebAuthn's app mode, which Digital Asset Links would authorise, asserts the passkey for the app's `android:apk-key-hash:` origin instead of the website's, and Pocket ID only accepts its own HTTPS origin — Bitwarden refuses app mode with "Passkeys not supported for this app" when the asset links are missing, and Pocket ID rejects the login when they are present.
 
 The download answers with `404 Not Found` until the server administrator publishes the first APK. You can always use the web app instead: visit the Nodecal URL in Chrome and choose **Add to Home screen**.
 
