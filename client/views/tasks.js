@@ -325,7 +325,8 @@ function renderList(
 
   const hidden = state.config.hiddenCategories || [];
   // Tasks from calendars deactivated in the current profile are not surfaced.
-  let visibleTasks = state.tasks.filter((t) => taskSourceVisible(t, state.hiddenCalendars));
+  const sourceVisibleTasks = state.tasks.filter((t) => taskSourceVisible(t, state.hiddenCalendars));
+  let visibleTasks = sourceVisibleTasks;
   // Free-text search over the source-visible set: title + description.
   const query = (_persist.query || '').trim().toLowerCase();
   if (query) {
@@ -344,7 +345,14 @@ function renderList(
   if (board) {
     // The board decides which completed tasks it shows (a status board's Done column).
     const ordered = sortOrder === 'manual';
-    renderTaskBoard(container, sortTasks(visibleTasks, sortOrder), board, callbacks, ordered);
+    renderTaskBoard(
+      container,
+      sortTasks(visibleTasks, sortOrder),
+      board,
+      callbacks,
+      ordered,
+      sourceVisibleTasks,
+    );
     return;
   }
 

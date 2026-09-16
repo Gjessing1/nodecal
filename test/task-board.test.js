@@ -144,6 +144,63 @@ test('category buckets list every visible category and file by the first', async
   );
 });
 
+test('category buckets survive search and filters that hide their open tasks', async () => {
+  const { buildBoard } = await load('boardModel.js');
+  const board = { id: 'b', name: 'B', columns: 'category', lanes: '' };
+  const shown = [task({ title: 'work task', categories: ['work'] })];
+  const sourceVisible = [
+    ...shown,
+    task({ title: 'hidden by query', categories: ['errands'] }),
+    task({
+      title: 'completed outside the board',
+      categories: ['archive'],
+      status: 'COMPLETED',
+      completed: '2026-09-15T08:00:00Z',
+    }),
+  ];
+
+  const layout = buildBoard(shown, board, CTX, sourceVisible);
+
+  assert.deepStrictEqual(
+    layout.columns.map((column) => column.key),
+    ['errands', 'work', '__none__'],
+  );
+  assert.strictEqual(layout.cells.get('').get('errands').length, 0);
+});
+
+test('dynamic swim lanes use source-visible open tasks for their buckets', async () => {
+  const { buildBoard } = await load('boardModel.js');
+  const board = { id: 'b', name: 'B', columns: 'status', lanes: 'category' };
+  const shown = [task({ title: 'work task', categories: ['work'] })];
+  const sourceVisible = [
+    ...shown,
+    task({ title: 'filtered errands task', categories: ['errands'] }),
+  ];
+
+  const layout = buildBoard(shown, board, CTX, sourceVisible);
+
+  assert.deepStrictEqual(
+    layout.lanes.map((lane) => lane.key),
+    ['errands', 'work', '__none__'],
+  );
+  assert.strictEqual(layout.cells.get('errands').get('todo').length, 0);
+});
+
+test('the no-source bucket survives filters that hide its open tasks', async () => {
+  const { buildBoard } = await load('boardModel.js');
+  const board = { id: 'b', name: 'B', columns: 'source', lanes: '' };
+  const shown = [task({ title: 'home task', source: 'https://dav/home/' })];
+  const sourceVisible = [...shown, task({ title: 'task with no source' })];
+
+  const layout = buildBoard(shown, board, CTX, sourceVisible);
+
+  assert.deepStrictEqual(
+    layout.columns.map((column) => column.key),
+    ['https://dav/home/', 'https://dav/work/', '__none__'],
+  );
+  assert.strictEqual(layout.cells.get('').get('__none__').length, 0);
+});
+
 test('due buckets are relative to the configured today', async () => {
   const { bucketKey } = await load('boardBuckets.js');
   assert.strictEqual(bucketKey('due', task({ due: '2026-09-15' }), CTX), 'overdue');

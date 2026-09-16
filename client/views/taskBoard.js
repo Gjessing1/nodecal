@@ -44,10 +44,11 @@ function boardContext() {
  *   onBoardMove(task, changes, shifts), onBoardAdd
  * @param {boolean} ordered - tasks are in manual order, so a card's place in its
  *   cell can be changed and is kept
+ * @param {Task[]} [bucketTasks=tasks] - source-visible tasks before search and filters
  */
-export function renderTaskBoard(container, tasks, board, callbacks, ordered) {
+export function renderTaskBoard(container, tasks, board, callbacks, ordered, bucketTasks = tasks) {
   const ctx = boardContext();
-  const layout = buildBoard(tasks, board, ctx);
+  const layout = buildBoard(tasks, board, ctx, bucketTasks);
 
   const el = document.createElement('div');
   el.className = 'task-board' + (board.lanes ? '' : ' task-board-unlaned');
@@ -88,7 +89,7 @@ export function renderTaskBoard(container, tasks, board, callbacks, ordered) {
             if (folded) foldedLanes.delete(foldKey);
             else foldedLanes.add(foldKey);
             el.remove();
-            renderTaskBoard(container, tasks, board, callbacks, ordered);
+            renderTaskBoard(container, tasks, board, callbacks, ordered, bucketTasks);
           },
           onAdd: addHandler(board.lanes, lane.key, ctx, callbacks),
         }),

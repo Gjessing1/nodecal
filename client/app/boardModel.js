@@ -55,9 +55,10 @@ export function boardsFromConfig(config) {
  * @param {Task[]} tasks
  * @param {TaskBoard} board
  * @param {BoardContext} ctx
+ * @param {Task[]} [bucketTasks=tasks] - source-visible tasks before search and filters
  * @returns {BoardLayout}
  */
-export function buildBoard(tasks, board, ctx) {
+export function buildBoard(tasks, board, ctx, bucketTasks = tasks) {
   const usesStatus = board.columns === 'status' || board.lanes === 'status';
   const doneSince = shiftDateStr(ctx.today, -DONE_WINDOW_DAYS);
   const shown = [];
@@ -69,9 +70,17 @@ export function buildBoard(tasks, board, ctx) {
     }
   }
 
-  const columns = fieldBuckets(board.columns, shown, ctx);
+  // Dynamic category/source buckets must survive search and filter changes so
+  // an empty bucket remains a valid move target. Include shown completed tasks
+  // too: a recent Done card may have a category no open task currently uses.
+  const bucketPool = [...shown];
+  for (const task of bucketTasks) {
+    if (task.status !== 'COMPLETED') bucketPool.push(task);
+  }
+
+  const columns = fieldBuckets(board.columns, bucketPool, ctx);
   let lanes = [{ key: '', label: '' }];
-  if (board.lanes) lanes = fieldBuckets(board.lanes, shown, ctx);
+  if (board.lanes) lanes = fieldBuckets(board.lanes, bucketPool, ctx);
 
   /** @type {Map<string, Map<string, Task[]>>} */
   const cells = new Map();
