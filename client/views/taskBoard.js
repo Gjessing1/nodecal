@@ -49,6 +49,7 @@ function boardContext() {
 export function renderTaskBoard(container, tasks, board, callbacks, ordered, bucketTasks = tasks) {
   const ctx = boardContext();
   const layout = buildBoard(tasks, board, ctx, bucketTasks);
+  const hiddenFields = board.lanes ? [board.columns, board.lanes] : [board.columns];
 
   const el = document.createElement('div');
   el.className = 'task-board' + (board.lanes ? '' : ' task-board-unlaned');
@@ -112,6 +113,7 @@ export function renderTaskBoard(container, tasks, board, callbacks, ordered, buc
             onStar: callbacks.onStar,
             onClick: callbacks.onEdit,
             onMove,
+            hiddenFields,
           }),
         );
       }

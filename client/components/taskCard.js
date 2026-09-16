@@ -7,10 +7,12 @@ import { buildDueBadge, buildPriorityBadge } from './taskItem.js';
  * column. Snooze is left to the list — on a board, moving a card is the edit.
  * @param {import('../app/state.js').Task} task
  * @param {{ onComplete: Function|null, onStar: Function|null, onClick: Function|null,
- *   onMove: Function|null }} callbacks - onMove opens the card's "Move to…" menu
+ *   onMove: Function|null, hiddenFields?: import('../app/boardBuckets.js').BoardField[] }} callbacks
+ *   - onMove opens the card's "Move to…" menu; hiddenFields names metadata already
+ *   communicated by the card's column or lane
  * @returns {HTMLElement}
  */
-export function buildTaskCard(task, { onComplete, onStar, onClick, onMove }) {
+export function buildTaskCard(task, { onComplete, onStar, onClick, onMove, hiddenFields = [] }) {
   const isDone = task.status === 'COMPLETED';
   const card = document.createElement('article');
   card.className =
@@ -44,9 +46,11 @@ export function buildTaskCard(task, { onComplete, onStar, onClick, onMove }) {
 
   const meta = document.createElement('div');
   meta.className = 'mt-2xs flex flex-wrap items-center gap-x-sm gap-y-2xs';
-  const priority = buildPriorityBadge(task);
-  if (priority) meta.appendChild(priority);
-  if (task.due) meta.appendChild(buildDueBadge(task));
+  if (!hiddenFields.includes('priority')) {
+    const priority = buildPriorityBadge(task);
+    if (priority) meta.appendChild(priority);
+  }
+  if (task.due && !hiddenFields.includes('due')) meta.appendChild(buildDueBadge(task));
   if (task.recurring) meta.appendChild(metaIcon('↻', 'Repeats'));
   if (task.taskReminder && task.taskReminder !== 'none') {
     meta.appendChild(metaIcon('🔔', 'Reminder set'));
@@ -54,7 +58,7 @@ export function buildTaskCard(task, { onComplete, onStar, onClick, onMove }) {
   if (meta.children.length) body.appendChild(meta);
 
   const categories = visibleCategories(task.categories || [], state.config.hiddenCategories || []);
-  if (categories.length) {
+  if (categories.length && !hiddenFields.includes('category')) {
     const chips = document.createElement('div');
     chips.className = 'mt-pill-y flex flex-wrap gap-xs';
     for (const cat of categories) {
