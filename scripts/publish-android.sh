@@ -11,8 +11,13 @@ if [[ -n "${NODECAL_ANDROID_APP_DIR:-}" ]]; then
 elif [[ -d /home/gjessing/docker/nodecal/config ]]; then
   # This host's live Compose project bind-mounts this directory at /config.
   app_dir="/home/gjessing/docker/nodecal/config/app"
-else
+elif [[ $(/usr/bin/findmnt -n -o SOURCE -T /mnt/data/nodecal 2>/dev/null || true) == tank/data/nodecal ]]; then
+  # Safe fallback for the generic Compose layout, but never create a root-backed
+  # /mnt/data/nodecal tree when the ZFS dataset is absent.
   app_dir="/mnt/data/nodecal/config/app"
+else
+  echo "No safe Nodecal app directory is available; set NODECAL_ANDROID_APP_DIR explicitly" >&2
+  exit 1
 fi
 
 if [[ -f /home/gjessing/android-sdk/env.sh && -z "${ANDROID_HOME:-}" ]]; then

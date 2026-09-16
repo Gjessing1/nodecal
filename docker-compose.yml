@@ -6,5 +6,13 @@ services:
       - '3042:3000'
     env_file: .env
     volumes:
-      - /mnt/data/nodecal/config:/config
-      - /mnt/data/nodecal/cache:/cache
+      - type: bind
+        source: /mnt/data/nodecal/config
+        target: /config
+        bind:
+          create_host_path: false
+      - type: bind
+        source: /mnt/data/nodecal/cache
+        target: /cache
+        bind:
+          create_host_path: false

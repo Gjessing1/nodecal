@@ -48,7 +48,7 @@ npm ci
 npm run android:release
 ```
 
-This command reads the version from Gradle, makes a clean release-signed build, publishes it, confirms the live `/api/app/version` response, downloads the served APK, and verifies its checksum. It defaults to this host's live Compose config directory when present, with `/mnt/data/nodecal/config/app` as the generic fallback. Set `NODECAL_ANDROID_APP_DIR` and `NODECAL_ANDROID_VERIFY_URL` for another deployment. A native release is not complete until this command succeeds; committing or building a debug APK does not publish an update.
+This command reads the version from Gradle, makes a clean release-signed build, publishes it, confirms the live `/api/app/version` response, downloads the served APK, and verifies its checksum. It defaults to this host's live Compose config directory when present, or `/mnt/data/nodecal/config/app` when that path is backed by the expected `tank/data/nodecal` dataset. Set `NODECAL_ANDROID_APP_DIR` and `NODECAL_ANDROID_VERIFY_URL` for another deployment. A native release is not complete until this command succeeds; committing or building a debug APK does not publish an update.
 
 The server exposes public metadata at `/api/app/version` and the current APK at `/api/app/download`.
 
@@ -72,7 +72,7 @@ npm start
 
 For local web development, `npm run dev` starts the watched API server on port 3000 and Vite on port 5173.
 
-Docker users can use the included `docker-compose.yml`; it exposes Nodecal on host port `3042` and persists configuration under `/mnt/data/nodecal/config`.
+Docker users can use the included `docker-compose.yml`; it exposes Nodecal on host port `3042` and persists configuration under `/mnt/data/nodecal/config`. Create both `/mnt/data/nodecal/config` and `/mnt/data/nodecal/cache` first; Compose deliberately refuses to create missing bind-mount directories on the root filesystem.
 
 ## Quality checks
 
