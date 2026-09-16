@@ -6,10 +6,11 @@ import { buildDueBadge, buildPriorityBadge } from './taskItem.js';
  * A task as a kanban card: the list row's content restacked for a narrow
  * column. Snooze is left to the list — on a board, moving a card is the edit.
  * @param {import('../app/state.js').Task} task
- * @param {{ onComplete: Function|null, onStar: Function|null, onClick: Function|null }} callbacks
+ * @param {{ onComplete: Function|null, onStar: Function|null, onClick: Function|null,
+ *   onMove: Function|null }} callbacks - onMove opens the card's "Move to…" menu
  * @returns {HTMLElement}
  */
-export function buildTaskCard(task, { onComplete, onStar, onClick }) {
+export function buildTaskCard(task, { onComplete, onStar, onClick, onMove }) {
   const isDone = task.status === 'COMPLETED';
   const card = document.createElement('article');
   card.className =
@@ -90,8 +91,33 @@ export function buildTaskCard(task, { onComplete, onStar, onClick }) {
     });
   }
 
-  card.append(check, body, star);
+  const actions = document.createElement('div');
+  actions.className = 'flex shrink-0 flex-col items-center';
+  actions.appendChild(star);
+  if (onMove) actions.appendChild(buildMoveButton(task, onMove));
+
+  card.append(check, body, actions);
   return card;
+}
+
+/**
+ * @param {import('../app/state.js').Task} task
+ * @param {Function} onMove
+ */
+function buildMoveButton(task, onMove) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className =
+    'flex size-6 items-center justify-center rounded-sm text-md leading-none text-text-muted transition-colors hover:bg-surface hover:text-accent';
+  button.textContent = '⋯';
+  button.title = 'Move to…';
+  button.setAttribute('aria-label', 'Move to…');
+  button.setAttribute('aria-haspopup', 'dialog');
+  button.addEventListener('click', function moveFromCard(e) {
+    e.stopPropagation();
+    onMove(task);
+  });
+  return button;
 }
 
 /**

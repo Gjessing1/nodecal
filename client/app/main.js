@@ -215,6 +215,7 @@ const taskCallbacks = {
   onDelete: handleTaskDelete,
   onSnooze: handleTaskSnooze,
   onBoardMove: handleTaskBoardMove,
+  onBoardAdd: handleTaskBoardAdd,
 };
 
 // Re-rendering the same view (completing a task, starring, snoozing) rebuilds the
@@ -255,6 +256,7 @@ function render() {
         onDelete: null,
         onSnooze: null,
         onBoardMove: null,
+        onBoardAdd: null,
       }
     : taskCallbacks;
   if (state.activeView === 'tasks') renderTasks(viewContainer, currentTaskCallbacks);
@@ -811,6 +813,20 @@ async function handleTaskBoardMove(task, changes) {
     // Offline mid-move: the banner reports it and the next wake refetches.
   }
   render();
+}
+
+/**
+ * Open the editor from a board's "+", prefilled with that column's or lane's
+ * values. A bucket that names no source lands where quick-add would.
+ * @param {Partial<import('./state.js').Task>} draft - from boardActions.bucketDraft
+ */
+function handleTaskBoardAdd(draft) {
+  if (offlineWriteBlocked()) return;
+  const source = draft.source || effectiveTaskSource() || undefined;
+  openTaskModal(
+    { ...draft, source },
+    { onSave: (data) => handleTaskAdd(data), onDelete: () => {} },
+  );
 }
 
 async function handleTaskStar(task) {

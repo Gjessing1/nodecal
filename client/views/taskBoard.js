@@ -2,7 +2,10 @@ import { state } from '../app/state.js';
 import { todayStr } from '../app/dayWindow.js';
 import { buildBoard, DONE_WINDOW_DAYS } from '../app/boardModel.js';
 import { dropChanges } from '../app/boardMoves.js';
+import { bucketDraft, moveGroups } from '../app/boardActions.js';
 import { buildTaskCard } from '../components/taskCard.js';
+import { buildColumnHead, buildLaneHead } from '../components/boardHeads.js';
+import { showBoardMoveMenu } from '../components/boardMoveMenu.js';
 import { initBoardDnd } from '../components/boardDnd.js';
 
 /**
@@ -13,11 +16,13 @@ import { initBoardDnd } from '../components/boardDnd.js';
  */
 
 // Every drop, star or completion rebuilds the board. These keep the reader's
-// place across that: where each board was scrolled to, and which lanes are folded.
+// place across that: where each board was scrolled to, which lanes are folded,
+// and which card a menu move should hand keyboard focus back to.
 /** @type {Map<string, {left: number, top: number}>} */
 const scrollByBoard = new Map();
 /** @type {Set<string>} */
 const foldedLanes = new Set();
+let refocusTaskId = '';
 
 /** @returns {BoardContext} */
 function boardContext() {
@@ -34,7 +39,8 @@ function boardContext() {
  * @param {HTMLElement} container
  * @param {Task[]} tasks - already filtered and sorted by the tasks view
  * @param {TaskBoard} board
- * @param {Record<string, Function|null>} callbacks - onComplete, onStar, onEdit, onBoardMove
+ * @param {Record<string, Function|null>} callbacks - onComplete, onStar, onEdit,
+ *   onBoardMove, onBoardAdd
  */
 export function renderTaskBoard(container, tasks, board, callbacks) {
   const ctx = boardContext();
@@ -44,18 +50,43 @@ export function renderTaskBoard(container, tasks, board, callbacks) {
   el.className = 'task-board' + (board.lanes ? '' : ' task-board-unlaned');
   el.style.setProperty('--board-columns', String(layout.columns.length));
 
-  appendColumnHeads(el, layout, board);
+  /** @param {Task} task */
+  function openMoveMenu(task) {
+    showBoardMoveMenu(task, moveGroups(board, layout, task, ctx), async function moveTo(changes) {
+      refocusTaskId = task.id;
+      try {
+        await callbacks.onBoardMove(task, changes);
+      } finally {
+        // The last re-render restores focus on its next frame; clear after that.
+        requestAnimationFrame(function stopRefocusing() {
+          refocusTaskId = '';
+        });
+      }
+    });
+  }
+
+  for (const column of layout.columns) {
+    let hint = '';
+    if (column.key === 'done' && board.columns === 'status') {
+      hint = `Completed in the last ${DONE_WINDOW_DAYS} days`;
+    }
+    const onAdd = addHandler(board.columns, column.key, ctx, callbacks);
+    el.appendChild(buildColumnHead(column.label, columnCount(layout, column.key), { hint, onAdd }));
+  }
   for (const lane of layout.lanes) {
     const foldKey = `${board.id}\n${lane.key}`;
     const folded = foldedLanes.has(foldKey);
     if (board.lanes) {
-      const count = laneCount(layout, lane.key);
       el.appendChild(
-        buildLaneHead(lane.label, count, folded, function toggleLane() {
-          if (folded) foldedLanes.delete(foldKey);
-          else foldedLanes.add(foldKey);
-          el.remove();
-          renderTaskBoard(container, tasks, board, callbacks);
+        buildLaneHead(lane.label, laneCount(layout, lane.key), {
+          folded,
+          onToggle: function toggleLane() {
+            if (folded) foldedLanes.delete(foldKey);
+            else foldedLanes.add(foldKey);
+            el.remove();
+            renderTaskBoard(container, tasks, board, callbacks);
+          },
+          onAdd: addHandler(board.lanes, lane.key, ctx, callbacks),
         }),
       );
     }
@@ -66,11 +97,16 @@ export function renderTaskBoard(container, tasks, board, callbacks) {
       cell.dataset.lane = lane.key;
       cell.dataset.column = column.key;
       for (const task of layout.cells.get(lane.key).get(column.key)) {
+        let onMove = null;
+        if (callbacks.onBoardMove && moveGroups(board, layout, task, ctx).length) {
+          onMove = openMoveMenu;
+        }
         cell.appendChild(
           buildTaskCard(task, {
             onComplete: callbacks.onComplete,
             onStar: callbacks.onStar,
             onClick: callbacks.onEdit,
+            onMove,
           }),
         );
       }
@@ -78,12 +114,16 @@ export function renderTaskBoard(container, tasks, board, callbacks) {
     }
   }
   container.appendChild(el);
-
-  const saved = scrollByBoard.get(board.id);
-  if (saved) {
-    el.scrollLeft = saved.left;
-    el.scrollTop = saved.top;
+  // The tasks view builds its list before attaching it, and a detached board
+  // has no layout to scroll or focus, so wait until it is on the page.
+  if (el.isConnected) {
+    restorePlace(el, board);
+  } else {
+    requestAnimationFrame(function restoreOnceAttached() {
+      restorePlace(el, board);
+    });
   }
+
   el.addEventListener(
     'scroll',
     function rememberScroll() {
@@ -116,57 +156,47 @@ export function renderTaskBoard(container, tasks, board, callbacks) {
 }
 
 /**
+ * Put the scroll position back and, after a menu move, focus the moved card in
+ * its new cell (which scrolls it into view). Focus is only taken back from the
+ * page body — where it falls when the old card was removed — never from
+ * wherever the user has since moved it.
  * @param {HTMLElement} el
- * @param {BoardLayout} layout
  * @param {TaskBoard} board
  */
-function appendColumnHeads(el, layout, board) {
-  for (const column of layout.columns) {
-    const head = document.createElement('div');
-    head.className =
-      'task-board-head sticky top-0 z-10 flex snap-start items-baseline gap-xs bg-bg px-xs py-sm text-sm font-semibold tracking-wider text-text-muted uppercase';
-    const label = document.createElement('span');
-    label.className = 'truncate';
-    label.textContent = column.label;
-    const count = document.createElement('span');
-    count.className = 'font-normal';
-    count.textContent = String(columnCount(layout, column.key));
-    head.append(label, count);
-    if (column.key === 'done' && board.columns === 'status') {
-      head.title = `Completed in the last ${DONE_WINDOW_DAYS} days`;
+function restorePlace(el, board) {
+  if (!el.isConnected) return;
+  const saved = scrollByBoard.get(board.id);
+  if (saved) {
+    el.scrollLeft = saved.left;
+    el.scrollTop = saved.top;
+  }
+  if (!refocusTaskId) return;
+  const active = document.activeElement;
+  if (active && active !== document.body) return;
+  for (const card of el.querySelectorAll('.task-card')) {
+    const cardEl = /** @type {HTMLElement} */ (card);
+    if (cardEl.dataset.id === refocusTaskId) {
+      cardEl.focus();
+      return;
     }
-    el.appendChild(head);
   }
 }
 
 /**
- * A lane's header spans the whole row; the button inside sticks to the left
- * edge so the label stays readable however far the board is scrolled across.
- * @param {string} label
- * @param {number} count
- * @param {boolean} folded
- * @param {() => void} onToggle
+ * The "+" handler for a bucket, or null where a new task has no clear place.
+ * @param {import('../app/boardBuckets.js').BoardField} field
+ * @param {string} key
+ * @param {BoardContext} ctx
+ * @param {Record<string, Function|null>} callbacks
+ * @returns {(() => void)|null}
  */
-function buildLaneHead(label, count, folded, onToggle) {
-  const row = document.createElement('div');
-  row.className = 'col-span-full border-t border-border pt-xs';
-  const toggle = document.createElement('button');
-  toggle.type = 'button';
-  toggle.className =
-    'sticky left-0 flex items-center gap-xs rounded-sm px-xs py-xs text-sm font-semibold text-text';
-  toggle.setAttribute('aria-expanded', String(!folded));
-  const chevron = document.createElement('span');
-  chevron.className = 'text-text-muted';
-  chevron.textContent = folded ? '▸' : '▾';
-  const name = document.createElement('span');
-  name.textContent = label;
-  const tally = document.createElement('span');
-  tally.className = 'font-normal text-text-muted';
-  tally.textContent = String(count);
-  toggle.append(chevron, name, tally);
-  toggle.addEventListener('click', onToggle);
-  row.appendChild(toggle);
-  return row;
+function addHandler(field, key, ctx, callbacks) {
+  if (!callbacks.onBoardAdd) return null;
+  const draft = bucketDraft(field, key, ctx);
+  if (!draft) return null;
+  return function addToBucket() {
+    callbacks.onBoardAdd(draft);
+  };
 }
 
 /**
