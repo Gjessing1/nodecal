@@ -1,5 +1,5 @@
 import { state } from '../app/state.js';
-import { getAllCategories, visibleCategories } from '../app/taskUtils.js';
+import { getAllCategories, visibleCategories, withUnshownCategories } from '../app/taskUtils.js';
 import {
   priorityOptions,
   priorityToSave,
@@ -272,7 +272,7 @@ export function openTaskModal(task, { onSave, onDelete }) {
       completed =
         task.status === 'COMPLETED' && task.completed ? task.completed : new Date().toISOString();
     }
-    const finalCats = catCtrl.getCategories();
+    const finalCats = withUnshownCategories(task.categories, catCtrl.getCategories(), hidden);
 
     onSave({
       title,

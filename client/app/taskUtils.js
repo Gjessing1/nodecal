@@ -111,3 +111,22 @@ export function priorityRank(priority) {
   if (!priority || priority < 1 || priority > 9) return 10;
   return priority;
 }
+
+/**
+ * The categories to save from the task editor, which only lists the visible
+ * ones: the edited list plus what the editor kept out of sight — the
+ * 'important' star and hidden categories. Without this, saving a task from
+ * the editor unstars it and strips categories hidden in Settings.
+ * @param {string[]|undefined} original - the task's categories before editing
+ * @param {string[]} edited - the categories the editor ended with
+ * @param {string[]} hiddenCategories
+ * @returns {string[]}
+ */
+export function withUnshownCategories(original, edited, hiddenCategories = []) {
+  const result = [...edited];
+  for (const cat of original || []) {
+    if (visibleCategories([cat], hiddenCategories).length) continue;
+    if (!result.includes(cat)) result.push(cat);
+  }
+  return result;
+}
