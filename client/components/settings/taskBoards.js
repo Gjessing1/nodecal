@@ -4,7 +4,7 @@ import { button, field, help, row, select, textInput } from './fields.js';
 
 /**
  * Editor for `draft.taskBoards` — the kanban boards the Tasks view offers in
- * its Group menu. Each board picks a field for its columns and, optionally, a
+ * its layout menu. Each board picks a field for its columns and, optionally, a
  * second field that splits every column into swim lanes.
  * @param {HTMLElement} host - container owned by this editor; re-rendered in place
  * @param {Record<string, any>} draft
@@ -20,7 +20,7 @@ export function renderTaskBoards(host, draft) {
   host.innerHTML = '';
   host.appendChild(
     help(
-      'Boards appear in the Tasks view’s Group menu. Columns split tasks across; lanes split each column into rows.',
+      'Boards appear in the Tasks view’s layout menu as “Kanban: name”. Columns split tasks across; lanes split each column into rows.',
     ),
   );
 

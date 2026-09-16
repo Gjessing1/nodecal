@@ -20,13 +20,14 @@ import { bucketKey, fieldBuckets, isBoardField } from './boardBuckets.js';
 export const DEFAULT_BOARDS = [
   { id: 'status', name: 'Status', columns: 'status', lanes: '' },
   { id: 'priority', name: 'Priority', columns: 'priority', lanes: '' },
+  { id: 'category', name: 'Category', columns: 'category', lanes: '' },
 ];
 
 // A Done column holding every task ever finished buries this week's work.
 export const DONE_WINDOW_DAYS = 14;
 
 /**
- * The boards to offer: the saved ones, or the built-in pair when none are saved
+ * The boards to offer: the saved ones, or the built-in set when none are saved
  * (a board list can never be empty — the view always has something to draw).
  * @param {Record<string, any>} config
  * @returns {TaskBoard[]}

@@ -31,7 +31,7 @@ export function renderTasksSection(pane, draft) {
     ),
   );
 
-  pane.appendChild(groupLabel('Boards'));
+  pane.appendChild(groupLabel('Kanban boards'));
   const boards = document.createElement('div');
   pane.appendChild(boards);
   renderTaskBoards(boards, draft);

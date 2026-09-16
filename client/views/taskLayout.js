@@ -1,8 +1,8 @@
 import { state } from '../app/state.js';
 import { boardsFromConfig } from '../app/boardModel.js';
 
-// The Tasks view's "Group" menu picks a layout: one of the list groupings
-// ('date', 'category') or a board ('board:<id>').
+// The Tasks view's layout menu picks one of the list groupings ('date', shown
+// as Agenda, or 'category') or a kanban board ('board:<id>').
 
 // The one view choice kept across launches: someone who works from a board
 // should not land back in the list every time the app opens.
@@ -10,20 +10,22 @@ const LAYOUT_STORAGE_KEY = 'nodecal-tasks-layout';
 const BOARD_PREFIX = 'board:';
 
 /**
- * "Group" select: the two list groupings, then every board. Rebuilt each render
- * so a board added or renamed in Settings shows up without a reload.
+ * Layout select: the two list groupings, then every board. Each option names
+ * its kind ("Group:", "Kanban:") the way the sort menu says "Sort:", so the
+ * closed select reads on its own and the list needs no section headings.
+ * Rebuilt each render so a board added or renamed in Settings shows up without
+ * a reload.
  * @returns {HTMLSelectElement}
  */
 export function buildLayoutSelect() {
   const select = document.createElement('select');
   select.className = 'rounded-sm px-sm py-xs text-sm';
-  select.append(new Option('Group: Date', 'date'), new Option('Group: Category', 'category'));
-  const boards = document.createElement('optgroup');
-  boards.label = 'Boards';
+  select.setAttribute('aria-label', 'Layout');
+  // 'date' stays the stored value so a layout remembered before the rename still loads.
+  select.append(new Option('Group: Agenda', 'date'), new Option('Group: Category', 'category'));
   for (const board of boardsFromConfig(state.config)) {
-    boards.appendChild(new Option(`Board: ${board.name}`, BOARD_PREFIX + board.id));
+    select.appendChild(new Option(`Kanban: ${board.name}`, BOARD_PREFIX + board.id));
   }
-  select.appendChild(boards);
   return select;
 }
 

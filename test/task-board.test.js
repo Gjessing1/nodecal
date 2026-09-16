@@ -224,9 +224,13 @@ test('a diagonal drop combines both axes, lane applied after column', async () =
   assert.strictEqual(dropChanges(refusing, sourced, 'https://dav/work/', 'doing', CTX), null);
 });
 
-test('saved boards fall back to the built-in pair when unusable', async () => {
+test('saved boards fall back to the built-in boards when unusable', async () => {
   const { boardsFromConfig, DEFAULT_BOARDS } = await load('boardModel.js');
   assert.strictEqual(boardsFromConfig({}), DEFAULT_BOARDS);
+  assert.deepStrictEqual(
+    DEFAULT_BOARDS.map((board) => board.columns),
+    ['status', 'priority', 'category'],
+  );
   assert.strictEqual(
     boardsFromConfig({ taskBoards: [{ id: 'x', columns: 'bogus' }] }),
     DEFAULT_BOARDS,
