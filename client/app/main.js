@@ -52,6 +52,7 @@ import { effectiveTaskSource, resolveEventCalendar } from './profileTargets.js';
 import { initBackNav, goBack } from './backNav.js';
 import { initConnectivity, reportOfflineData, reportFreshData, recheck } from './connectivity.js';
 import { responseError } from './httpError.js';
+import { boardMoveUndo } from './boardMoveUndo.js';
 import { localDateStr, toDateInputValue, localToUTC } from './utils.js';
 
 const viewContainer = document.getElementById('view-container');
@@ -783,6 +784,7 @@ async function handleTaskComplete(task) {
  */
 async function handleTaskBoardMove(task, changes, shifts = []) {
   if (offlineWriteBlocked()) return;
+  const undo = boardMoveUndo(task, changes, shifts);
   const completing = changes.status === 'COMPLETED';
   const moved = { ...task, ...changes };
   if (changes.categories) moved.important = changes.categories.includes('important');
@@ -798,31 +800,21 @@ async function handleTaskBoardMove(task, changes, shifts = []) {
   );
   render();
 
+  let succeeded = false;
   try {
     const fields = { ...changes };
     // Done goes through /complete, which advances recurring tasks.
     if (completing) delete fields.status;
-    if (Object.keys(fields).length) {
-      const res = await fetch(`/api/tasks/${task.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(fields),
-      });
-      if (!res.ok) throw new Error(await responseError(res));
-    }
+    await writeTaskFields(task.id, fields);
     if (completing) {
       const res = await fetch(`/api/tasks/${task.id}/complete`, { method: 'POST' });
       if (!res.ok) throw new Error(await responseError(res));
     }
     // One at a time: a shift is one VTODO rewrite each, and usually there are none.
     for (const shift of shifts) {
-      const res = await fetch(`/api/tasks/${shift.task.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sortOrder: shift.sortOrder }),
-      });
-      if (!res.ok) throw new Error(await responseError(res));
+      await writeTaskFields(shift.task.id, { sortOrder: shift.sortOrder });
     }
+    succeeded = true;
   } catch (err) {
     alert('Could not move task: ' + err.message);
   }
@@ -832,6 +824,67 @@ async function handleTaskBoardMove(task, changes, shifts = []) {
     // Offline mid-move: the banner reports it and the next wake refetches.
   }
   render();
+  if (succeeded) {
+    showSnackbar('Task moved', {
+      actionLabel: 'Undo',
+      onAction: () => handleTaskBoardMoveUndo(task.id, undo.changes, undo.shifts),
+    });
+  }
+}
+
+/**
+ * Restore the task fields and manual-order shifts captured before a board move.
+ * This deliberately uses ordinary PUTs: calling /complete would advance a
+ * recurring task again instead of restoring its old due date.
+ * @param {string} taskId
+ * @param {Partial<import('./state.js').Task>} changes
+ * @param {import('./boardMoveUndo.js').UndoOrderWrite[]} shifts
+ */
+async function handleTaskBoardMoveUndo(taskId, changes, shifts) {
+  if (offlineWriteBlocked()) return;
+  const shiftedOrders = new Map();
+  for (const shift of shifts) shiftedOrders.set(shift.task.id, shift.sortOrder);
+  setTasks(
+    state.tasks.map(function undoMove(t) {
+      if (t.id === taskId) {
+        const restored = { ...t, ...changes };
+        if (changes.categories) restored.important = changes.categories.includes('important');
+        return restored;
+      }
+      if (shiftedOrders.has(t.id)) return { ...t, sortOrder: shiftedOrders.get(t.id) };
+      return t;
+    }),
+  );
+  render();
+
+  try {
+    await writeTaskFields(taskId, changes);
+    for (const shift of shifts) {
+      await writeTaskFields(shift.task.id, { sortOrder: shift.sortOrder });
+    }
+  } catch (err) {
+    alert('Could not undo move: ' + err.message);
+  }
+  try {
+    await loadTasks();
+  } catch {
+    // Offline mid-undo: the banner reports it and the next wake refetches.
+  }
+  render();
+}
+
+/**
+ * @param {string} taskId
+ * @param {Partial<import('./state.js').Task>} fields
+ */
+async function writeTaskFields(taskId, fields) {
+  if (!Object.keys(fields).length) return;
+  const res = await fetch(`/api/tasks/${taskId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(fields),
+  });
+  if (!res.ok) throw new Error(await responseError(res));
 }
 
 /**

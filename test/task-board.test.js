@@ -281,6 +281,47 @@ test('a diagonal drop combines both axes, lane applied after column', async () =
   assert.strictEqual(dropChanges(refusing, sourced, 'https://dav/work/', 'doing', CTX), null);
 });
 
+test('undoing a recurring completion restores its old due date and other moved fields', async () => {
+  const { boardMoveUndo } = await load('boardMoveUndo.js');
+  const recurring = task({
+    title: 'repeat',
+    status: 'IN-PROCESS',
+    due: '2026-09-16',
+    completed: null,
+    priority: 3,
+    sortOrder: 100,
+    recurring: true,
+  });
+  const unranked = task({ title: 'unranked' });
+  const undo = boardMoveUndo(recurring, { status: 'COMPLETED', priority: 1, sortOrder: 300 }, [
+    { task: unranked, sortOrder: 301 },
+  ]);
+
+  assert.deepStrictEqual(undo.changes, {
+    status: 'IN-PROCESS',
+    priority: 3,
+    sortOrder: 100,
+    completed: null,
+    due: '2026-09-16',
+  });
+  assert.deepStrictEqual(undo.shifts, [{ task: unranked, sortOrder: null }]);
+});
+
+test('a board move undo copies categories and restores empty task fields canonically', async () => {
+  const { boardMoveUndo } = await load('boardMoveUndo.js');
+  const original = task({ title: 'x', categories: ['work'], due: null, priority: 0 });
+  const undo = boardMoveUndo(original, {
+    categories: ['home'],
+    due: '2026-09-17',
+    priority: 1,
+  });
+
+  assert.deepStrictEqual(undo.changes, { categories: ['work'], due: null, priority: 0 });
+  assert.notStrictEqual(undo.changes.categories, original.categories);
+  original.categories.push('later');
+  assert.deepStrictEqual(undo.changes.categories, ['work']);
+});
+
 test('saved boards fall back to the built-in boards when unusable', async () => {
   const { boardsFromConfig, DEFAULT_BOARDS } = await load('boardModel.js');
   assert.strictEqual(boardsFromConfig({}), DEFAULT_BOARDS);
