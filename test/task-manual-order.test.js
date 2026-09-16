@@ -46,8 +46,9 @@ test('a drop between two cards takes the midpoint and writes nothing else', asyn
   const { placeTask } = await load('manualOrder.js');
   const others = [task('a', 10), task('b', 20), task('c', 30)];
   assert.deepStrictEqual(summary(placeTask(others, task('m', 99), 1)), [['m', 15]]);
-  assert.deepStrictEqual(summary(placeTask(others, task('m', 99), 0)), [['m', 9]]);
-  assert.deepStrictEqual(summary(placeTask(others, task('m', 1), 3)), [['m', 31]]);
+  // Top and bottom leave room for the next drop beside them.
+  assert.deepStrictEqual(summary(placeTask(others, task('m', 99), 0)), [['m', 10 - 1024]]);
+  assert.deepStrictEqual(summary(placeTask(others, task('m', 1), 3)), [['m', 30 + 1024]]);
 });
 
 test('a card whose rank already fits the gap keeps it', async () => {
@@ -79,19 +80,19 @@ test('ties above the drop are left alone; ties below are separated', async () =>
   ]);
 });
 
-test('unranked tasks get numbered where the move needs them to be', async () => {
+test('only unranked tasks above the drop get numbered', async () => {
   const { placeTask } = await load('manualOrder.js');
   const mixed = [task('a', 10), task('x', null), task('y', null)];
   assert.deepStrictEqual(summary(placeTask(mixed, task('m', null), 2)), [
-    ['x', 11],
-    ['m', 12],
-    ['y', 13],
+    ['x', 10 + 1024],
+    ['m', 10 + 2048],
   ]);
-  const unranked = [task('x', null), task('y', null)];
-  assert.deepStrictEqual(summary(placeTask(unranked, task('m', null), 0)), [
-    ['m', 0],
-    ['x', 1],
-    ['y', 2],
+  // Unranked tasks sort after ranked ones, so one number puts a card on top.
+  const unranked = [task('x', null), task('y', null), task('z', null)];
+  assert.deepStrictEqual(summary(placeTask(unranked, task('m', null), 0)), [['m', 0]]);
+  assert.deepStrictEqual(summary(placeTask(unranked, task('m', null), 1)), [
+    ['x', 0],
+    ['m', 1024],
   ]);
   // Last in the cell with nothing ranked around it: nothing to be relative to.
   assert.deepStrictEqual(placeTask([], task('m', null), 0), []);
@@ -108,7 +109,7 @@ test('a placed drop folds the moved card’s order into its bucket change', asyn
   // Within its own cell the card is skipped when counting positions.
   const own = [task('a', 10), moved, task('b', 60)];
   assert.deepStrictEqual(placedMove({}, moved, own, 0), {
-    changes: { sortOrder: 9 },
+    changes: { sortOrder: 10 - 1024 },
     shifts: [],
   });
 });
@@ -129,15 +130,15 @@ test('an ordered board’s move menu offers top, up, down and bottom within the 
 
   assert.deepStrictEqual(orderLabels(tasks[0]), [
     ['Down one', 25],
-    ['Bottom', 41],
+    ['Bottom', 40 + 1024],
   ]);
   assert.deepStrictEqual(orderLabels(tasks[1]), [
-    ['Top', 9],
+    ['Top', 10 - 1024],
     ['Down one', 35],
-    ['Bottom', 41],
+    ['Bottom', 40 + 1024],
   ]);
   assert.deepStrictEqual(orderLabels(tasks[3]), [
-    ['Top', 9],
+    ['Top', 10 - 1024],
     ['Up one', 25],
   ]);
 

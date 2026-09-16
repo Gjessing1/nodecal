@@ -15,6 +15,11 @@
 // Tasks.org's APPLE_EPOCH: Core Data's reference date.
 const APPLE_EPOCH_MS = Date.UTC(2001, 0, 1);
 
+// Room left beside a task placed with nothing on one side (top, bottom, or
+// next to unranked tasks), so the next drop beside it usually fits without
+// pushing other tasks down.
+const OPEN_STEP = 1024;
+
 /**
  * Where a task sits in manual order.
  * @param {Task} task
@@ -49,7 +54,9 @@ export function compareManual(a, b) {
  * changes: it keeps its rank if that already fits, or takes the midpoint of
  * its new neighbours. With no room between them it goes just after the one
  * above, and the tasks below are pushed down one step at a time until the
- * order rises again, as Tasks.org does.
+ * order rises again, as Tasks.org does. Unranked tasks above the drop are
+ * numbered so they stay above it; those below are left alone, since unranked
+ * tasks sort after every ranked one anyway.
  * @param {Task[]} others
  * @param {Task} moved
  * @param {number} index
@@ -70,17 +77,17 @@ export function placeTask(others, moved, index) {
     if (i < at) {
       // Above the drop point only an unranked task needs a number, so that it
       // stays above the moved one. Ties there change nothing below.
-      if (rank === null) wanted = last === null ? 0 : last + 1;
+      if (rank === null) wanted = last === null ? 0 : last + OPEN_STEP;
     } else if (i === at) {
       let next = null;
       if (i + 1 < sequence.length) next = manualRank(sequence[i + 1]);
       wanted = slotRank(last, next, rank);
-      // Unranked tasks below get numbered from this one, so it needs one too.
+      // Unranked below and nothing ranked above: any number sorts it above them.
       if (wanted === null && i + 1 < sequence.length) wanted = 0;
-    } else if (rank !== null && last !== null && rank > last) {
-      // Rising again, and the list was sorted, so the rest already is.
+    } else if (rank === null || last === null || rank > last) {
+      // Rising again (or unranked from here on), and the list was sorted.
       break;
-    } else if (last !== null) {
+    } else {
       wanted = last + 1;
     }
     if (wanted !== null && wanted !== rank) writes.push({ task, sortOrder: wanted });
@@ -102,9 +109,9 @@ function slotRank(prev, next, current) {
   if (current !== null && belowPrev && aboveNext) return current;
   if (prev === null) {
     if (next === null) return current;
-    return next - 1;
+    return next - OPEN_STEP;
   }
-  if (next === null) return prev + 1;
+  if (next === null) return prev + OPEN_STEP;
   if (next - prev >= 2) return prev + Math.floor((next - prev) / 2);
   return prev + 1;
 }
