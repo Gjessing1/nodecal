@@ -183,3 +183,29 @@
   padding-bottom: 2px;
   white-space: nowrap;
 }
+
+/* ── Landscape phones ────────────────────────────────────── */
+/* About 270px separate the header from the bottom nav, and the toolbar rows
+   plus the quick-add bar used to take all of it. The search and filter rows
+   fold behind a Filters button, and the quick-add bar shows only its input
+   until it has focus. Same query as the landscape rules in main.css. */
+.tasks-filters-toggle {
+  display: none;
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  :root {
+    --tasks-quickadd-h: 61px;
+  }
+  .tasks-quickadd-visible #view-container {
+    padding-bottom: var(--tasks-quickadd-h);
+  }
+  .tasks-filters-toggle {
+    display: inline-flex;
+  }
+  .tasks-view:not(.filters-open) .tasks-filter-row {
+    display: none;
+  }
+  .task-quickadd:not(:focus-within) .task-quickadd-extra {
+    display: none;
+  }
+}

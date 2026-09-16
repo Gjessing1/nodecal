@@ -11,8 +11,9 @@ import { mountTaskQuickAdd } from '../components/taskQuickAdd.js';
 import { renderTaskBoard } from './taskBoard.js';
 import { boardForLayout, buildLayoutSelect, readStoredLayout, storeLayout } from './taskLayout.js';
 
+// tasks-filter-row: folded behind the Filters button on landscape phones (tasks.css).
 const FILTER_ROW_CLASSES =
-  'flex shrink-0 items-center gap-xs overflow-x-auto border-b border-border px-md py-xs [scrollbar-width:none] empty:hidden';
+  'tasks-filter-row flex shrink-0 items-center gap-xs overflow-x-auto border-b border-border px-md py-xs [scrollbar-width:none] empty:hidden';
 const LIST_CLASSES = 'tasks-list min-h-0 flex-1 overflow-y-auto pb-sm';
 // The board scrolls itself in both directions; the list around it must not.
 const BOARD_LIST_CLASSES = 'tasks-list min-h-0 flex-1 overflow-hidden';
@@ -27,6 +28,7 @@ const _persist = {
   filterCat: '',
   filterSource: '',
   query: '',
+  filtersOpen: false,
   sortOrder: null, // null means use state.config.taskSortOrder
 };
 
@@ -42,6 +44,7 @@ export function renderTasks(container, callbacks) {
 
   const wrap = document.createElement('div');
   wrap.className = 'tasks-view flex h-full flex-col overflow-hidden';
+  wrap.classList.toggle('filters-open', _persist.filtersOpen);
 
   const filterState = { showDone: _persist.showDone, starredOnly: _persist.starredOnly };
   let currentGroupBy = _persist.groupBy;
@@ -82,6 +85,30 @@ export function renderTasks(container, callbacks) {
 
   leftFilters.appendChild(showDoneLabel);
   leftFilters.appendChild(starredOnlyLabel);
+
+  // Only shown on landscape phones, where the rows it opens are folded away.
+  const filtersToggle = document.createElement('button');
+  filtersToggle.type = 'button';
+  filtersToggle.className =
+    'tasks-filters-toggle shrink-0 whitespace-nowrap rounded-lg border border-border px-control py-pill-y text-sm text-text-muted transition-colors duration-100 aria-expanded:border-accent aria-expanded:bg-accent-light aria-expanded:text-accent';
+  filtersToggle.addEventListener('click', function toggleFilterRows() {
+    _persist.filtersOpen = !_persist.filtersOpen;
+    wrap.classList.toggle('filters-open', _persist.filtersOpen);
+    updateFiltersToggle();
+  });
+  leftFilters.appendChild(filtersToggle);
+
+  // Folded rows can still be filtering the list, so the button counts them.
+  function updateFiltersToggle() {
+    let active = 0;
+    if (_persist.query.trim()) active += 1;
+    if (currentSourceFilter) active += 1;
+    if (currentFilterCat) active += 1;
+    let label = 'Filters';
+    if (active) label = `Filters · ${active}`;
+    filtersToggle.textContent = label;
+    filtersToggle.setAttribute('aria-expanded', String(_persist.filtersOpen));
+  }
 
   const rightControls = document.createElement('div');
   rightControls.className = 'flex items-center gap-sm';
@@ -126,7 +153,7 @@ export function renderTasks(container, callbacks) {
   // calendars currently checked in the drawer). Created once so typing keeps
   // focus — rerender() never rebuilds this input.
   const searchRow = document.createElement('div');
-  searchRow.className = 'shrink-0 border-b border-border px-md py-xs';
+  searchRow.className = 'tasks-filter-row shrink-0 border-b border-border px-md py-xs';
   const searchInput = document.createElement('input');
   searchInput.type = 'search';
   searchInput.className = 'w-full rounded-sm border border-border px-control py-field-y text-sm';
@@ -134,6 +161,7 @@ export function renderTasks(container, callbacks) {
   searchInput.value = _persist.query;
   searchInput.addEventListener('input', () => {
     _persist.query = searchInput.value;
+    updateFiltersToggle();
     renderList(
       list,
       filterState,
@@ -239,6 +267,7 @@ export function renderTasks(container, callbacks) {
   function rerender() {
     buildSourceFilter();
     buildCatFilter();
+    updateFiltersToggle();
     renderList(
       list,
       filterState,
@@ -250,6 +279,7 @@ export function renderTasks(container, callbacks) {
     );
   }
 
+  updateFiltersToggle();
   renderList(
     list,
     filterState,

@@ -33,7 +33,7 @@ export function mountTaskQuickAdd(callbacks) {
 function buildQuickAdd(callbacks) {
   const bar = document.createElement('div');
   bar.className =
-    'fixed right-0 bottom-[calc(var(--nav-height)+var(--app-safe-area-bottom))] left-0 z-50 border-t border-border bg-bg pt-xs pr-[calc(var(--spacing-md)+var(--app-safe-area-right))] pb-sm pl-[calc(var(--spacing-md)+var(--app-safe-area-left))]';
+    'task-quickadd fixed right-0 bottom-[calc(var(--nav-height)+var(--app-safe-area-bottom))] left-0 z-50 border-t border-border bg-bg pt-xs pr-[calc(var(--spacing-md)+var(--app-safe-area-right))] pb-sm pl-[calc(var(--spacing-md)+var(--app-safe-area-left))]';
 
   const inputWrap = document.createElement('div');
   inputWrap.className = 'relative flex-1';
@@ -165,7 +165,7 @@ function buildQuickAdd(callbacks) {
   inputWrap.appendChild(nlpFb);
 
   const dates = document.createElement('div');
-  dates.className = 'mt-xs flex flex-wrap gap-sm';
+  dates.className = 'task-quickadd-extra mt-xs flex flex-wrap gap-sm';
 
   let selectedDue = null;
   const today = localDateStr(new Date());
@@ -233,7 +233,7 @@ function buildQuickAdd(callbacks) {
   // tasks land.
   let selectedSource = effectiveTaskSource() || null;
   const sourceRow = document.createElement('div');
-  sourceRow.className = 'mt-xs flex flex-wrap gap-sm';
+  sourceRow.className = 'task-quickadd-extra mt-xs flex flex-wrap gap-sm';
   sourceRow.style.display = 'none';
 
   function buildSourceSelector() {
@@ -253,6 +253,9 @@ function buildQuickAdd(callbacks) {
       btn.className = DATE_CHIP_CLASSES;
       btn.setAttribute('aria-pressed', String(selectedSource === src.url));
       btn.textContent = src.name || src.url;
+      // Keep focus in the input like the date chips do: in landscape this row
+      // folds away as soon as focus leaves the bar.
+      btn.addEventListener('mousedown', (e) => e.preventDefault());
       btn.addEventListener('click', () => {
         selectedSource = selectedSource === src.url ? null : src.url;
         // Picking a source makes it the active profile's default, so the next
