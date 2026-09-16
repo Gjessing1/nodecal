@@ -431,6 +431,7 @@ function parseVtodo(icsText) {
       location: unescapeIcsText(props.LOCATION?.value || ''),
       url: unescapeIcsText(props.URL?.value || ''),
       status: props.STATUS?.value || 'NEEDS-ACTION',
+      priority: parsePriority(props.PRIORITY?.value),
       due,
       completed,
       categories,
@@ -441,6 +442,19 @@ function parseVtodo(icsText) {
     });
   }
   return result;
+}
+
+/**
+ * RFC 5545 PRIORITY: 1 is highest, 9 lowest, 0 undefined. Anything outside that
+ * range (or missing) reads as undefined rather than being clamped into a level
+ * the author never chose.
+ * @param {string|undefined} raw
+ * @returns {number}
+ */
+function parsePriority(raw) {
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 0 || value > 9) return 0;
+  return value;
 }
 
 /**
@@ -459,6 +473,7 @@ function serializeTask(task) {
     `SUMMARY:${escapeIcsText(task.title || '')}`,
     `STATUS:${task.status || 'NEEDS-ACTION'}`,
   ];
+  if (task.priority) lines.push(`PRIORITY:${task.priority}`);
   if (task.due) lines.push(`DUE;VALUE=DATE:${task.due.replace(/-/g, '')}`);
   if (task.completed) {
     const dt = new Date(task.completed).toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
@@ -485,4 +500,5 @@ module.exports = {
   parseVtodo,
   serializeTask,
   parseCategories,
+  parsePriority,
 };

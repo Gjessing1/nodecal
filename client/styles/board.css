@@ -1,0 +1,73 @@
+/* ── Task kanban board ───────────────────────────────────── */
+/* Columns share one grid with every lane's cells, so a column stays aligned
+   from the sticky header down through each swim lane while the whole board
+   scrolls as one surface. On a phone a column takes most of the width and
+   snaps, so the next column peeks in as a cue to swipe. */
+.task-board {
+  display: grid;
+  grid-template-columns: repeat(
+    var(--board-columns),
+    minmax(min(85vw, var(--container-board-column)), 1fr)
+  );
+  /* The board has a fixed height, so auto rows would be squeezed down to their
+     minimum once the lanes outgrow it, spilling cards out of their cells. */
+  grid-auto-rows: max-content;
+  align-content: start;
+  column-gap: var(--spacing-sm);
+  height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 0 var(--spacing-sm) var(--spacing-md);
+  scroll-padding-inline: var(--spacing-sm);
+  scroll-snap-type: x proximity;
+}
+
+/* Without lanes the single cell row fills the height, so the empty space under
+   a short column is still a drop target. */
+.task-board-unlaned {
+  grid-template-rows: max-content minmax(max-content, 1fr);
+  align-content: stretch;
+}
+
+.task-board-cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  min-height: calc(var(--spacing-touch) * 2);
+  margin-bottom: var(--spacing-sm);
+  padding: var(--spacing-xs);
+  border: 2px dashed transparent;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  transition:
+    background 0.1s,
+    border-color 0.1s;
+}
+.task-board-cell.is-drop-target {
+  border-color: var(--color-accent);
+  background: var(--color-accent-light);
+}
+.task-board-cell.is-drop-blocked {
+  border-color: var(--color-border);
+  cursor: not-allowed;
+}
+
+/* A long press lifts a card; without these it selects the title or opens the
+   iOS callout instead. */
+.task-card {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.task-card.is-dragging {
+  opacity: 0.3;
+}
+.task-card-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: var(--z-overlay);
+  pointer-events: none;
+  rotate: 2deg;
+  box-shadow: var(--shadow-popup);
+}

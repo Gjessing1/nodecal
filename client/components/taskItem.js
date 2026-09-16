@@ -5,8 +5,14 @@
  * @returns {HTMLElement}
  */
 import { state } from '../app/state.js';
-import { visibleCategories } from '../app/taskUtils.js';
+import { PRIORITY_LEVELS, priorityLevel, visibleCategories } from '../app/taskUtils.js';
 import { formatShortDate } from '../app/utils.js';
+
+const PRIORITY_BADGE_CLASSES = {
+  high: 'text-danger',
+  medium: 'text-star',
+  low: 'text-text-muted',
+};
 
 export function buildTaskItem(task, { onComplete, onStar, onClick, onSnooze, showDue = false }) {
   const li = document.createElement('li');
@@ -54,13 +60,9 @@ export function buildTaskItem(task, { onComplete, onStar, onClick, onSnooze, sho
   const meta = document.createElement('div');
   meta.className = 'mt-2xs flex items-center gap-sm';
 
-  if (showDue && task.due) {
-    const badge = document.createElement('span');
-    const isOverdue = task.status !== 'COMPLETED' && isDueOverdue(task.due);
-    badge.className = 'text-sm ' + (isOverdue ? 'font-medium text-danger' : 'text-text-muted');
-    badge.textContent = formatDue(task.due);
-    meta.appendChild(badge);
-  }
+  const priority = buildPriorityBadge(task);
+  if (priority) meta.appendChild(priority);
+  if (showDue && task.due) meta.appendChild(buildDueBadge(task));
   if (task.recurring) {
     const rec = document.createElement('span');
     rec.className = 'text-sm text-text-muted';
@@ -129,6 +131,37 @@ export function buildTaskItem(task, { onComplete, onStar, onClick, onSnooze, sho
 
   li.appendChild(star);
   return li;
+}
+
+/**
+ * The task's priority level as a small outlined label, or null when unset.
+ * @param {import('../app/state.js').Task} task
+ * @returns {HTMLElement|null}
+ */
+export function buildPriorityBadge(task) {
+  const level = priorityLevel(task.priority);
+  if (level === 'none') return null;
+  const badge = document.createElement('span');
+  badge.className =
+    'rounded-sm border border-current px-xs text-xs font-medium ' + PRIORITY_BADGE_CLASSES[level];
+  for (const item of PRIORITY_LEVELS) {
+    if (item.key === level) badge.textContent = item.label;
+  }
+  badge.title = `${badge.textContent} priority`;
+  return badge;
+}
+
+/**
+ * The due date as Today / Tomorrow / a short date, red once overdue.
+ * @param {import('../app/state.js').Task} task - must have a due date
+ * @returns {HTMLElement}
+ */
+export function buildDueBadge(task) {
+  const badge = document.createElement('span');
+  const isOverdue = task.status !== 'COMPLETED' && isDueOverdue(task.due);
+  badge.className = 'text-sm ' + (isOverdue ? 'font-medium text-danger' : 'text-text-muted');
+  badge.textContent = formatDue(task.due);
+  return badge;
 }
 
 function isDueOverdue(due) {

@@ -42,6 +42,7 @@ const SAVED_KEYS = [
   'weatherDaysAgenda',
   'profiles',
   'activeProfile',
+  'taskBoards',
 ];
 
 // The per-view flags that replaced two older single switches. The summaries are

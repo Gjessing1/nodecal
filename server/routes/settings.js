@@ -31,6 +31,38 @@ function normalizeSyncFutureDays(value) {
   return days;
 }
 
+// Mirrors BOARD_FIELDS in client/app/boardBuckets.js.
+const BOARD_FIELDS = ['status', 'priority', 'category', 'due', 'source', 'starred'];
+const MAX_TASK_BOARDS = 20;
+
+/**
+ * Task boards arrive from the settings editor as `{ id, name, columns, lanes }`.
+ * A board the kanban view could not draw — unknown field, no id, a duplicate —
+ * is dropped here instead of being persisted and silently ignored later. Lanes
+ * grouping by the same field as the columns would be a single diagonal, so they
+ * collapse to "no lanes".
+ * @param {*} value
+ * @returns {Array<{id: string, name: string, columns: string, lanes: string}>}
+ */
+function normalizeTaskBoards(value) {
+  if (!Array.isArray(value)) return [];
+  const boards = [];
+  const seen = new Set();
+  for (const item of value) {
+    if (!item || typeof item !== 'object') continue;
+    const id = String(item.id || '').trim();
+    if (!id || id.length > 64 || seen.has(id)) continue;
+    if (!BOARD_FIELDS.includes(item.columns)) continue;
+    let lanes = '';
+    if (BOARD_FIELDS.includes(item.lanes) && item.lanes !== item.columns) lanes = item.lanes;
+    const name = String(item.name || '').trim() || 'Board';
+    seen.add(id);
+    boards.push({ id, name: name.slice(0, 60), columns: item.columns, lanes });
+    if (boards.length === MAX_TASK_BOARDS) break;
+  }
+  return boards;
+}
+
 router.get('/settings', (req, res) => {
   const overrides = readOverrides();
   res.json({
@@ -132,6 +164,7 @@ router.put('/settings', (req, res) => {
     'icsFeeds',
     'profiles',
     'activeProfile',
+    'taskBoards',
   ];
   const toSave = {};
   for (const k of allowed) {
@@ -140,6 +173,9 @@ router.put('/settings', (req, res) => {
 
   if ('syncFutureDays' in toSave) {
     toSave.syncFutureDays = normalizeSyncFutureDays(toSave.syncFutureDays);
+  }
+  if ('taskBoards' in toSave) {
+    toSave.taskBoards = normalizeTaskBoards(toSave.taskBoards);
   }
 
   if (toSave.enabledViews?.length === 0) {
@@ -184,3 +220,4 @@ module.exports = router;
 // app.js mounts the router itself; the normalizer rides along so tests can pin
 // the 0-means-unlimited contract without standing up an HTTP server.
 module.exports.normalizeSyncFutureDays = normalizeSyncFutureDays;
+module.exports.normalizeTaskBoards = normalizeTaskBoards;

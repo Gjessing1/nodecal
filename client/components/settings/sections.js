@@ -27,7 +27,7 @@ export const SETTINGS_SECTIONS = [
   { id: 'views', label: 'Views & layout', hint: 'Which views appear, week numbers, weekends' },
   { id: 'calendars', label: 'Calendars', hint: 'Default calendar and subscribed ICS feeds' },
   { id: 'events', label: 'Events', hint: 'Defaults applied to new events' },
-  { id: 'tasks', label: 'Tasks', hint: 'Task sources and sort order' },
+  { id: 'tasks', label: 'Tasks', hint: 'Task sources, sort order and boards' },
   { id: 'categories', label: 'Categories', hint: 'Hide task and event categories' },
   { id: 'notifications', label: 'Notifications', hint: 'Reminders on this device and push' },
   { id: 'profiles', label: 'Profiles', hint: 'Personal and work presets' },

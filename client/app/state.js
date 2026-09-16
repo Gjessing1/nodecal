@@ -33,12 +33,14 @@
  * @property {string} [uid]
  * @property {string} title
  * @property {string|null} [due] - date-only string YYYY-MM-DD
- * @property {string} [status] - "NEEDS-ACTION" | "COMPLETED"
+ * @property {string} [status] - "NEEDS-ACTION" | "IN-PROCESS" | "COMPLETED" | "CANCELLED"
+ * @property {number} [priority] - RFC 5545 PRIORITY: 1 highest … 9 lowest, 0 undefined
  * @property {string|null} [completed]
  * @property {string[]} [categories]
  * @property {string} [source] - task-source CalDAV URL
  * @property {string} [description]
  * @property {string} [rrule]
+ * @property {boolean} [recurring] - derived by the API: rrule or after-completion set
  * @property {string} [xRecurringType] - custom after-completion recurrence
  * @property {number} [xRecurringInterval]
  * @property {string} [taskReminder] - "none" | "on-due" | "evening-before" | …
@@ -93,6 +95,8 @@ export const state = {
     enableTasksView: false,
     showTasksOnCalendar: false,
     taskSortOrder: 'due',
+    /** @type {import('./boardBuckets.js').TaskBoard[]|undefined} unset = built-in boards */
+    taskBoards: undefined,
     tasksCalDAVUrl: '',
     hiddenCategories: [],
     hiddenEventCategories: [],

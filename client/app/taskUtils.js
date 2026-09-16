@@ -73,3 +73,41 @@ export function groupTasksByCategory(tasks, hiddenCategories = []) {
   if (groups.has('')) sorted.set('', groups.get(''));
   return sorted;
 }
+
+/**
+ * The PRIORITY Nodecal writes for each level — the 1/5/9 convention Apple
+ * Reminders and Thunderbird use, so a level set here reads the same there.
+ */
+export const PRIORITY_VALUES = { high: 1, medium: 5, low: 9, none: 0 };
+
+/** Display order and names for the priority levels, highest first. */
+export const PRIORITY_LEVELS = [
+  { key: 'high', label: 'High' },
+  { key: 'medium', label: 'Medium' },
+  { key: 'low', label: 'Low' },
+  { key: 'none', label: 'None' },
+];
+
+/**
+ * The three-level reading of an RFC 5545 PRIORITY: 1–4 high, 5 medium, 6–9 low,
+ * 0 or missing undefined. Other clients write the in-between values.
+ * @param {number|null|undefined} priority
+ * @returns {'high'|'medium'|'low'|'none'}
+ */
+export function priorityLevel(priority) {
+  if (!priority || priority < 1 || priority > 9) return 'none';
+  if (priority <= 4) return 'high';
+  if (priority === 5) return 'medium';
+  return 'low';
+}
+
+/**
+ * Sort rank for a priority: high first, undefined last. Raw PRIORITY cannot be
+ * compared directly because 0 means "none", not "above 1".
+ * @param {number|null|undefined} priority
+ * @returns {number}
+ */
+export function priorityRank(priority) {
+  if (!priority || priority < 1 || priority > 9) return 10;
+  return priority;
+}

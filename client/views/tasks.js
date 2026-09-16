@@ -1,11 +1,21 @@
 import { state } from '../app/state.js';
 import { buildTaskItem } from '../components/taskItem.js';
-import { getAllCategories, groupTasksByCategory, taskSourceVisible } from '../app/taskUtils.js';
+import {
+  getAllCategories,
+  groupTasksByCategory,
+  priorityRank,
+  taskSourceVisible,
+} from '../app/taskUtils.js';
 import { formatShortDate, localDateStr } from '../app/utils.js';
 import { mountTaskQuickAdd } from '../components/taskQuickAdd.js';
+import { renderTaskBoard } from './taskBoard.js';
+import { boardForLayout, buildLayoutSelect, readStoredLayout, storeLayout } from './taskLayout.js';
 
 const FILTER_ROW_CLASSES =
   'flex shrink-0 items-center gap-xs overflow-x-auto border-b border-border px-md py-xs [scrollbar-width:none] empty:hidden';
+const LIST_CLASSES = 'tasks-list min-h-0 flex-1 overflow-y-auto pb-sm';
+// The board scrolls itself in both directions; the list around it must not.
+const BOARD_LIST_CLASSES = 'tasks-list min-h-0 flex-1 overflow-hidden';
 const FILTER_CHIP_CLASSES =
   'shrink-0 whitespace-nowrap rounded-lg border border-border px-control py-pill-y text-sm text-text-muted transition-colors duration-100 aria-pressed:border-accent aria-pressed:bg-accent-light aria-pressed:text-accent';
 
@@ -13,7 +23,7 @@ const FILTER_CHIP_CLASSES =
 const _persist = {
   showDone: false,
   starredOnly: false,
-  groupBy: 'date',
+  groupBy: readStoredLayout(),
   filterCat: '',
   filterSource: '',
   query: '',
@@ -76,14 +86,15 @@ export function renderTasks(container, callbacks) {
   const rightControls = document.createElement('div');
   rightControls.className = 'flex items-center gap-sm';
 
-  const groupSel = document.createElement('select');
-  groupSel.className = 'rounded-sm px-sm py-xs text-sm';
-  groupSel.innerHTML = `
-    <option value="date">Group: Date</option>
-    <option value="category">Group: Category</option>
-  `;
+  const groupSel = buildLayoutSelect();
+  // The chosen board may have been deleted in Settings since.
+  if (currentGroupBy !== 'category' && !boardForLayout(currentGroupBy)) {
+    currentGroupBy = _persist.groupBy = 'date';
+  }
   groupSel.addEventListener('change', () => {
     currentGroupBy = _persist.groupBy = groupSel.value;
+    storeLayout(groupSel.value);
+    showDoneLabel.hidden = !!boardForLayout(currentGroupBy);
     rerender();
   });
 
@@ -92,10 +103,13 @@ export function renderTasks(container, callbacks) {
   sortSel.innerHTML = `
     <option value="due">Sort: Due</option>
     <option value="starred">Sort: Starred</option>
+    <option value="priority">Sort: Priority</option>
     <option value="alpha">Sort: A–Z</option>
     <option value="created">Sort: Created</option>
   `;
-  groupSel.value = _persist.groupBy;
+  groupSel.value = currentGroupBy;
+  // A board has its own Done column; the list's done-only mode does not apply.
+  showDoneLabel.hidden = !!boardForLayout(currentGroupBy);
   sortSel.value = _persist.sortOrder || state.config.taskSortOrder || 'due';
   sortSel.addEventListener('change', () => {
     _persist.sortOrder = sortSel.value;
@@ -220,7 +234,7 @@ export function renderTasks(container, callbacks) {
 
   // ── Task list ───────────────────────────────────────────────
   const list = document.createElement('div');
-  list.className = 'tasks-list min-h-0 flex-1 overflow-y-auto pb-sm';
+  list.className = LIST_CLASSES;
 
   function rerender() {
     buildSourceFilter();
@@ -270,6 +284,12 @@ function renderList(
   callbacks,
 ) {
   container.innerHTML = '';
+  const board = boardForLayout(groupBy);
+  if (board) {
+    container.className = BOARD_LIST_CLASSES;
+  } else {
+    container.className = LIST_CLASSES;
+  }
 
   const hidden = state.config.hiddenCategories || [];
   // Tasks from calendars deactivated in the current profile are not surfaced.
@@ -283,19 +303,25 @@ function renderList(
         (t.description || '').toLowerCase().includes(query),
     );
   }
+  // Starred, category and source chips narrow every layout alike (AND).
+  if (filterState.starredOnly) visibleTasks = visibleTasks.filter((t) => t.important);
+  if (filterCat)
+    visibleTasks = visibleTasks.filter((t) => (t.categories || []).includes(filterCat));
+  if (filterSource) visibleTasks = visibleTasks.filter((t) => t.source === filterSource);
+
+  if (board) {
+    // The board decides which completed tasks it shows (a status board's Done column).
+    renderTaskBoard(container, sortTasks(visibleTasks, sortOrder), board, callbacks);
+    return;
+  }
+
   let tasks;
   if (filterState.showDone) {
     // "Done" mode: show ONLY completed tasks, newest completion first
     tasks = visibleTasks.filter((t) => t.status === 'COMPLETED');
-    if (filterState.starredOnly) tasks = tasks.filter((t) => t.important); // AND: done AND starred
-    if (filterCat) tasks = tasks.filter((t) => (t.categories || []).includes(filterCat));
-    if (filterSource) tasks = tasks.filter((t) => t.source === filterSource);
     tasks = [...tasks].sort((a, b) => (b.completed || '').localeCompare(a.completed || ''));
   } else {
     tasks = visibleTasks.filter((t) => t.status !== 'COMPLETED');
-    if (filterState.starredOnly) tasks = tasks.filter((t) => t.important);
-    if (filterCat) tasks = tasks.filter((t) => (t.categories || []).includes(filterCat));
-    if (filterSource) tasks = tasks.filter((t) => t.source === filterSource);
     tasks = sortTasks(tasks, sortOrder);
   }
 
@@ -434,18 +460,23 @@ function sortTasks(tasks, order) {
     return copy.sort((a, b) => {
       if (a.important && !b.important) return -1;
       if (!a.important && b.important) return 1;
-      if (a.due && b.due) return a.due.localeCompare(b.due);
-      if (a.due) return -1;
-      if (b.due) return 1;
-      return 0;
+      return compareDue(a, b);
     });
   }
-  return copy.sort((a, b) => {
-    if (a.due && b.due) return a.due.localeCompare(b.due);
-    if (a.due) return -1;
-    if (b.due) return 1;
-    return 0;
-  });
+  if (order === 'priority') {
+    return copy.sort(
+      (a, b) => priorityRank(a.priority) - priorityRank(b.priority) || compareDue(a, b),
+    );
+  }
+  return copy.sort(compareDue);
+}
+
+/** Earliest due first; tasks without a due date last. */
+function compareDue(a, b) {
+  if (a.due && b.due) return a.due.localeCompare(b.due);
+  if (a.due) return -1;
+  if (b.due) return 1;
+  return 0;
 }
 
 // ── Utilities ──────────────────────────────────────────────

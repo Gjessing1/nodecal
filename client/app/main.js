@@ -214,6 +214,7 @@ const taskCallbacks = {
   onEdit: handleTaskEdit,
   onDelete: handleTaskDelete,
   onSnooze: handleTaskSnooze,
+  onBoardMove: handleTaskBoardMove,
 };
 
 // Re-rendering the same view (completing a task, starring, snoozing) rebuilds the
@@ -253,6 +254,7 @@ function render() {
         onAdd: null,
         onDelete: null,
         onSnooze: null,
+        onBoardMove: null,
       }
     : taskCallbacks;
   if (state.activeView === 'tasks') renderTasks(viewContainer, currentTaskCallbacks);
@@ -767,6 +769,50 @@ async function handleTaskComplete(task) {
   }
 }
 
+/**
+ * Apply a kanban drop. The card moves at once: a card that snaps back to where
+ * it came from until CalDAV answers reads as a failed drag. The server's copy
+ * is reloaded afterwards either way — completing a recurring task moves its due
+ * date and puts it back in To do, and a failed write must undo the move.
+ * @param {import('./state.js').Task} task
+ * @param {Partial<import('./state.js').Task>} changes - from boardMoves.dropChanges
+ */
+async function handleTaskBoardMove(task, changes) {
+  if (offlineWriteBlocked()) return;
+  const completing = changes.status === 'COMPLETED';
+  const moved = { ...task, ...changes };
+  if (changes.categories) moved.important = changes.categories.includes('important');
+  if (completing) moved.completed = new Date().toISOString();
+  setTasks(state.tasks.map((t) => (t.id === task.id ? moved : t)));
+  render();
+
+  try {
+    const fields = { ...changes };
+    // Done goes through /complete, which advances recurring tasks.
+    if (completing) delete fields.status;
+    if (Object.keys(fields).length) {
+      const res = await fetch(`/api/tasks/${task.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields),
+      });
+      if (!res.ok) throw new Error(await responseError(res));
+    }
+    if (completing) {
+      const res = await fetch(`/api/tasks/${task.id}/complete`, { method: 'POST' });
+      if (!res.ok) throw new Error(await responseError(res));
+    }
+  } catch (err) {
+    alert('Could not move task: ' + err.message);
+  }
+  try {
+    await loadTasks();
+  } catch {
+    // Offline mid-move: the banner reports it and the next wake refetches.
+  }
+  render();
+}
+
 async function handleTaskStar(task) {
   if (offlineWriteBlocked()) return;
   const categories = task.important
@@ -799,10 +845,14 @@ async function handleTaskAdd({
   xRecurringInterval,
   description,
   taskReminder,
+  priority,
+  status,
 }) {
   if (offlineWriteBlocked()) return;
   try {
     const body = { title, due };
+    if (priority) body.priority = priority;
+    if (status && status !== 'NEEDS-ACTION') body.status = status;
     if (categories?.length) body.categories = categories;
     if (source) body.source = source;
     if (rrule) body.rrule = rrule;
@@ -992,6 +1042,8 @@ function undoTaskDelete(task) {
     xRecurringType: task.xRecurringType,
     xRecurringInterval: task.xRecurringInterval,
     description: task.description,
+    priority: task.priority,
+    status: task.status,
   });
 }
 

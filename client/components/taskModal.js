@@ -1,5 +1,11 @@
 import { state } from '../app/state.js';
 import { getAllCategories, visibleCategories } from '../app/taskUtils.js';
+import {
+  priorityOptions,
+  priorityToSave,
+  readOnlyStatusRows,
+  statusOptions,
+} from './taskStatusFields.js';
 import { esc } from '../app/utils.js';
 import { buildRecurrenceEditor } from './recurrenceUI.js';
 import {
@@ -60,7 +66,6 @@ export function openTaskModal(task, { onSave, onDelete }) {
 
   const isRecAfterCompletion = task.recurringType === 'after-completion';
   const isRecRrule = task.recurringType === 'rrule';
-  const isCompleted = task.status === 'COMPLETED';
 
   const hidden = state.config.hiddenCategories || [];
   const existingCats = getAllCategories(state.tasks).filter((c) => !hidden.includes(c));
@@ -144,11 +149,15 @@ export function openTaskModal(task, { onSave, onDelete }) {
     <div id="tm-rec-fixed" style="${isRecAfterCompletion ? 'display:none' : ''}"
          data-rrule="${esc(isRecRrule ? task.rrule || '' : '')}"></div>
 
-    <div class="modal-field modal-field-checkbox tm-completed-row">
-      <label>
-        <input type="checkbox" id="tm-completed" ${isCompleted ? 'checked' : ''}>
-        Completed
-      </label>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label for="tm-priority">Priority</label>
+        <select id="tm-priority">${priorityOptions(task)}</select>
+      </div>
+      <div class="modal-field">
+        <label for="tm-status">Status</label>
+        <select id="tm-status">${statusOptions(task)}</select>
+      </div>
     </div>
 
     <div class="modal-actions">
@@ -256,7 +265,13 @@ export function openTaskModal(task, { onSave, onDelete }) {
       rrule = fixedCont ? fixedCont.dataset.rrule || null : null;
     }
 
-    const completedChecked = field(sheet, '#tm-completed').checked;
+    const status = field(sheet, '#tm-status').value;
+    let completed = null;
+    if (status === 'COMPLETED') {
+      // Re-saving a finished task must not move its completion to today.
+      completed =
+        task.status === 'COMPLETED' && task.completed ? task.completed : new Date().toISOString();
+    }
     const finalCats = catCtrl.getCategories();
 
     onSave({
@@ -266,8 +281,9 @@ export function openTaskModal(task, { onSave, onDelete }) {
       url: field(sheet, '#tm-location-url-wrap #tm-url')?.value.trim() || '',
       description: field(sheet, '#tm-desc').value.trim(),
       categories: finalCats,
-      status: completedChecked ? 'COMPLETED' : 'NEEDS-ACTION',
-      completed: completedChecked ? new Date().toISOString() : null,
+      status,
+      completed,
+      priority: priorityToSave(task, field(sheet, '#tm-priority').value),
       // Carry the source the modal was opened with so new tasks land in the
       // profile's task source (passed in by the caller) instead of the
       // server's sources[0] fallback. Harmless for edits — the PUT path keys
@@ -320,11 +336,7 @@ export function openReadOnlyTaskModal(task) {
     `<div class="modal-field"><div class="modal-title">${esc(task.title || '(No title)')}</div><div class="readonly-badge">${state.isOffline ? 'Offline copy · ' : ''}Read-only</div></div>`,
     `<div class="readonly-row"><span class="readonly-label">Due</span> ${esc(due)}</div>`,
   ];
-  if (task.status === 'COMPLETED') {
-    rows.push(
-      '<div class="readonly-row"><span class="readonly-label">Status</span> Completed</div>',
-    );
-  }
+  rows.push(...readOnlyStatusRows(task));
   if (source || task.source) {
     rows.push(
       `<div class="readonly-row"><span class="readonly-label">List</span> ${esc(source?.name || task.source)}</div>`,

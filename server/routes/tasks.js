@@ -5,11 +5,14 @@ const {
   getEffectiveTasksUrl,
   getEffectiveTasksSources,
 } = require('../caldav/client');
-const { serializeTask } = require('../caldav/parser');
+const { serializeTask, parsePriority } = require('../caldav/parser');
 const { computeNextDue } = require('../caldav/recurrence');
 const store = require('../cache/store');
 
 const router = Router();
+
+// CANCELLED is kept so a status written by another client survives an edit here.
+const TASK_STATUSES = ['NEEDS-ACTION', 'IN-PROCESS', 'COMPLETED', 'CANCELLED'];
 
 // ── GET /tasks ────────────────────────────────────────────
 
@@ -39,8 +42,13 @@ router.post('/tasks', async (req, res) => {
     xRecurringInterval,
     taskReminder,
     source,
+    priority,
+    status,
   } = req.body;
   if (!title) return res.status(400).json({ error: 'title required' });
+  if (status !== undefined && !TASK_STATUSES.includes(status)) {
+    return res.status(400).json({ error: 'invalid status' });
+  }
 
   const targetSrc = sources.find((s) => s.url === source) || sources[0];
 
@@ -52,9 +60,10 @@ router.post('/tasks', async (req, res) => {
       type: 'task',
       title,
       description: description || '',
-      status: 'NEEDS-ACTION',
+      status: status || 'NEEDS-ACTION',
+      priority: parsePriority(priority),
       due: due || null,
-      completed: null,
+      completed: status === 'COMPLETED' ? now : null,
       categories: categories || [],
       rrule: rrule || null,
       xRecurringType: xRecurringType || null,
@@ -96,11 +105,16 @@ router.put('/tasks/:id', async (req, res) => {
       'status',
       'completed',
       'taskReminder',
+      'priority',
     ];
     const changes = {};
     for (const k of allowed) {
       if (k in req.body) changes[k] = req.body[k];
     }
+    if ('status' in req.body && !TASK_STATUSES.includes(req.body.status)) {
+      return res.status(400).json({ error: 'invalid status' });
+    }
+    if ('priority' in changes) changes.priority = parsePriority(changes.priority);
 
     const updated = { ...existing, ...changes };
     const ics = serializeTask(updated);
@@ -190,6 +204,7 @@ function toApiShape(task) {
     title: task.title,
     description: task.description || '',
     status: task.status || 'NEEDS-ACTION',
+    priority: task.priority || 0,
     due: task.due || null,
     completed: task.completed || null,
     important: (task.categories || []).includes('important'),
