@@ -9,6 +9,7 @@ import {
 import { formatShortDate, localDateStr } from '../app/utils.js';
 import { mountTaskQuickAdd } from '../components/taskQuickAdd.js';
 import { renderTaskBoard } from './taskBoard.js';
+import { compareManual } from '../app/manualOrder.js';
 import { boardForLayout, buildLayoutSelect, readStoredLayout, storeLayout } from './taskLayout.js';
 
 // tasks-filter-row: folded behind the Filters button on landscape phones (tasks.css).
@@ -133,6 +134,7 @@ export function renderTasks(container, callbacks) {
     <option value="priority">Sort: Priority</option>
     <option value="alpha">Sort: A–Z</option>
     <option value="created">Sort: Created</option>
+    <option value="manual">Sort: Manual</option>
   `;
   groupSel.value = currentGroupBy;
   // A board has its own Done column; the list's done-only mode does not apply.
@@ -341,7 +343,8 @@ function renderList(
 
   if (board) {
     // The board decides which completed tasks it shows (a status board's Done column).
-    renderTaskBoard(container, sortTasks(visibleTasks, sortOrder), board, callbacks);
+    const ordered = sortOrder === 'manual';
+    renderTaskBoard(container, sortTasks(visibleTasks, sortOrder), board, callbacks, ordered);
     return;
   }
 
@@ -486,6 +489,8 @@ function sortTasks(tasks, order) {
   if (order === 'alpha') return copy.sort((a, b) => a.title.localeCompare(b.title));
   if (order === 'created')
     return copy.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+  // Shared with Tasks.org; set by dragging cards on a board.
+  if (order === 'manual') return copy.sort(compareManual);
   if (order === 'starred') {
     return copy.sort((a, b) => {
       if (a.important && !b.important) return -1;

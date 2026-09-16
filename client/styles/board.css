@@ -55,9 +55,30 @@
 /* A long press lifts a card; without these it selects the title or opens the
    iOS callout instead. */
 .task-card {
+  position: relative;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+}
+
+/* Where a card will land on a board in manual order: a line centred in the gap
+   above the card it goes before, or below the last card. It reaches into the
+   cell's padding so its ends still show beside a dragged card held over it. */
+.task-card.is-drop-before::before,
+.task-card.is-drop-after::after {
+  content: '';
+  position: absolute;
+  inset-inline: calc(-1 * (var(--spacing-xs) + var(--spacing-hairline)));
+  height: var(--spacing-2xs);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  pointer-events: none;
+}
+.task-card.is-drop-before::before {
+  top: calc(-1 * (var(--spacing-xs) + var(--spacing-2xs)) / 2 - var(--spacing-hairline));
+}
+.task-card.is-drop-after::after {
+  bottom: calc(-1 * (var(--spacing-xs) + var(--spacing-2xs)) / 2 - var(--spacing-hairline));
 }
 .task-card.is-dragging {
   opacity: 0.3;

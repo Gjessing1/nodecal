@@ -3,6 +3,7 @@ import { todayStr } from '../app/dayWindow.js';
 import { buildBoard, DONE_WINDOW_DAYS } from '../app/boardModel.js';
 import { dropChanges } from '../app/boardMoves.js';
 import { bucketDraft, moveGroups } from '../app/boardActions.js';
+import { placedMove } from '../app/boardOrder.js';
 import { buildTaskCard } from '../components/taskCard.js';
 import { buildColumnHead, buildLaneHead } from '../components/boardHeads.js';
 import { showBoardMoveMenu } from '../components/boardMoveMenu.js';
@@ -40,9 +41,11 @@ function boardContext() {
  * @param {Task[]} tasks - already filtered and sorted by the tasks view
  * @param {TaskBoard} board
  * @param {Record<string, Function|null>} callbacks - onComplete, onStar, onEdit,
- *   onBoardMove, onBoardAdd
+ *   onBoardMove(task, changes, shifts), onBoardAdd
+ * @param {boolean} ordered - tasks are in manual order, so a card's place in its
+ *   cell can be changed and is kept
  */
-export function renderTaskBoard(container, tasks, board, callbacks) {
+export function renderTaskBoard(container, tasks, board, callbacks, ordered) {
   const ctx = boardContext();
   const layout = buildBoard(tasks, board, ctx);
 
@@ -52,10 +55,11 @@ export function renderTaskBoard(container, tasks, board, callbacks) {
 
   /** @param {Task} task */
   function openMoveMenu(task) {
-    showBoardMoveMenu(task, moveGroups(board, layout, task, ctx), async function moveTo(changes) {
+    const groups = moveGroups(board, layout, task, ctx, ordered);
+    showBoardMoveMenu(task, groups, async function moveTo(target) {
       refocusTaskId = task.id;
       try {
-        await callbacks.onBoardMove(task, changes);
+        await callbacks.onBoardMove(task, target.changes, target.shifts || []);
       } finally {
         // The last re-render restores focus on its next frame; clear after that.
         requestAnimationFrame(function stopRefocusing() {
@@ -84,7 +88,7 @@ export function renderTaskBoard(container, tasks, board, callbacks) {
             if (folded) foldedLanes.delete(foldKey);
             else foldedLanes.add(foldKey);
             el.remove();
-            renderTaskBoard(container, tasks, board, callbacks);
+            renderTaskBoard(container, tasks, board, callbacks, ordered);
           },
           onAdd: addHandler(board.lanes, lane.key, ctx, callbacks),
         }),
@@ -98,7 +102,7 @@ export function renderTaskBoard(container, tasks, board, callbacks) {
       cell.dataset.column = column.key;
       for (const task of layout.cells.get(lane.key).get(column.key)) {
         let onMove = null;
-        if (callbacks.onBoardMove && moveGroups(board, layout, task, ctx).length) {
+        if (callbacks.onBoardMove && moveGroups(board, layout, task, ctx, ordered).length) {
           onMove = openMoveMenu;
         }
         cell.appendChild(
@@ -141,16 +145,26 @@ export function renderTaskBoard(container, tasks, board, callbacks) {
     return null;
   }
   initBoardDnd(el, {
+    ordered,
     canDrop(id, cell) {
       const task = findTask(id);
       if (!task) return false;
       return dropChanges(board, task, cell.dataset.lane, cell.dataset.column, ctx) !== null;
     },
-    onDrop(id, cell) {
+    onDrop(id, cell, index) {
       const task = findTask(id);
       if (!task) return;
-      const changes = dropChanges(board, task, cell.dataset.lane, cell.dataset.column, ctx);
-      if (changes && Object.keys(changes).length) callbacks.onBoardMove(task, changes);
+      let changes = dropChanges(board, task, cell.dataset.lane, cell.dataset.column, ctx);
+      if (!changes) return;
+      /** @type {import('../app/manualOrder.js').OrderWrite[]} */
+      let shifts = [];
+      if (ordered) {
+        const cellTasks = layout.cells.get(cell.dataset.lane).get(cell.dataset.column);
+        ({ changes, shifts } = placedMove(changes, task, cellTasks, index));
+      }
+      if (Object.keys(changes).length || shifts.length) {
+        callbacks.onBoardMove(task, changes, shifts);
+      }
     },
   });
 }

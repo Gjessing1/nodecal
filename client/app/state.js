@@ -45,6 +45,8 @@
  * @property {number} [xRecurringInterval]
  * @property {string} [taskReminder] - "none" | "on-due" | "evening-before" | …
  * @property {boolean} [important]
+ * @property {string|null} [createdAt] - ISO, from CREATED
+ * @property {number|null} [sortOrder] - X-APPLE-SORT-ORDER; see manualOrder.js
  *
  * @typedef {Object} TaskSource
  * @property {string} url

@@ -5,6 +5,7 @@ const OPTION_CLASSES =
 
 /**
  * @typedef {import('../app/boardActions.js').MoveGroup} MoveGroup
+ * @typedef {import('../app/boardActions.js').MoveTarget} MoveTarget
  * @typedef {import('../app/state.js').Task} Task
  */
 
@@ -14,7 +15,7 @@ const OPTION_CLASSES =
  * keyboard, a screen reader, or a phone where the target column is off screen.
  * @param {Task} task
  * @param {MoveGroup[]} groups - from boardActions.moveGroups
- * @param {(changes: Partial<Task>) => void} onPick
+ * @param {(target: MoveTarget) => void} onPick
  */
 export function showBoardMoveMenu(task, groups, onPick) {
   const picker = createPickerOverlay({
@@ -48,7 +49,7 @@ export function showBoardMoveMenu(task, groups, onPick) {
       if (!target.current) {
         option.addEventListener('click', function pickTarget() {
           picker.close();
-          onPick(target.changes);
+          onPick(target);
         });
         if (!firstOption) firstOption = option;
       }

@@ -1,3 +1,5 @@
+import { cardsAbove, markSlot, slotIndex } from './boardDropSlot.js';
+
 // Matches dnd.js: the same hold lifts an event in the calendar grids.
 const LONG_PRESS_MS = 400;
 const TOUCH_SLOP_PX = 8;
@@ -19,12 +21,18 @@ const EDGE_STEP_PX = 12;
  * can re-render the board mid-drag, and a detached card would take the capture
  * (and the ghost's cleanup) with it.
  *
+ * On an ordered board the drop also has a place: the gap between the two cards
+ * nearest the pointer, marked with a line, and a card can be dropped back into
+ * its own cell at a new place.
+ *
  * @param {HTMLElement} boardEl - the scrolling board; cells are `.task-board-cell`
  * @param {object} opts
+ * @param {boolean} [opts.ordered]
  * @param {(id: string, cell: HTMLElement) => boolean} opts.canDrop
- * @param {(id: string, cell: HTMLElement) => void} opts.onDrop
+ * @param {(id: string, cell: HTMLElement, index: number) => void} opts.onDrop - `index`
+ *   counts the cell's other cards above the drop; -1 when the board is not ordered
  */
-export function initBoardDnd(boardEl, { canDrop, onDrop }) {
+export function initBoardDnd(boardEl, { ordered = false, canDrop, onDrop }) {
   let dragging = false;
   let touchPressed = false;
 
@@ -55,6 +63,7 @@ export function initBoardDnd(boardEl, { canDrop, onDrop }) {
 
     const id = card.dataset.id;
     const originCell = card.closest('.task-board-cell');
+    const originIndex = cardsAbove(card);
     const rect = card.getBoundingClientRect();
     const grabX = down.clientX - rect.left;
     const grabY = down.clientY - rect.top;
@@ -64,6 +73,9 @@ export function initBoardDnd(boardEl, { canDrop, onDrop }) {
     let ghost = null;
     /** @type {HTMLElement|null} */
     let hovered = null;
+    let hoveredIndex = -1;
+    /** @type {HTMLElement|null} */
+    let marked = null;
     let frame = 0;
     let timer = 0;
     if (!isMouse) timer = window.setTimeout(lift, LONG_PRESS_MS);
@@ -86,21 +98,41 @@ export function initBoardDnd(boardEl, { canDrop, onDrop }) {
       const under = document.elementFromPoint(lastX, lastY);
       let cell = /** @type {HTMLElement|null} */ (under?.closest('.task-board-cell') || null);
       if (cell && !boardEl.contains(cell)) cell = null;
-      if (cell === hovered) return;
+      let index = -1;
+      if (cell && ordered) index = slotIndex(cell, id, lastY);
+      if (cell === hovered && index === hoveredIndex) return;
       clearHover();
       hovered = cell;
-      if (!cell || cell === originCell) return;
-      if (canDrop(id, cell)) {
-        cell.classList.add('is-drop-target');
-      } else {
+      hoveredIndex = index;
+      if (!isDrop(cell, index)) return;
+      if (!canDrop(id, cell)) {
         cell.classList.add('is-drop-blocked');
+        return;
       }
+      // Reordering within its own cell only needs the line.
+      if (cell !== originCell) cell.classList.add('is-drop-target');
+      if (ordered) marked = markSlot(cell, id, index);
+    }
+
+    /**
+     * A drop somewhere other than where the card already is.
+     * @param {HTMLElement|null} cell
+     * @param {number} index
+     * @returns {cell is HTMLElement}
+     */
+    function isDrop(cell, index) {
+      if (!cell) return false;
+      if (cell !== originCell) return true;
+      return ordered && index !== originIndex;
     }
 
     function clearHover() {
+      if (marked) marked.classList.remove('is-drop-before', 'is-drop-after');
+      marked = null;
       if (!hovered) return;
       hovered.classList.remove('is-drop-target', 'is-drop-blocked');
       hovered = null;
+      hoveredIndex = -1;
     }
 
     function scrollNearEdges() {
@@ -137,6 +169,7 @@ export function initBoardDnd(boardEl, { canDrop, onDrop }) {
       if (ev.pointerId !== down.pointerId) return;
       const lifted = dragging;
       const target = hovered;
+      const index = hoveredIndex;
       finish();
       if (!lifted) return;
       // The click that trails pointerup would open the editor on the card.
@@ -144,7 +177,7 @@ export function initBoardDnd(boardEl, { canDrop, onDrop }) {
       setTimeout(function dropStaleSwallow() {
         card.removeEventListener('click', swallowClick, { capture: true });
       }, 0);
-      if (target && target !== originCell && canDrop(id, target)) onDrop(id, target);
+      if (isDrop(target, index) && canDrop(id, target)) onDrop(id, target, index);
     }
 
     /** @param {PointerEvent} ev */

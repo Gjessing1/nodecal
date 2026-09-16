@@ -8,6 +8,7 @@ const SORT_ORDERS = [
   { value: 'priority', label: 'Priority' },
   { value: 'alpha', label: 'Alphabetical' },
   { value: 'created', label: 'Creation date' },
+  { value: 'manual', label: 'Manual (drag on boards)' },
 ];
 
 /**

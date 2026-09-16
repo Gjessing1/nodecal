@@ -778,14 +778,24 @@ async function handleTaskComplete(task) {
  * date and puts it back in To do, and a failed write must undo the move.
  * @param {import('./state.js').Task} task
  * @param {Partial<import('./state.js').Task>} changes - from boardMoves.dropChanges
+ * @param {import('./manualOrder.js').OrderWrite[]} [shifts] - tasks pushed down to
+ *   make room for the card on a board in manual order
  */
-async function handleTaskBoardMove(task, changes) {
+async function handleTaskBoardMove(task, changes, shifts = []) {
   if (offlineWriteBlocked()) return;
   const completing = changes.status === 'COMPLETED';
   const moved = { ...task, ...changes };
   if (changes.categories) moved.important = changes.categories.includes('important');
   if (completing) moved.completed = new Date().toISOString();
-  setTasks(state.tasks.map((t) => (t.id === task.id ? moved : t)));
+  const shiftedOrders = new Map();
+  for (const shift of shifts) shiftedOrders.set(shift.task.id, shift.sortOrder);
+  setTasks(
+    state.tasks.map(function applyMove(t) {
+      if (t.id === task.id) return moved;
+      if (shiftedOrders.has(t.id)) return { ...t, sortOrder: shiftedOrders.get(t.id) };
+      return t;
+    }),
+  );
   render();
 
   try {
@@ -802,6 +812,15 @@ async function handleTaskBoardMove(task, changes) {
     }
     if (completing) {
       const res = await fetch(`/api/tasks/${task.id}/complete`, { method: 'POST' });
+      if (!res.ok) throw new Error(await responseError(res));
+    }
+    // One at a time: a shift is one VTODO rewrite each, and usually there are none.
+    for (const shift of shifts) {
+      const res = await fetch(`/api/tasks/${shift.task.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sortOrder: shift.sortOrder }),
+      });
       if (!res.ok) throw new Error(await responseError(res));
     }
   } catch (err) {
