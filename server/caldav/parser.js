@@ -16,6 +16,10 @@ function unfold(icsText) {
   return icsText.replace(/\r?\n[ \t]/g, '');
 }
 
+/**
+ * @param {string} line - an unfolded content line
+ * @returns {{name: string, params: Object<string, string>, value: string}|null}
+ */
 function parseProperty(line) {
   const colonIdx = line.indexOf(':');
   if (colonIdx === -1) return null;
@@ -23,6 +27,7 @@ function parseProperty(line) {
   const value = line.slice(colonIdx + 1);
   const parts = left.split(';');
   const name = parts[0].toUpperCase();
+  /** @type {Object<string, string>} */
   const params = {};
   for (let i = 1; i < parts.length; i++) {
     const eqIdx = parts[i].indexOf('=');
@@ -259,9 +264,9 @@ function parseIcs(icsText, { timezone = 'UTC' } = {}) {
           if (vp) {
             const m2 = vp.value.match(/-P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?)?/i);
             if (m2) {
-              const d2 = parseInt(m2[1] || 0),
-                h2 = parseInt(m2[2] || 0),
-                min2 = parseInt(m2[3] || 0);
+              const d2 = parseInt(m2[1] || '0'),
+                h2 = parseInt(m2[2] || '0'),
+                min2 = parseInt(m2[3] || '0');
               alarmMinutes = d2 * 1440 + h2 * 60 + min2;
             }
           }
@@ -384,121 +389,17 @@ function veventLines(event) {
   return lines;
 }
 
-/**
- * Parse a VCALENDAR ICS string into an array of task objects (VTODO).
- * @param {string} icsText
- * @returns {Array}
- */
-function parseVtodo(icsText) {
-  const unfolded = unfold(icsText);
-  const result = [];
-  const re = /BEGIN:VTODO([\s\S]*?)END:VTODO/g;
-  let match;
-  while ((match = re.exec(unfolded)) !== null) {
-    const props = {};
-    for (const line of match[1].split(/\r?\n/).filter(Boolean)) {
-      const prop = parseProperty(line);
-      if (prop) props[prop.name] = prop;
-    }
-    const uid = props.UID?.value;
-    if (!uid) continue;
-
-    // DUE — prefer date-only; fall back to full datetime truncated to date
-    let due = null;
-    if (props.DUE) {
-      const val = props.DUE.value;
-      if (/^\d{8}$/.test(val)) {
-        due = `${val.slice(0, 4)}-${val.slice(4, 6)}-${val.slice(6, 8)}`;
-      } else {
-        const parsed = parseIcsDate(val, props.DUE.params);
-        if (parsed) due = parsed.date.toISOString().slice(0, 10);
-      }
-    }
-
-    let completed = null;
-    if (props.COMPLETED) {
-      const parsed = parseIcsDate(props.COMPLETED.value, props.COMPLETED.params);
-      if (parsed) completed = parsed.date.toISOString();
-    }
-
-    const categories = parseCategories(props.CATEGORIES?.value);
-
-    result.push({
-      uid,
-      type: 'task',
-      title: unescapeIcsText(props.SUMMARY?.value || '(No title)'),
-      description: unescapeIcsText(props.DESCRIPTION?.value || ''),
-      location: unescapeIcsText(props.LOCATION?.value || ''),
-      url: unescapeIcsText(props.URL?.value || ''),
-      status: props.STATUS?.value || 'NEEDS-ACTION',
-      priority: parsePriority(props.PRIORITY?.value),
-      due,
-      completed,
-      categories,
-      rrule: props.RRULE?.value || null,
-      xRecurringType: props['X-RECURRING-TYPE']?.value || null,
-      xRecurringInterval: props['X-RECURRING-INTERVAL']?.value || null,
-      taskReminder: props['X-REMINDER']?.value || null,
-    });
-  }
-  return result;
-}
-
-/**
- * RFC 5545 PRIORITY: 1 is highest, 9 lowest, 0 undefined. Anything outside that
- * range (or missing) reads as undefined rather than being clamped into a level
- * the author never chose.
- * @param {string|undefined} raw
- * @returns {number}
- */
-function parsePriority(raw) {
-  const value = Number(raw);
-  if (!Number.isInteger(value) || value < 0 || value > 9) return 0;
-  return value;
-}
-
-/**
- * Serialize a task object into a full VCALENDAR ICS string (VTODO).
- * @param {object} task
- * @returns {string}
- */
-function serializeTask(task) {
-  const lines = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Nodecal//EN',
-    'BEGIN:VTODO',
-    `UID:${task.uid}`,
-    `DTSTAMP:${new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15)}Z`,
-    `SUMMARY:${escapeIcsText(task.title || '')}`,
-    `STATUS:${task.status || 'NEEDS-ACTION'}`,
-  ];
-  if (task.priority) lines.push(`PRIORITY:${task.priority}`);
-  if (task.due) lines.push(`DUE;VALUE=DATE:${task.due.replace(/-/g, '')}`);
-  if (task.completed) {
-    const dt = new Date(task.completed).toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
-    lines.push(`COMPLETED:${dt}`);
-  }
-  if (task.categories?.length) lines.push(`CATEGORIES:${task.categories.join(',')}`);
-  if (task.rrule) lines.push(`RRULE:${task.rrule}`);
-  if (task.xRecurringType) lines.push(`X-RECURRING-TYPE:${task.xRecurringType}`);
-  if (task.xRecurringInterval) lines.push(`X-RECURRING-INTERVAL:${task.xRecurringInterval}`);
-  if (task.taskReminder && task.taskReminder !== 'none')
-    lines.push(`X-REMINDER:${task.taskReminder}`);
-  if (task.location) lines.push(`LOCATION:${escapeIcsText(task.location)}`);
-  if (task.url) lines.push(`URL:${task.url}`);
-  if (task.description) lines.push(`DESCRIPTION:${escapeIcsText(task.description)}`);
-  lines.push('END:VTODO', 'END:VCALENDAR');
-  return lines.map(foldLine).join(CRLF) + CRLF;
-}
-
 module.exports = {
   parseIcs,
   serializeEvent,
   serializeEvents,
   formatIcsDate,
-  parseVtodo,
-  serializeTask,
   parseCategories,
-  parsePriority,
+  // Shared with vtodo.js, which reads and writes tasks on the same line rules.
+  foldLine,
+  unfold,
+  parseProperty,
+  parseIcsDate,
+  unescapeIcsText,
+  escapeIcsText,
 };

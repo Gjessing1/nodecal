@@ -266,7 +266,9 @@ async function syncTasksIncremental(tasksUrl, sourceName, now) {
   const toFetch = [];
   for (const { href, etag } of serverEtags) {
     const local = cached.find((t) => t.href === href);
-    if (!local || local.etag !== etag) {
+    // A record cached before tasks kept their raw lines would be written back
+    // lossily; fetching it again, once, fills them in.
+    if (!local || local.etag !== etag || !Array.isArray(local.rawVtodo)) {
       syncLog(`etag mismatch (task): href=${href} local=${local?.etag || 'none'} server=${etag}`);
       toFetch.push(href);
     }

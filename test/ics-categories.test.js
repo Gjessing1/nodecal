@@ -2,7 +2,8 @@
 // type markers Google's ICS export stamps on everything it writes.
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { parseCategories, parseIcs, parseVtodo } = require('../server/caldav/parser');
+const { parseCategories, parseIcs } = require('../server/caldav/parser');
+const { parseVtodo } = require('../server/caldav/vtodo');
 
 /** Wrap a VEVENT body in the calendar envelope parseIcs expects. */
 function ics(body) {

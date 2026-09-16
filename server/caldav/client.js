@@ -1,6 +1,7 @@
 const fs = require('fs');
 const config = require('../config');
-const { parseIcs, parseVtodo } = require('./parser');
+const { parseIcs } = require('./parser');
+const { parseVtodo } = require('./vtodo');
 
 function syncLog(msg) {
   if (config.app.debugSync) console.log(`[sync] ${msg}`);

@@ -256,7 +256,7 @@ test('the server keeps only drawable boards', () => {
 });
 
 test('VTODO PRIORITY round-trips through the parser', () => {
-  const { parseVtodo, serializeTask } = require('../server/caldav/parser.js');
+  const { parseVtodo, serializeTask } = require('../server/caldav/vtodo.js');
   const ics = serializeTask({ uid: 'u1', title: 'T', status: 'IN-PROCESS', priority: 5 });
   assert.match(ics, /PRIORITY:5\r\n/);
   const [parsed] = parseVtodo(ics);

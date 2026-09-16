@@ -5,7 +5,7 @@ const {
   getEffectiveTasksUrl,
   getEffectiveTasksSources,
 } = require('../caldav/client');
-const { serializeTask, parsePriority } = require('../caldav/parser');
+const { parseVtodo, serializeTask, parsePriority } = require('../caldav/vtodo');
 const { computeNextDue } = require('../caldav/recurrence');
 const store = require('../cache/store');
 
@@ -75,7 +75,7 @@ router.post('/tasks', async (req, res) => {
     };
     const ics = serializeTask(task);
     const { href, etag } = await putTask(targetSrc.url, uid, ics);
-    const stored = { ...task, href, etag, localModifiedAt: now, lastSyncedAt: now };
+    const stored = writtenRecord(task, ics, href, etag);
     store.setTask(stored);
     res.status(201).json(toApiShape(stored));
   } catch (err) {
@@ -106,6 +106,7 @@ router.put('/tasks/:id', async (req, res) => {
       'completed',
       'taskReminder',
       'priority',
+      'sortOrder',
     ];
     const changes = {};
     for (const k of allowed) {
@@ -115,6 +116,11 @@ router.put('/tasks/:id', async (req, res) => {
       return res.status(400).json({ error: 'invalid status' });
     }
     if ('priority' in changes) changes.priority = parsePriority(changes.priority);
+    if ('sortOrder' in changes && changes.sortOrder !== null) {
+      if (!Number.isSafeInteger(changes.sortOrder)) {
+        return res.status(400).json({ error: 'invalid sortOrder' });
+      }
+    }
 
     const updated = { ...existing, ...changes };
     const ics = serializeTask(updated);
@@ -124,8 +130,7 @@ router.put('/tasks/:id', async (req, res) => {
       ics,
       existing.etag,
     );
-    const now = new Date().toISOString();
-    const stored = { ...updated, href, etag, localModifiedAt: now, lastSyncedAt: now };
+    const stored = writtenRecord(updated, ics, href, etag);
     store.setTask(stored);
     res.json(toApiShape(stored));
   } catch (err) {
@@ -185,8 +190,7 @@ router.post('/tasks/:id/complete', async (req, res) => {
 
     const ics = serializeTask(updated);
     const { href, etag } = await putTask(task.source || tasksUrl, task.uid, ics, task.etag);
-    const now = new Date().toISOString();
-    const stored = { ...updated, href, etag, localModifiedAt: now, lastSyncedAt: now };
+    const stored = writtenRecord(updated, ics, href, etag);
     store.setTask(stored);
     res.json(toApiShape(stored));
   } catch (err) {
@@ -196,6 +200,28 @@ router.post('/tasks/:id/complete', async (req, res) => {
 });
 
 // ── Helpers ───────────────────────────────────────────────
+
+/**
+ * The cache record for a task just written. It carries the lines the server
+ * now holds, so the next edit compares against this write, not the one before.
+ * @param {object} task
+ * @param {string} ics - what was PUT
+ * @param {string} href
+ * @param {string} etag
+ */
+function writtenRecord(task, ics, href, etag) {
+  const [written] = parseVtodo(ics);
+  const now = new Date().toISOString();
+  return {
+    ...task,
+    rawVtodo: written.rawVtodo,
+    rawTimezones: written.rawTimezones,
+    href,
+    etag,
+    localModifiedAt: now,
+    lastSyncedAt: now,
+  };
+}
 
 function toApiShape(task) {
   return {
@@ -214,6 +240,7 @@ function toApiShape(task) {
     recurringInterval: task.xRecurringInterval || null,
     rrule: task.rrule || null,
     createdAt: task.createdAt || null,
+    sortOrder: Number.isSafeInteger(task.sortOrder) ? task.sortOrder : null,
     source: task.source || null,
     sourceName: task.sourceName || null,
     taskReminder: task.taskReminder || null,
