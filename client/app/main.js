@@ -24,6 +24,7 @@ import {
 import { initCalendarDrawer, openDrawer } from '../components/calendarDrawer.js';
 import { showSnackbar } from '../components/snackbar.js';
 import { renderQuickAddTarget } from '../components/quickAddTarget.js';
+import { nlpEventEnd } from '../components/eventTimes.js';
 import { initSettingsPanel, openSettings } from '../components/settingsPanel.js';
 import { initInstallPrompt } from './installPrompt.js';
 import { initSwUpdate } from './swUpdate.js';
@@ -1345,11 +1346,12 @@ async function init() {
         }
         const start = new Date(data.start);
         const tz = state.config.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+        // An all-day start is UTC midnight: read its date in UTC, not the zone.
         const dateStr = start.toLocaleDateString('en-US', {
           weekday: 'short',
           month: 'short',
           day: 'numeric',
-          timeZone: tz,
+          timeZone: data.allDay ? 'UTC' : tz,
         });
         const timeStr = data.allDay
           ? 'All day'
@@ -1387,7 +1389,7 @@ async function init() {
         await saveEvent(null, {
           title: data.title,
           start: data.start,
-          end: data.end,
+          end: nlpEventEnd(data, state.config.defaultEventDuration),
           allDay: data.allDay,
           calendarId: resolveEventCalendar(),
           description: '',

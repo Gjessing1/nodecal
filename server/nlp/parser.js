@@ -1,50 +1,31 @@
 const chrono = require('chrono-node');
 
+const DAY_MS = 86400000;
+
 /**
- * Convert a chrono ParsedResult date to UTC, interpreting the parsed hour/minute
- * as local time in the given IANA timezone (chrono-node returns times as UTC
- * regardless of the timezone option — we must apply the offset ourselves).
+ * The calendar date chrono parsed, as 'YYYY-MM-DD'.
+ * @param {import('chrono-node').ParsedComponents} c
  */
-function chronoToUtc(result, timezone) {
-  // If chrono captured an explicit timezone in the text, trust its Date
-  if (result.start.get('timezone') !== null) return result.start.date();
-  const s = result.start;
-  const year = s.get('year');
-  const month = String(s.get('month')).padStart(2, '0');
-  const day = String(s.get('day')).padStart(2, '0');
-  const hour = String(s.get('hour')).padStart(2, '0');
-  const min = String(s.get('minute')).padStart(2, '0');
-  // Treat the time as floating local in `timezone`, convert to UTC
-  const naive = new Date(`${year}-${month}-${day}T${hour}:${min}:00Z`);
-  const parts = {};
-  for (const p of new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  }).formatToParts(naive))
-    parts[p.type] = p.value;
-  const h = parts.hour === '24' ? '00' : parts.hour;
-  const shownAsUtc = new Date(
-    `${parts.year}-${parts.month}-${parts.day}T${h}:${parts.minute}:${parts.second}Z`,
-  );
-  return new Date(naive.getTime() + (naive.getTime() - shownAsUtc.getTime()));
+function componentsDate(c) {
+  const month = String(c.get('month')).padStart(2, '0');
+  const day = String(c.get('day')).padStart(2, '0');
+  return `${c.get('year')}-${month}-${day}`;
 }
 
-function chronoEndToUtc(result, timezone, _startUtc, _hasTime) {
-  if (!result.end) return null;
-  if (result.end.get('timezone') !== null) return result.end.date();
-  const s = result.end;
-  const year = s.get('year');
-  const month = String(s.get('month')).padStart(2, '0');
-  const day = String(s.get('day')).padStart(2, '0');
-  const hour = String(s.get('hour')).padStart(2, '0');
-  const min = String(s.get('minute')).padStart(2, '0');
-  const naive = new Date(`${year}-${month}-${day}T${hour}:${min}:00Z`);
+/**
+ * Convert chrono's parsed date + time to UTC, interpreting the hour/minute as
+ * local time in the given IANA timezone (chrono-node returns times as UTC
+ * regardless of the timezone option — we must apply the offset ourselves).
+ * @param {import('chrono-node').ParsedComponents} c
+ * @param {string} timezone
+ */
+function componentsToUtc(c, timezone) {
+  // If chrono captured an explicit timezone in the text, trust its Date
+  if (c.isCertain('timezoneOffset')) return c.date();
+  const hour = String(c.get('hour')).padStart(2, '0');
+  const min = String(c.get('minute')).padStart(2, '0');
+  // Treat the time as floating local in `timezone`, convert to UTC
+  const naive = new Date(`${componentsDate(c)}T${hour}:${min}:00Z`);
   const parts = {};
   for (const p of new Intl.DateTimeFormat('en-US', {
     timeZone: timezone,
@@ -257,7 +238,7 @@ function buildNormMap(text) {
  * @param {string} text
  * @param {Date} [refDate]
  * @param {string} [timezone] - IANA timezone name, e.g. 'Europe/Oslo'
- * @returns {{ parsed: boolean, title?: string, start?: string, end?: string|null, allDay?: boolean, parsedText?: string|null, rrule?: string|null }}
+ * @returns {{ parsed: boolean, title?: string, start?: string, end?: string|null, allDay?: boolean, explicitEnd?: boolean, parsedText?: string|null, rrule?: string|null }}
  */
 function parse(text, refDate = new Date(), timezone = 'UTC') {
   const trimmed = text.trim();
@@ -291,9 +272,27 @@ function parse(text, refDate = new Date(), timezone = 'UTC') {
 
   const result = results[0];
   const hasTime = result.start.isCertain('hour');
-  const start = chronoToUtc(result, timezone);
-  const endRaw = chronoEndToUtc(result, timezone, start, hasTime);
-  const end = endRaw ?? new Date(start.getTime() + (hasTime ? 3600000 : 86400000));
+  // Clients give a timed event without a named end their configured default
+  // length; the one-hour end below is only a fallback for older clients.
+  const explicitEnd = !!result.end;
+  let start;
+  let end;
+  if (hasTime) {
+    start = componentsToUtc(result.start, timezone);
+    if (result.end) end = componentsToUtc(result.end, timezone);
+    else end = new Date(start.getTime() + 3600000);
+  } else {
+    // All-day: UTC midnights with an exclusive end. chrono's end is the last day
+    // the phrase names ("10-12 june" ends on the 12th), so the stored end is the
+    // day after it.
+    const startDate = componentsDate(result.start);
+    let lastDate = startDate;
+    if (result.end && componentsDate(result.end) > startDate) {
+      lastDate = componentsDate(result.end);
+    }
+    start = new Date(`${startDate}T00:00:00Z`);
+    end = new Date(Date.parse(`${lastDate}T00:00:00Z`) + DAY_MS);
+  }
 
   const before = normalized.slice(0, result.index).trim();
   const after = normalized.slice(result.index + result.text.length).trim();
@@ -324,6 +323,7 @@ function parse(text, refDate = new Date(), timezone = 'UTC') {
     start: start.toISOString(),
     end: end.toISOString(),
     allDay: !hasTime,
+    explicitEnd,
     parsedText,
     rrule,
   };

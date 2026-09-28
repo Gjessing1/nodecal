@@ -1,10 +1,10 @@
 import { state, calendarById } from '../app/state.js';
 import { mountBatchShift } from './batchShift.js';
-import { toDateInputValue, toTimeInputValue, localToUTC, esc } from '../app/utils.js';
-import { buildTimePicker } from './timePicker.js';
+import { toDateInputValue, toTimeInputValue, esc } from '../app/utils.js';
 import { buildRecurrenceEditor } from './recurrenceUI.js';
+import { eventDateFieldsHtml, mountEventDateFields } from './eventDateFields.js';
+import { allDayLastDay, nlpEventEnd } from './eventTimes.js';
 import {
-  buildDatePickerButton,
   mountLocationUrlSection,
   mountCollapsibleToggle,
   wireCategoryUI,
@@ -20,6 +20,8 @@ import { computeDefaultStart } from './defaultStart.js';
 let overlay, sheet, onSaveCb, onDeleteCb, onDuplicateCb, onEventsChangedCb;
 /** @type {(() => void)|null} */
 let releaseTrap = null;
+/** @type {ReturnType<typeof mountEventDateFields>|null} */
+let dateFields = null;
 
 /**
  * @param {(message: string) => void} [onEventsChanged] - called when something
@@ -180,15 +182,33 @@ function renderForm(event, defaultDate, explicitTime = false) {
 
   const isNew = !event;
   const tz = state.config.timezone;
-  const durMs = (state.config.defaultEventDuration || 60) * 60000;
-  const start = event
-    ? new Date(event.start)
-    : explicitTime && defaultDate
-      ? defaultDate
-      : computeDefaultStart(defaultDate || todayLabel(tz), tz, state.config.defaultEventTime);
-  const end = event ? new Date(event.end) : new Date(start.getTime() + durMs);
+  const durationMinutes = state.config.defaultEventDuration || 60;
+  const durMs = durationMinutes * 60000;
+  let start;
+  if (event && !event.allDay) {
+    start = new Date(event.start);
+  } else if (event) {
+    // An all-day event's UTC midnight is no time of day; seed the timed fields
+    // (shown if all-day is switched off) with the usual default start instead.
+    const [y, m, d] = event.start.slice(0, 10).split('-').map(Number);
+    start = computeDefaultStart(new Date(y, m - 1, d), tz, state.config.defaultEventTime);
+  } else if (explicitTime && defaultDate) {
+    start = defaultDate;
+  } else {
+    start = computeDefaultStart(defaultDate || todayLabel(tz), tz, state.config.defaultEventTime);
+  }
+  let end = new Date(start.getTime() + durMs);
+  if (event && !event.allDay) end = new Date(event.end);
   // For all-day events, slice the UTC date string directly — never convert through local timezone.
-  const allDayDateVal = event?.allDay ? event.start.slice(0, 10) : toDateInputValue(start, tz);
+  const allDayStart = event?.allDay ? event.start.slice(0, 10) : toDateInputValue(start, tz);
+  const dateInit = {
+    allDay: !!event?.allDay,
+    allDayStart,
+    allDayLast: event?.allDay ? allDayLastDay(event.start, event.end) : allDayStart,
+    start,
+    end,
+    tz,
+  };
   // Default calendar: prefer event's calendar, then the profile/global default, then first available
   const defaultCalId = event?.calendarId || resolveEditorCalendar();
 
@@ -202,30 +222,7 @@ function renderForm(event, defaultDate, explicitTime = false) {
       </div>
       ${isNew ? '<div class="nlp-feedback hidden" id="nlp-fb"></div>' : ''}
     </div>
-    <div class="modal-field" id="allday-date-row"${!event?.allDay ? ' style="display:none"' : ''}>
-      <label>Date</label>
-      <input type="hidden" id="f-date" value="${allDayDateVal}">
-      <div id="f-date-wrap"></div>
-    </div>
-    <div class="modal-datetime-row" id="time-row"${event?.allDay ? ' style="display:none"' : ''}>
-      <div class="datetime-col">
-        <label class="datetime-label">From</label>
-        <div class="datetime-inputs">
-          <input type="hidden" id="f-start-date" value="${toDateInputValue(start, tz)}">
-          <div id="f-start-date-wrap"></div>
-          <div id="f-start-time-wrap"></div>
-        </div>
-      </div>
-      <span class="datetime-arrow">→</span>
-      <div class="datetime-col">
-        <label class="datetime-label">To</label>
-        <div class="datetime-inputs">
-          <input type="hidden" id="f-end-date" value="${toDateInputValue(end, tz)}">
-          <div id="f-end-date-wrap"></div>
-          <div id="f-end-time-wrap"></div>
-        </div>
-      </div>
-    </div>
+    ${eventDateFieldsHtml(dateInit)}
     <div class="modal-cal-allday-row">
       <div class="modal-field modal-cal-field">
         <label>Calendar</label>
@@ -285,66 +282,6 @@ function renderForm(event, defaultDate, explicitTime = false) {
     </div>
   `;
 
-  // Insert time widgets after innerHTML so DOM elements can be appended
-  const startWrap = sheet.querySelector('#f-start-time-wrap');
-  const endWrap = sheet.querySelector('#f-end-time-wrap');
-
-  // ── Date picker buttons ──────────────────────────────────────────────────────
-  buildDatePickerButton(sheet.querySelector('#f-date'), sheet.querySelector('#f-date-wrap'));
-  buildDatePickerButton(
-    sheet.querySelector('#f-start-date'),
-    sheet.querySelector('#f-start-date-wrap'),
-  );
-  buildDatePickerButton(
-    sheet.querySelector('#f-end-date'),
-    sheet.querySelector('#f-end-date-wrap'),
-  );
-
-  // ── Helper: shift end time by same delta when start changes ──────────────────
-  function shiftEnd(prevStartVal, newStartVal) {
-    const [ph, pm] = prevStartVal.split(':').map(Number);
-    const [nh, nm] = newStartVal.split(':').map(Number);
-    const deltaMin = nh * 60 + nm - (ph * 60 + pm);
-    const endEl = sheet.querySelector('#f-end-time');
-    if (!endEl) return;
-    const [eh, em] = endEl.value.split(':').map(Number);
-    const newEndMin = Math.max(0, Math.min(1439, eh * 60 + em + deltaMin));
-    const newEndVal = `${String(Math.floor(newEndMin / 60)).padStart(2, '0')}:${String(newEndMin % 60).padStart(2, '0')}`;
-    endEl.value = newEndVal;
-    sheet.querySelector('#f-end-time-wrap .tp-wrap')?.updateTime?.(newEndVal);
-  }
-
-  // ── Time pickers (typed on desktop, dial on touch) ───────────────────────────
-  let prevStartVal = toTimeInputValue(start, tz);
-  startWrap.appendChild(
-    buildTimePicker('f-start-time', start, tz, (newVal) => {
-      shiftEnd(prevStartVal, newVal);
-      prevStartVal = newVal;
-    }),
-  );
-  endWrap.appendChild(buildTimePicker('f-end-time', end, tz));
-
-  sheet.querySelector('#f-allday').addEventListener('change', (e) => {
-    const checked = e.target.checked;
-    sheet.querySelector('#allday-date-row').style.display = checked ? '' : 'none';
-    sheet.querySelector('#time-row').style.display = checked ? 'none' : '';
-    if (checked) {
-      const sd = sheet.querySelector('#f-start-date');
-      if (sd) {
-        sheet.querySelector('#f-date').value = sd.value;
-        sheet.querySelector('#f-date').dispatchEvent(new Event('change'));
-      }
-    } else {
-      const fd = sheet.querySelector('#f-date');
-      if (fd) {
-        sheet.querySelector('#f-start-date').value = fd.value;
-        sheet.querySelector('#f-end-date').value = fd.value;
-        sheet.querySelector('#f-start-date').dispatchEvent(new Event('change'));
-        sheet.querySelector('#f-end-date').dispatchEvent(new Event('change'));
-      }
-    }
-  });
-
   // ── Location / URL (collapsible) ─────────────────────────────────────────
   mountLocationUrlSection(sheet.querySelector('#f-location-url-wrap'), {
     locId: 'f-location',
@@ -373,7 +310,7 @@ function renderForm(event, defaultDate, explicitTime = false) {
     });
   }
 
-  // ── Recurrence editor (declared before startDate listener so the listener can reference it)
+  // ── Recurrence editor (declared before the date fields so they can notify it)
   let recEditor = null;
   const recContainer = sheet.querySelector('#f-repeat-container');
   if (recContainer) {
@@ -388,21 +325,14 @@ function renderForm(event, defaultDate, explicitTime = false) {
     recContainer.appendChild(recEditor);
   }
 
-  // When start date changes: shift end date + notify recurrence editor
-  const startDateEl = sheet.querySelector('#f-start-date');
-  if (startDateEl) {
-    let prevStartVal = startDateEl.value;
-    startDateEl.addEventListener('change', () => {
-      const prev = new Date(prevStartVal + 'T00:00');
-      const next = new Date(startDateEl.value + 'T00:00');
-      const delta = next.getTime() - prev.getTime();
-      const endDateEl = sheet.querySelector('#f-end-date');
-      const shifted = new Date(new Date(endDateEl.value + 'T00:00').getTime() + delta);
-      endDateEl.value = toDateInputValue(shifted);
-      prevStartVal = startDateEl.value;
-      recEditor?.onStartDateChange?.(next);
-    });
-  }
+  // ── From/To fields (see eventDateFields.js) ─────────────────────────────────
+  dateFields = mountEventDateFields(sheet, {
+    ...dateInit,
+    defaultDurationMinutes: durationMinutes,
+    onStartDateChange: function notifyRecurrence(d) {
+      recEditor?.onStartDateChange?.(d);
+    },
+  });
 
   // ── Categories ────────────────────────────────────────────────────────────
   const catSection = sheet.querySelector('#f-categories-section');
@@ -507,29 +437,16 @@ function handleSave(event) {
       ? sheet.dataset.nlpTitle
       : rawTitle;
 
-  const allDay = sheet.querySelector('#f-allday').checked;
   const calendarId = sheet.querySelector('#f-calendar').value;
   const description = sheet.querySelector('#f-desc').value.trim();
   const location = sheet.querySelector('#f-location-url-wrap #f-location')?.value.trim() || '';
   const url = sheet.querySelector('#f-location-url-wrap #f-url')?.value.trim() || '';
 
-  let startDt, endDt;
-  if (allDay) {
-    const dateVal = sheet.querySelector('#f-date').value;
-    startDt = new Date(`${dateVal}T00:00:00Z`); // UTC midnight — keeps date string unambiguous
-    endDt = new Date(startDt.getTime() + 86400000);
-  } else {
-    const startDateVal = sheet.querySelector('#f-start-date').value;
-    const endDateVal = sheet.querySelector('#f-end-date').value;
-    const startTime = sheet.querySelector('#f-start-time').value;
-    const endTime = sheet.querySelector('#f-end-time').value;
-    const tz = state.config.timezone;
-    startDt = localToUTC(startDateVal, startTime, tz);
-    endDt = localToUTC(endDateVal, endTime, tz);
-    if (endDt <= startDt) {
-      endDt = new Date(startDt.getTime() + 3600000);
-    }
-  }
+  // An end before the start is shown under the fields and keeps the modal open,
+  // rather than being quietly replaced by some other length.
+  const when = dateFields.read();
+  if (!when) return;
+  const { allDay, start: startDt, end: endDt } = when;
 
   // Determine rrule: editor takes precedence over NLP detection
   const recCont = sheet.querySelector('#f-repeat-container');
@@ -601,49 +518,21 @@ async function applyNlp(text) {
     sheet.dataset.nlpTitle = data.title;
     sheet.dataset.nlpRaw = text;
     const start = new Date(data.start);
-    const end = new Date(data.end);
+    const end = new Date(nlpEventEnd(data, state.config.defaultEventDuration));
     const tz = state.config.timezone;
-    if (!data.allDay) {
-      const sdEl = sheet.querySelector('#f-start-date');
-      const edEl = sheet.querySelector('#f-end-date');
-      if (sdEl) {
-        sdEl.value = toDateInputValue(start, tz);
-        sdEl.dispatchEvent(new Event('change'));
-      }
-      if (edEl) {
-        edEl.value = toDateInputValue(end, tz);
-        edEl.dispatchEvent(new Event('change'));
-      }
-      const startTimeVal = toTimeInputValue(start, tz);
-      const endTimeVal = toTimeInputValue(end, tz);
-      // Update hidden inputs
-      const stEl = sheet.querySelector('#f-start-time');
-      const etEl = sheet.querySelector('#f-end-time');
-      if (stEl) stEl.value = startTimeVal;
-      if (etEl) etEl.value = endTimeVal;
-      // Update the visible time fields
-      sheet.querySelector('#f-start-time-wrap .tp-wrap')?.updateTime?.(startTimeVal);
-      sheet.querySelector('#f-end-time-wrap .tp-wrap')?.updateTime?.(endTimeVal);
-      sheet.querySelector('#f-allday').checked = false;
-      sheet.querySelector('#allday-date-row').style.display = 'none';
-      sheet.querySelector('#time-row').style.display = '';
+    if (data.allDay) {
+      dateFields.setAllDay(data.start.slice(0, 10), allDayLastDay(data.start, data.end));
     } else {
-      const fdEl = sheet.querySelector('#f-date');
-      if (fdEl) {
-        fdEl.value = toDateInputValue(start);
-        fdEl.dispatchEvent(new Event('change'));
-      }
-      sheet.querySelector('#f-allday').checked = true;
-      sheet.querySelector('#allday-date-row').style.display = '';
-      sheet.querySelector('#time-row').style.display = 'none';
+      dateFields.setTimed(start, end);
     }
 
-    // Show feedback with the recognized text highlighted inline
+    // Show feedback with the recognized text highlighted inline. An all-day
+    // start is UTC midnight, so its date is read in UTC, not the configured zone.
     const dateStr = start.toLocaleDateString('en-US', {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
-      timeZone: tz,
+      timeZone: data.allDay ? 'UTC' : tz,
     });
     const timeStr = data.allDay
       ? 'All day'
