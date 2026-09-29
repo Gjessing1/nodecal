@@ -49,9 +49,10 @@ const STAMP_PROPERTIES = ['UID', 'DTSTAMP', 'LAST-MODIFIED'];
 /**
  * Parse a VCALENDAR ICS string into an array of task objects (VTODO).
  * @param {string} icsText
+ * @param {{ timezone?: string }} [opts] - zone a UTC due time is read in
  * @returns {Array<object>}
  */
-function parseVtodo(icsText) {
+function parseVtodo(icsText, { timezone = 'UTC' } = {}) {
   const { todos, timezones } = readCalendar(icsText);
   const result = [];
   for (const body of todos) {
@@ -61,7 +62,7 @@ function parseVtodo(icsText) {
     result.push({
       uid,
       type: 'task',
-      ...todoFields(props),
+      ...todoFields(props, timezone),
       rawVtodo: body,
       rawTimezones: timezones,
     });
@@ -87,12 +88,14 @@ function parsePriority(raw) {
  * CalDAV keeps every line it arrived with except the fields that changed; a new
  * one (no `rawVtodo`) is written from its fields alone.
  * @param {object} task
+ * @param {{ timezone?: string }} [opts] - must match the zone the task was read
+ *   in, or an unchanged due date looks moved
  * @returns {string}
  */
-function serializeTask(task) {
+function serializeTask(task, { timezone = 'UTC' } = {}) {
   const hasRaw = Array.isArray(task.rawVtodo);
   const { props, nested } = splitTodo(hasRaw ? task.rawVtodo : []);
-  const original = todoFields(props);
+  const original = todoFields(props, timezone);
   const stamp = icsUtc(new Date().toISOString());
 
   /** @type {Set<string>} */
@@ -124,26 +127,15 @@ function serializeTask(task) {
 /**
  * The task fields a VTODO's own properties describe.
  * @param {IcsProperty[]} props
+ * @param {string} timezone
  */
-function todoFields(props) {
+function todoFields(props, timezone) {
   const byName = {};
   const categoryValues = [];
   for (const prop of props) {
     byName[prop.name] = prop;
     // Clients may split categories over several lines; they all count.
     if (prop.name === 'CATEGORIES') categoryValues.push(prop.value);
-  }
-
-  // DUE — prefer date-only; fall back to full datetime truncated to date
-  let due = null;
-  if (byName.DUE) {
-    const val = byName.DUE.value;
-    if (/^\d{8}$/.test(val)) {
-      due = `${val.slice(0, 4)}-${val.slice(4, 6)}-${val.slice(6, 8)}`;
-    } else {
-      const parsed = parseIcsDate(val, byName.DUE.params);
-      if (parsed) due = parsed.date.toISOString().slice(0, 10);
-    }
   }
 
   return {
@@ -153,7 +145,7 @@ function todoFields(props) {
     url: unescapeIcsText(byName.URL?.value || ''),
     status: byName.STATUS?.value || 'NEEDS-ACTION',
     priority: parsePriority(byName.PRIORITY?.value),
-    due,
+    due: dueDate(byName.DUE, timezone),
     completed: parseUtc(byName.COMPLETED),
     createdAt: parseUtc(byName.CREATED),
     categories: parseCategories(categoryValues.join(',')),
@@ -163,6 +155,48 @@ function todoFields(props) {
     taskReminder: byName['X-REMINDER']?.value || null,
     sortOrder: parseSortOrder(byName['X-APPLE-SORT-ORDER']?.value),
   };
+}
+
+/**
+ * The day a task is due. A DUE with a time is due on the date it names in its
+ * own zone: `DUE;TZID=Europe/Oslo:20260917T003000` is the 17th, although it is
+ * still the 16th in UTC. Only a UTC time needs converting, and it is read in
+ * the configured zone, the one the user plans their days in.
+ * @param {IcsProperty|undefined} prop
+ * @param {string} timezone
+ * @returns {string|null} 'YYYY-MM-DD'
+ */
+function dueDate(prop, timezone) {
+  if (!prop) return null;
+  const m = prop.value.match(/^(\d{4})(\d{2})(\d{2})(T\d{6}(Z?))?$/);
+  if (!m) return null;
+  if (!m[5]) return `${m[1]}-${m[2]}-${m[3]}`;
+  const instant = parseIcsDate(prop.value, prop.params);
+  if (!instant) return null;
+  return dateInZone(instant.date, timezone);
+}
+
+/**
+ * @param {Date} date
+ * @param {string} timezone - IANA name; an unknown one falls back to UTC
+ * @returns {string} 'YYYY-MM-DD'
+ */
+function dateInZone(date, timezone) {
+  let format;
+  try {
+    format = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+  } catch {
+    return date.toISOString().slice(0, 10);
+  }
+  /** @type {Object<string, string>} */
+  const parts = {};
+  for (const part of format.formatToParts(date)) parts[part.type] = part.value;
+  return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
 /**
@@ -178,7 +212,8 @@ function fieldLines(field, task) {
     return [`DESCRIPTION:${escapeIcsText(task.description)}`];
   }
   if (field === 'location' && task.location) return [`LOCATION:${escapeIcsText(task.location)}`];
-  if (field === 'url' && task.url) return [`URL:${task.url}`];
+  // A URI is not escaped like TEXT, so a line break would start a new property.
+  if (field === 'url' && task.url) return [`URL:${String(task.url).replace(/[\r\n]+/g, '')}`];
   if (field === 'priority' && task.priority) return [`PRIORITY:${task.priority}`];
   if (field === 'completed' && task.completed) return [`COMPLETED:${icsUtc(task.completed)}`];
   if (field === 'categories' && task.categories?.length) {

@@ -202,3 +202,58 @@ describe('serializeTask', () => {
     ]);
   });
 });
+
+describe('due date of a timed DUE', () => {
+  it('is the date the value names in its own zone', () => {
+    const [task] = parseVtodo(
+      calendar(['UID:t6', 'SUMMARY:A', 'DUE;TZID=Europe/Oslo:20260917T003000'], OSLO),
+    );
+    assert.equal(task.due, '2026-09-17');
+  });
+
+  it('reads a UTC time in the configured zone', () => {
+    const ics = calendar(['UID:t7', 'SUMMARY:A', 'DUE:20260916T223000Z']);
+    assert.equal(parseVtodo(ics, { timezone: 'Europe/Oslo' })[0].due, '2026-09-17');
+    assert.equal(parseVtodo(ics)[0].due, '2026-09-16');
+  });
+
+  it('keeps an unchanged UTC DUE when read and written in the same zone', () => {
+    const opts = { timezone: 'Europe/Oslo' };
+    const [task] = parseVtodo(calendar(['UID:t8', 'SUMMARY:A', 'DUE:20260916T223000Z']), opts);
+    const lines = todoLines(serializeTask({ ...task, title: 'B' }, opts));
+    assert.ok(lines.includes('DUE:20260916T223000Z'));
+  });
+
+  it('moves a UTC DUE so it reads back as the new date', () => {
+    const opts = { timezone: 'Europe/Oslo' };
+    const [task] = parseVtodo(calendar(['UID:t9', 'SUMMARY:A', 'DUE:20260916T223000Z']), opts);
+    const [moved] = parseVtodo(serializeTask({ ...task, due: '2026-09-20' }, opts), opts);
+    assert.equal(moved.due, '2026-09-20');
+    assert.ok(
+      todoLines(serializeTask({ ...task, due: '2026-09-20' }, opts)).includes(
+        'DUE:20260919T223000Z',
+      ),
+    );
+  });
+});
+
+describe('task location and URL', () => {
+  it('writes edited values and reads them back', () => {
+    const [task] = parseVtodo(TASKS_ORG);
+    const ics = serializeTask({ ...task, location: 'Kiwi, Grünerløkka', url: 'https://x.test/a' });
+    const lines = todoLines(ics);
+    assert.ok(lines.includes('LOCATION:Kiwi\\, Grünerløkka'));
+    assert.ok(lines.includes('URL:https://x.test/a'));
+    const [again] = parseVtodo(ics);
+    assert.equal(again.location, 'Kiwi, Grünerløkka');
+    assert.equal(again.url, 'https://x.test/a');
+  });
+
+  it('cannot start a new property through a line break in the URL', () => {
+    const lines = todoLines(
+      serializeTask({ uid: 'u', title: 'T', url: 'https://x.test/\r\nSTATUS:COMPLETED' }),
+    );
+    assert.ok(lines.includes('URL:https://x.test/STATUS:COMPLETED'));
+    assert.ok(!lines.includes('STATUS:COMPLETED'));
+  });
+});

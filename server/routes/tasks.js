@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const config = require('../config');
 const {
   putTask,
   deleteTask,
@@ -13,6 +14,10 @@ const router = Router();
 
 // CANCELLED is kept so a status written by another client survives an edit here.
 const TASK_STATUSES = ['NEEDS-ACTION', 'IN-PROCESS', 'COMPLETED', 'CANCELLED'];
+
+// Serialization reads the original DUE the same way sync did, or an unchanged
+// due date would look moved.
+const TIMEZONE = { timezone: config.app.timezone };
 
 // ── GET /tasks ────────────────────────────────────────────
 
@@ -36,6 +41,8 @@ router.post('/tasks', async (req, res) => {
     title,
     due,
     description,
+    location,
+    url,
     categories,
     rrule,
     xRecurringType,
@@ -60,6 +67,8 @@ router.post('/tasks', async (req, res) => {
       type: 'task',
       title,
       description: description || '',
+      location: location || '',
+      url: url || '',
       status: status || 'NEEDS-ACTION',
       priority: parsePriority(priority),
       due: due || null,
@@ -73,7 +82,7 @@ router.post('/tasks', async (req, res) => {
       source: targetSrc.url,
       sourceName: targetSrc.name,
     };
-    const ics = serializeTask(task);
+    const ics = serializeTask(task, TIMEZONE);
     const { href, etag } = await putTask(targetSrc.url, uid, ics);
     const stored = writtenRecord(task, ics, href, etag);
     store.setTask(stored);
@@ -98,6 +107,8 @@ router.put('/tasks/:id', async (req, res) => {
       'title',
       'due',
       'description',
+      'location',
+      'url',
       'categories',
       'rrule',
       'xRecurringType',
@@ -123,7 +134,7 @@ router.put('/tasks/:id', async (req, res) => {
     }
 
     const updated = { ...existing, ...changes };
-    const ics = serializeTask(updated);
+    const ics = serializeTask(updated, TIMEZONE);
     const { href, etag } = await putTask(
       existing.source || tasksUrl,
       existing.uid,
@@ -188,7 +199,7 @@ router.post('/tasks/:id/complete', async (req, res) => {
       };
     }
 
-    const ics = serializeTask(updated);
+    const ics = serializeTask(updated, TIMEZONE);
     const { href, etag } = await putTask(task.source || tasksUrl, task.uid, ics, task.etag);
     const stored = writtenRecord(updated, ics, href, etag);
     store.setTask(stored);
@@ -210,7 +221,7 @@ router.post('/tasks/:id/complete', async (req, res) => {
  * @param {string} etag
  */
 function writtenRecord(task, ics, href, etag) {
-  const [written] = parseVtodo(ics);
+  const [written] = parseVtodo(ics, TIMEZONE);
   const now = new Date().toISOString();
   return {
     ...task,
@@ -229,6 +240,8 @@ function toApiShape(task) {
     uid: task.uid,
     title: task.title,
     description: task.description || '',
+    location: task.location || '',
+    url: task.url || '',
     status: task.status || 'NEEDS-ACTION',
     priority: task.priority || 0,
     due: task.due || null,

@@ -331,7 +331,7 @@ ${hrefLines}
     const etag = (extractTag(block, 'getetag') || '').replace(/"/g, '');
     const icsData = unescapeXml(extractTag(block, 'calendar-data') || '');
     if (!icsData) continue;
-    for (const task of parseVtodo(icsData)) {
+    for (const task of parseVtodo(icsData, { timezone: config.app.timezone })) {
       result.push({ ...task, href: fullUrlFromBase(href, tasksUrl), etag });
     }
   }
