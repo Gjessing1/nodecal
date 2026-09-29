@@ -31,7 +31,7 @@ COPY --from=check /app/package.json /tmp/.checks-passed
 
 # Re-run tests against prod-only node_modules: catches server code accidentally
 # requiring a devDependency, which the check stage (full install) would miss.
-RUN NODECAL_SKIP_ANDROID_TESTS=1 npm test
+RUN NODECAL_SKIP_ANDROID_TESTS=1 NODECAL_SKIP_DOM_TESTS=1 npm test
 
 RUN mkdir -p /config /cache
 
