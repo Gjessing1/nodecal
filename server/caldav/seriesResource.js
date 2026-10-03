@@ -1,6 +1,7 @@
-const { putEvent, putEventAtHref } = require('./client');
+const { putEvent, putEventAtHref, deleteEvent } = require('./client');
 const { relocateEvent } = require('./relocate');
 const { serializeEvents, writtenLines } = require('./vevent');
+const { seriesHead } = require('./seriesShift');
 const store = require('../cache/store');
 const config = require('../config');
 
@@ -76,4 +77,36 @@ async function writeSeries(base, overrides, source = base) {
   return { base: storedBase, overrides: storedOverrides };
 }
 
-module.exports = { currentOverrides, writeSeries };
+/**
+ * Split a series in two: write `tail` as a new resource, then cap the original
+ * to end before `split`. The new series goes first, so a refused write leaves
+ * the old one whole instead of capped with nothing after it; if capping fails,
+ * the new series is deleted again.
+ * @param {object} base - the master event
+ * @param {Array<object>} overrides - its current overrides
+ * @param {Date} split - the first occurrence that moves to `tail`
+ * @param {{ base: object, overrides: Array<object> }} tail - see seriesTail
+ * @returns {Promise<{base: object, overrides: Array<object>}>} the new series as stored
+ */
+async function writeSplit(base, overrides, split, tail) {
+  const written = await writeSeries(tail.base, tail.overrides);
+  const head = seriesHead(base, overrides, split);
+  try {
+    await writeSeries(head.base, head.overrides, base);
+  } catch (seriesError) {
+    try {
+      await deleteEvent(written.base.href, written.base.etag);
+      store.removeEventsByHrefSilent(written.base.href);
+      store.flushToDisk();
+    } catch (rollbackError) {
+      throw new Error(
+        `Series split left a copy after rollback failed: ${seriesError.message}; ${rollbackError.message}`,
+        { cause: rollbackError },
+      );
+    }
+    throw seriesError;
+  }
+  return written;
+}
+
+module.exports = { currentOverrides, writeSeries, writeSplit };

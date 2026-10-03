@@ -1,17 +1,17 @@
 const { Router } = require('express');
 const { putEvent, putEventAtHref, deleteEvent } = require('../caldav/client');
 const { serializeEvent: serializeWithZone, writtenLines } = require('../caldav/vevent');
-const { setRruleUntil } = require('../caldav/recurrence');
+const { splitSeries } = require('../caldav/recurrence');
 const { indexOverrides, expandSeries, emitOverrides } = require('../caldav/overrides');
 const {
   overrideAt,
   buildOverride,
   mergeOverride,
   withoutOverride,
-  overridesBefore,
   withExdate,
 } = require('../caldav/exceptions');
-const { currentOverrides, writeSeries } = require('../caldav/seriesResource');
+const { currentOverrides, writeSeries, writeSplit } = require('../caldav/seriesResource');
+const { seriesHead, seriesTail } = require('../caldav/seriesShift');
 const { relocateEvent } = require('../caldav/relocate');
 const store = require('../cache/store');
 const config = require('../config');
@@ -138,11 +138,8 @@ router.put('/events/:id', async (req, res) => {
     }
 
     // Simple update (non-recurring, or 'all' scope on recurring base)
-    const updated = { ...existing, ...filterChanges(changes) };
-    if (existing.rrule) {
-      const written = await writeSeries(updated, currentOverrides(existing), existing);
-      return res.json(toApiShape(written.base));
-    }
+    if (existing.rrule) return handleSeriesEdit(existing, changes, res);
+    const updated = editedEvent(existing, changes);
 
     const ics = serializeEvent(updated);
     let written;
@@ -182,9 +179,8 @@ router.delete('/events/:id', async (req, res) => {
 
     if (existing.rrule && scope === 'future') {
       // Trim the series to end just before this occurrence
-      const until = new Date(new Date(instant).getTime() - 1000);
-      const updated = { ...existing, rrule: setRruleUntil(existing.rrule, until) };
-      await writeSeries(updated, overridesBefore(currentOverrides(existing), instant));
+      const head = seriesHead(existing, currentOverrides(existing), new Date(instant));
+      await writeSeries(head.base, head.overrides);
       return res.status(204).end();
     }
 
@@ -249,6 +245,7 @@ async function handleSingleOccurrenceRelocation(base, overrides, changes, instan
     rrule: null,
     recurrenceId: null,
     exdates: null,
+    rdates: null,
   };
   delete detached.id;
   delete detached.href;
@@ -278,48 +275,74 @@ async function handleSingleOccurrenceRelocation(base, overrides, changes, instan
 }
 
 /**
- * "This and following" — cap the old series and start a new one here.
+ * "All events" — rewrite the master with the edit, its overrides unchanged.
+ * @param {object} base - the master event
+ * @param {object} changes
+ * @param {import('express').Response} res
+ */
+async function handleSeriesEdit(base, changes, res) {
+  const written = await writeSeries(editedEvent(base, changes), currentOverrides(base), base);
+  res.json(toApiShape(written.base));
+}
+
+/**
+ * "This and following" — start a new series at this occurrence and cap the old
+ * one before it. The new series is the master's own resource from here on, so
+ * attendees, extra alarms and X- properties come along; COUNT keeps only the
+ * occurrences left. Its EXDATEs, RDATEs and overrides name occurrences at the
+ * series' old times and rule, so they only come along while the edit keeps both.
  * @param {object} base - the master event
  * @param {object} changes
  * @param {string} instant - ISO UTC start the occurrence would have had
  * @param {import('express').Response} res
  */
 async function handleFutureEdit(base, changes, instant, res) {
-  // Build and create the new series before trimming the old one. If the target
-  // calendar rejects it, the original recurrence remains completely intact.
-  const newUid = crypto.randomUUID();
-  const newEvent = {
-    uid: newUid,
-    calendarId: base.calendarId,
-    allDay: base.allDay,
-    rrule: base.rrule,
-    ...filterChanges(changes),
-  };
-  const newIcs = serializeEvent(newEvent);
-  const written = await putEvent(newEvent.calendarId, newUid, newIcs);
+  const { first, before } = splitSeries(base, new Date(instant));
+  if (!first) return res.status(409).json({ error: 'Occurrence is past the end of the series' });
+  // From the first occurrence on, "this and following" is every occurrence.
+  if (before === 0) return handleSeriesEdit(base, changes, res);
 
-  // Trim the base series UNTIL to just before this occurrence. Overrides at or
-  // after the split go with it: they replace occurrences the trimmed series no
-  // longer has, and the new series covers those dates.
-  const until = new Date(new Date(instant).getTime() - 1000);
-  const updatedBase = { ...base, rrule: setRruleUntil(base.rrule, until) };
-  try {
-    await writeSeries(updatedBase, overridesBefore(currentOverrides(base), instant));
-  } catch (seriesError) {
-    try {
-      await deleteEvent(written.href, written.etag);
-    } catch (rollbackError) {
-      throw new Error(
-        `Series split left a destination copy after rollback failed: ${seriesError.message}; ${rollbackError.message}`,
-        { cause: rollbackError },
-      );
-    }
-    throw seriesError;
+  const overrides = currentOverrides(base);
+  const tail = seriesTail(base, overrides, first, before, crypto.randomUUID());
+  const filtered = filterChanges(changes);
+  const edited = { ...tail.base, ...filtered };
+  // The editor sends the rule back as it was; the tail's COUNT is what is left of it.
+  const ruleKept = !('rrule' in filtered) || filtered.rrule === base.rrule;
+  if (ruleKept) edited.rrule = tail.base.rrule;
+  let tailOverrides = tail.overrides;
+  if (!ruleKept || startMoved(tail.base, edited)) {
+    edited.exdates = null;
+    edited.rdates = null;
+    tailOverrides = [];
   }
 
-  const stored = writtenRecord(newEvent, newIcs, written, new Date().toISOString());
-  store.setEvent(stored);
-  res.status(201).json(toApiShape(stored));
+  const written = await writeSplit(base, overrides, first, {
+    base: edited,
+    overrides: tailOverrides,
+  });
+  res.status(201).json(toApiShape(written.base));
+}
+
+/**
+ * An event with the editor's changes applied. A series whose start the editor
+ * moves loses its RDATEs: there is no telling whether those extra dates were
+ * meant to move with it, and Nodecal does not show them to ask.
+ * @param {object} existing
+ * @param {object} changes
+ */
+function editedEvent(existing, changes) {
+  const updated = { ...existing, ...filterChanges(changes) };
+  if (startMoved(existing, updated)) updated.rdates = null;
+  return updated;
+}
+
+/**
+ * @param {object} before
+ * @param {object} after
+ * @returns {boolean} whether the edit moved the event's start
+ */
+function startMoved(before, after) {
+  return Date.parse(before.start) !== Date.parse(after.start) || !!before.allDay !== !!after.allDay;
 }
 
 // ── Helpers ───────────────────────────────────────────────

@@ -138,13 +138,18 @@ describe('writing a VEVENT back', () => {
 
   it('writes a moved time in the zone it was in', () => {
     const [ev] = parseIcs(MEETING, { timezone: 'UTC' });
-    const moved = { ...ev, start: '2026-10-05T09:00:00.000Z', end: '2026-10-05T10:30:00.000Z' };
+    // The editor drops RDATEs when it moves a series (editedEvent in events.js).
+    const moved = {
+      ...ev,
+      start: '2026-10-05T09:00:00.000Z',
+      end: '2026-10-05T10:30:00.000Z',
+      rdates: null,
+    };
     const lines = eventLines(serializeEvent(moved, { timezone: 'UTC' }));
 
     assert.ok(lines.includes('DTSTART;TZID=Europe/Oslo:20261005T110000'));
     assert.ok(lines.includes('DTEND;TZID=Europe/Oslo:20261005T123000'));
     assert.ok(!lines.some((l) => l.startsWith('DURATION')), 'DURATION next to DTEND');
-    // RDATEs are dates of the old series; Nodecal does not move them with it.
     assert.ok(!lines.some((l) => l.startsWith('RDATE')));
     assert.ok(lines.includes(ATTENDEE));
 
@@ -178,6 +183,23 @@ describe('writing a VEVENT back', () => {
     assert.ok(!cleared.some((l) => l.startsWith('EXDATE')));
   });
 
+  it('writes RDATEs from the list, keeping a zoned line still in it', () => {
+    const [ev] = parseIcs(MEETING, { timezone: 'UTC' });
+    assert.deepEqual(ev.rdates, ['20261008T100000']);
+
+    const added = { ...ev, rdates: [...ev.rdates, '20261009', '20261010T080000Z/PT2H'] };
+    const lines = eventLines(serializeEvent(added, { timezone: 'UTC' }));
+    assert.ok(lines.includes('RDATE;TZID=Europe/Oslo:20261008T100000'));
+    assert.ok(lines.includes('RDATE;VALUE=DATE:20261009'));
+    assert.ok(lines.includes('RDATE;VALUE=PERIOD:20261010T080000Z/PT2H'));
+
+    // A record cached before RDATEs were read keeps the ones it had.
+    const legacy = { ...ev };
+    delete legacy.rdates;
+    const kept = eventLines(serializeEvent(legacy, { timezone: 'UTC' }));
+    assert.ok(kept.includes('RDATE;TZID=Europe/Oslo:20261008T100000'));
+  });
+
   it('builds an override from its master without the recurrence', () => {
     const [master] = parseIcs(MEETING, { timezone: 'UTC' });
     const override = {
@@ -188,6 +210,7 @@ describe('writing a VEVENT back', () => {
       recurrenceId: '2026-10-19T08:00:00.000Z',
       rrule: null,
       exdates: null,
+      rdates: null,
     };
     const ics = serializeEvents([master, override], { timezone: 'UTC' });
     const written = parseIcs(ics, { timezone: 'UTC' });

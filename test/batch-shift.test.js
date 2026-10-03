@@ -213,6 +213,51 @@ describe('batch shift', () => {
     assert.equal(store.getOverrides().length, 2);
   });
 
+  it('moves RDATEs with the series on its wall clock', async () => {
+    seed([
+      'BEGIN:VEVENT',
+      'UID:series-1',
+      'SUMMARY:Standup',
+      'CATEGORIES:work',
+      'DTSTART;TZID=Europe/Oslo:20261005T100000',
+      'DTEND;TZID=Europe/Oslo:20261005T103000',
+      'RRULE:FREQ=WEEKLY;COUNT=3',
+      'RDATE;TZID=Europe/Oslo:20261021T100000',
+      'RDATE;VALUE=PERIOD:20261020T080000Z/20261020T100000Z,20261022T080000Z/PT1H',
+      'END:VEVENT',
+    ]);
+
+    await shift({ category: 'work', shiftDays: 7 });
+    const [master] = vevents(puts()[0]);
+    // 21 Oct 10:00 summer time, a week on is 28 Oct 10:00 winter time.
+    assert.deepEqual(master.rdates, [
+      '20261028T090000Z',
+      '20261027T090000Z/20261027T110000Z',
+      '20261029T090000Z/PT1H',
+    ]);
+    assert.match(puts()[0].body, /RDATE;VALUE=PERIOD:20261027T090000Z\/20261027T110000Z/);
+  });
+
+  it('splits RDATEs at the anchor, moving only the later ones', async () => {
+    seed([
+      'BEGIN:VEVENT',
+      'UID:series-1',
+      'SUMMARY:Standup',
+      'CATEGORIES:work',
+      'DTSTART;TZID=Europe/Oslo:20261005T100000',
+      'DTEND;TZID=Europe/Oslo:20261005T103000',
+      'RRULE:FREQ=WEEKLY;COUNT=6',
+      'RDATE;TZID=Europe/Oslo:20261007T100000,20261021T100000',
+      'END:VEVENT',
+    ]);
+
+    await shift({ category: 'work', shiftDays: 7, anchorDate: '2026-10-18T00:00:00.000Z' });
+    const [tailPut, headPut] = puts();
+    assert.deepEqual(vevents(tailPut)[0].rdates, ['20261028T090000Z']);
+    assert.deepEqual(vevents(headPut)[0].rdates, ['20261007T100000']);
+    assert.match(headPut.body, /RDATE;TZID=Europe\/Oslo:20261007T100000\r\n/);
+  });
+
   it('never writes an override on its own', async () => {
     seed([
       'BEGIN:VEVENT',

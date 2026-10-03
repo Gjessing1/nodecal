@@ -1,8 +1,7 @@
 const { Router } = require('express');
-const { deleteEvent } = require('../caldav/client');
 const { splitSeries } = require('../caldav/recurrence');
-const { currentOverrides, writeSeries } = require('../caldav/seriesResource');
-const { shiftTimes, shiftSeries, seriesHead, seriesTail } = require('../caldav/seriesShift');
+const { currentOverrides, writeSeries, writeSplit } = require('../caldav/seriesResource');
+const { shiftTimes, shiftSeries, seriesTail } = require('../caldav/seriesShift');
 const store = require('../cache/store');
 const config = require('../config');
 
@@ -118,26 +117,7 @@ async function shiftRecurring(base, days, anchor) {
  */
 async function splitAndShift(base, overrides, split, before, days) {
   const tail = seriesTail(base, overrides, split, before, crypto.randomUUID());
-  const movedTail = shiftSeries(tail.base, tail.overrides, days);
-  // The new series is written first, so a refused write leaves the old one
-  // whole instead of capped with nothing after it.
-  const written = await writeSeries(movedTail.base, movedTail.overrides);
-  const head = seriesHead(base, overrides, split);
-  try {
-    await writeSeries(head.base, head.overrides, base);
-  } catch (seriesError) {
-    try {
-      await deleteEvent(written.base.href, written.base.etag);
-      store.removeEventsByHrefSilent(written.base.href);
-      store.flushToDisk();
-    } catch (rollbackError) {
-      throw new Error(
-        `Series split left a shifted copy after rollback failed: ${seriesError.message}; ${rollbackError.message}`,
-        { cause: rollbackError },
-      );
-    }
-    throw seriesError;
-  }
+  await writeSplit(base, overrides, split, shiftSeries(tail.base, tail.overrides, days));
 }
 
 module.exports = router;

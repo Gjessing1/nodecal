@@ -68,14 +68,15 @@ function overlapsWindow(ev, from, to) {
 }
 
 /**
- * Was this record cached before events kept their raw lines and zone? Written
- * back it would drop what other clients put in it, and a series would expand
- * in UTC; fetching it again, once, fills both in.
+ * Was this record cached before events kept their raw lines, zone and RDATEs?
+ * Written back it would drop what other clients put in it, a series would
+ * expand in UTC, and a shift or split would lose its RDATEs; fetching it
+ * again, once, fills them in.
  * @param {object} ev
  * @returns {boolean}
  */
 function isStale(ev) {
-  return !Array.isArray(ev.rawVevent) || ev.zone === undefined;
+  return !Array.isArray(ev.rawVevent) || ev.zone === undefined || ev.rdates === undefined;
 }
 
 /**

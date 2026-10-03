@@ -38,9 +38,10 @@ const FIELD_PROPERTIES = {
 
 // Rewritten on every save: they describe the write, not the event.
 const STAMP_PROPERTIES = ['UID', 'DTSTAMP', 'LAST-MODIFIED'];
-// Extra dates and rules of the recurrence. Nodecal does not expand them, so
-// they are only kept while the series they belong to is left as it was.
-const RECURRENCE_SET_PROPERTIES = ['RDATE', 'EXRULE'];
+// EXRULE is not read (RFC 5545 deprecated it), so it is only kept while the
+// series it belongs to keeps its start and rule. RDATE is read into `rdates`
+// and written from there, like EXDATE, so a shift or a split can move it.
+const RECURRENCE_SET_PROPERTIES = ['EXRULE'];
 
 /**
  * A VEVENT as this parser hands it on. A document can hold several with the
@@ -60,6 +61,8 @@ const RECURRENCE_SET_PROPERTIES = ['RDATE', 'EXRULE'];
  * @property {string[]} categories
  * @property {string|null} rrule
  * @property {string[]|null} exdates
+ * @property {string[]|null} rdates - extra occurrences; Nodecal does not draw
+ *   them, but keeps them on the series for the clients that do
  * @property {string|null} recurrenceId - ISO UTC instant this VEVENT replaces
  * @property {number|null} alarmMinutes
  * @property {string[]} rawVevent - unfolded lines, without BEGIN/END
@@ -168,7 +171,7 @@ function veventLines(event, timezone) {
   const lines = [`UID:${event.uid}`, `DTSTAMP:${stamp}`, `LAST-MODIFIED:${stamp}`];
   for (const prop of props) {
     if (STAMP_PROPERTIES.includes(prop.name) || TIME_PROPERTIES.includes(prop.name)) continue;
-    if (prop.name === 'EXDATE' || prop.name === 'RECURRENCE-ID') continue;
+    if (prop.name === 'EXDATE' || prop.name === 'RDATE' || prop.name === 'RECURRENCE-ID') continue;
     if (RECURRENCE_SET_PROPERTIES.includes(prop.name) && !recurrenceKept) continue;
     const field = fieldOf(prop.name);
     if (field && changed.has(field)) continue;
@@ -177,7 +180,10 @@ function veventLines(event, timezone) {
   for (const field of changed) lines.push(...fieldLines(field, event));
   lines.push(...timeLines(props, original, event, timezone));
   lines.push(...recurrenceIdLines(props, original?.recurrenceId ?? null, event, timezone));
-  lines.push(...exdateLines(props, event));
+  lines.push(...dateListLines(props, 'EXDATE', event.exdates));
+  // A record cached before `rdates` was read has none: it keeps what it had.
+  const rdates = event.rdates === undefined ? original?.rdates : event.rdates;
+  lines.push(...dateListLines(props, 'RDATE', rdates));
   // Components (VALARM) come after every property of the VEVENT.
   lines.push(...alarmLines(nested, original?.alarmMinutes ?? null, event.alarmMinutes));
   return lines;
@@ -194,13 +200,19 @@ function eventFields(body, timezone) {
   /** @type {Object<string, import('./icsComponents').IcsProperty>} */
   const byName = {};
   const categoryValues = [];
+  /** @type {string[]} */
   const exdates = [];
+  /** @type {string[]} */
+  const rdates = [];
   for (const prop of props) {
     byName[prop.name] = prop;
-    // Clients may split categories and EXDATEs over several lines; all count.
+    // Clients may split categories and date lists over several lines; all count.
     if (prop.name === 'CATEGORIES') categoryValues.push(prop.value);
     if (prop.name === 'EXDATE') {
       for (const value of prop.value.split(',')) exdates.push(value.trim());
+    }
+    if (prop.name === 'RDATE') {
+      for (const value of prop.value.split(',')) rdates.push(value.trim());
     }
   }
   const uid = byName.UID?.value;
@@ -221,6 +233,7 @@ function eventFields(body, timezone) {
     categories: parseCategories(categoryValues.join(',')),
     rrule: byName.RRULE?.value || null,
     exdates: exdates.length > 0 ? exdates : null,
+    rdates: rdates.length > 0 ? rdates : null,
     recurrenceId: parseRecurrenceId(byName['RECURRENCE-ID'], timezone),
     alarmMinutes: alarmMinutes(nested),
   };
@@ -243,33 +256,46 @@ function parseRecurrenceId(prop, timezone) {
 }
 
 /**
- * The EXDATE lines for an event being written back. A line whose dates are all
- * still skipped is kept as it was, zone and all; one that lost a date keeps its
- * parameters and the dates left. Dates that are new get a line of their own.
+ * The EXDATE or RDATE lines for an event being written back. A line whose
+ * dates are all still wanted is kept as it was, zone and all; one that lost a
+ * date keeps its parameters and the dates left. Dates that are new get a line
+ * of their own.
  * @param {import('./icsComponents').IcsProperty[]} props
- * @param {object} event
+ * @param {'EXDATE'|'RDATE'} name
+ * @param {string[]|null|undefined} wanted
  * @returns {string[]}
  */
-function exdateLines(props, event) {
-  const wanted = event.exdates || [];
+function dateListLines(props, name, wanted) {
+  const values = wanted || [];
   const lines = [];
   const covered = new Set();
   for (const prop of props) {
-    if (prop.name !== 'EXDATE') continue;
+    if (prop.name !== name) continue;
     const kept = [];
     for (const value of prop.value.split(',')) {
-      if (wanted.includes(value.trim())) kept.push(value.trim());
+      if (values.includes(value.trim())) kept.push(value.trim());
     }
     if (kept.length === 0) continue;
     for (const value of kept) covered.add(value);
     lines.push(prop.line.slice(0, prop.line.indexOf(':') + 1) + kept.join(','));
   }
-  for (const value of wanted) {
+  for (const value of values) {
     if (covered.has(value)) continue;
     covered.add(value);
-    lines.push(`${event.allDay ? 'EXDATE;VALUE=DATE:' : 'EXDATE:'}${value}`);
+    lines.push(`${name}${valueType(value)}:${value}`);
   }
   return lines;
+}
+
+/**
+ * The VALUE parameter a date-list value needs: none for a date-time.
+ * @param {string} value
+ * @returns {string}
+ */
+function valueType(value) {
+  if (value.includes('/')) return ';VALUE=PERIOD';
+  if (/^\d{8}$/.test(value)) return ';VALUE=DATE';
+  return '';
 }
 
 /**

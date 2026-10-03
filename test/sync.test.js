@@ -24,6 +24,7 @@ function cachedEvent(uid, href, etag) {
     end: '2026-09-01T11:00:00.000Z',
     rawVevent: [`UID:${uid}`],
     zone: null,
+    rdates: null,
   };
 }
 
@@ -74,6 +75,14 @@ describe('computeSyncDiff', () => {
     const server = [{ href: 'http://cal/a.ics', etag: 'aaa' }];
     const legacy = { ...cachedEvent('1', 'http://cal/a.ics', 'aaa') };
     delete legacy.zone;
+    const { toFetch } = computeSyncDiff(server, [legacy], FROM, TO);
+    assert.deepEqual(toFetch, ['http://cal/a.ics']);
+  });
+
+  it('fetches once more a record cached before events kept their RDATEs', () => {
+    const server = [{ href: 'http://cal/a.ics', etag: 'aaa' }];
+    const legacy = { ...cachedEvent('1', 'http://cal/a.ics', 'aaa') };
+    delete legacy.rdates;
     const { toFetch } = computeSyncDiff(server, [legacy], FROM, TO);
     assert.deepEqual(toFetch, ['http://cal/a.ics']);
   });

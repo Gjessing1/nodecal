@@ -37,6 +37,7 @@ function buildOverride(base, existing, changes, recurrenceId) {
     recurrenceId,
     rrule: null,
     exdates: null,
+    rdates: null,
   };
 }
 

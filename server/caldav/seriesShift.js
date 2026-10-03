@@ -5,7 +5,8 @@ const { recurrenceInstant } = require('./overrides');
 const { overridesBefore } = require('./exceptions');
 
 // Moving a series by whole days has to move every value that names one of its
-// occurrences: DTSTART, the EXDATEs, UNTIL and each override's RECURRENCE-ID.
+// occurrences: DTSTART, the EXDATEs and RDATEs, UNTIL and each override's
+// RECURRENCE-ID.
 // If one is left behind, the series stops lining up with its own exceptions.
 // An EXDATE then skips nothing, and an override replaces an occurrence that no
 // longer exists, so the original occurrence shows again. Days are counted on
@@ -66,6 +67,34 @@ function shiftDateValue(value, days, zone) {
 }
 
 /**
+ * An RDATE value moved: a date, a date-time, or a period whose end moves with
+ * its start (a duration end stays as it is).
+ * @param {string} value
+ * @param {number} days
+ * @param {string|null} zone
+ */
+function shiftRdateValue(value, days, zone) {
+  const [from, to] = value.split('/');
+  const movedFrom = shiftDateValue(from, days, zone);
+  if (to === undefined) return movedFrom;
+  if (/^[+-]?P/i.test(to)) return `${movedFrom}/${to}`;
+  return `${movedFrom}/${shiftDateValue(to, days, zone)}`;
+}
+
+/**
+ * Every value of a date list passed through `move`, or null for none.
+ * @param {string[]|null|undefined} values
+ * @param {(value: string) => string} move
+ * @returns {string[]|null}
+ */
+function movedList(values, move) {
+  if (!values || values.length === 0) return null;
+  const moved = [];
+  for (const value of values) moved.push(move(value));
+  return moved;
+}
+
+/**
  * A whole series moved, the master and every override together.
  * @param {object} base - the master event
  * @param {Array<object>} overrides
@@ -74,15 +103,17 @@ function shiftDateValue(value, days, zone) {
  */
 function shiftSeries(base, overrides, days) {
   const zone = seriesZone(base);
-  /** @type {string[]} */
-  const exdates = [];
-  for (const value of base.exdates || []) exdates.push(shiftDateValue(value, days, zone));
   const movedBase = {
     ...shiftTimes(base, days, zone),
     rrule: base.rrule.replace(/UNTIL=(\d{8}(?:T\d{6}Z?)?)/i, function movedUntil(match, value) {
       return `UNTIL=${shiftDateValue(value, days, zone)}`;
     }),
-    exdates: exdates.length > 0 ? exdates : null,
+    exdates: movedList(base.exdates, function movedExdate(value) {
+      return shiftDateValue(value, days, zone);
+    }),
+    rdates: movedList(base.rdates, function movedRdate(value) {
+      return shiftRdateValue(value, days, zone);
+    }),
   };
 
   const movedOverrides = [];
@@ -101,18 +132,19 @@ function shiftSeries(base, overrides, days) {
 }
 
 /**
- * The series' EXDATEs on either side of `at`.
- * @param {object} base
+ * A date list (EXDATE or RDATE values) split on either side of `at`. A period
+ * goes by its start.
+ * @param {string[]|null|undefined} values
+ * @param {string|null} zone - the series' zone
  * @param {number} at - ms
  */
-function exdatesAround(base, at) {
-  const zone = seriesZone(base);
+function datesAround(values, zone, at) {
   /** @type {string[]} */
   const before = [];
   /** @type {string[]} */
   const after = [];
-  for (const value of base.exdates || []) {
-    if (parseExdate(value, zone).getTime() < at) before.push(value);
+  for (const value of values || []) {
+    if (parseExdate(value.split('/')[0], zone).getTime() < at) before.push(value);
     else after.push(value);
   }
   return { before: before.length > 0 ? before : null, after: after.length > 0 ? after : null };
@@ -131,7 +163,8 @@ function seriesHead(base, overrides, split) {
     base: {
       ...base,
       rrule: setRruleUntil(base.rrule, new Date(at - 1000), base.allDay),
-      exdates: exdatesAround(base, at).before,
+      exdates: datesAround(base.exdates, seriesZone(base), at).before,
+      rdates: datesAround(base.rdates, seriesZone(base), at).before,
     },
     overrides: overridesBefore(overrides, split.toISOString()),
   };
@@ -139,7 +172,8 @@ function seriesHead(base, overrides, split) {
 
 /**
  * The part of a series from `split` on, as a new series under `uid`. It starts
- * at that occurrence and takes the EXDATEs and overrides from there. It ends
+ * at that occurrence and takes the EXDATEs, RDATEs and overrides from there,
+ * and every other line of the master (attendees, alarms, X- properties). It ends
  * where the whole series did: COUNT drops the occurrences left behind, and
  * UNTIL stays as it was.
  * @param {object} base - the master event
@@ -159,7 +193,8 @@ function seriesTail(base, overrides, split, before, uid) {
     rrule: base.rrule.replace(/COUNT=(\d+)/i, function remaining(match, count) {
       return `COUNT=${Number(count) - before}`;
     }),
-    exdates: exdatesAround(base, at).after,
+    exdates: datesAround(base.exdates, seriesZone(base), at).after,
+    rdates: datesAround(base.rdates, seriesZone(base), at).after,
   };
   const tailOverrides = [];
   for (const ov of overrides) {
