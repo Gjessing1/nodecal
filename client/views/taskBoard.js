@@ -6,6 +6,7 @@ import { bucketDraft, moveGroups } from '../app/boardActions.js';
 import { placedMove } from '../app/boardOrder.js';
 import { buildTaskCard } from '../components/taskCard.js';
 import { buildColumnHead, buildLaneHead } from '../components/boardHeads.js';
+import { buildBoardJumpBar } from '../components/boardJumpBar.js';
 import { showBoardMoveMenu } from '../components/boardMoveMenu.js';
 import { initBoardDnd } from '../components/boardDnd.js';
 
@@ -51,6 +52,9 @@ export function renderTaskBoard(container, tasks, board, callbacks, ordered, buc
   const layout = buildBoard(tasks, board, ctx, bucketTasks);
   const hiddenFields = board.lanes ? [board.columns, board.lanes] : [board.columns];
 
+  const shell = document.createElement('div');
+  shell.className = 'task-board-shell';
+
   const el = document.createElement('div');
   el.className = 'task-board' + (board.lanes ? '' : ' task-board-unlaned');
   el.style.setProperty('--board-columns', String(layout.columns.length));
@@ -71,14 +75,20 @@ export function renderTaskBoard(container, tasks, board, callbacks, ordered, buc
     });
   }
 
+  const jumpColumns = [];
   for (const column of layout.columns) {
     let hint = '';
     if (column.key === 'done' && board.columns === 'status') {
       hint = `Completed in the last ${DONE_WINDOW_DAYS} days`;
     }
     const onAdd = addHandler(board.columns, column.key, ctx, callbacks);
-    el.appendChild(buildColumnHead(column.label, columnCount(layout, column.key), { hint, onAdd }));
+    const count = columnCount(layout, column.key);
+    const head = buildColumnHead(column.label, count, { hint, onAdd });
+    el.appendChild(head);
+    jumpColumns.push({ label: column.label, count, head });
   }
+  const jumpBar = buildBoardJumpBar(el, jumpColumns);
+  shell.appendChild(jumpBar.element);
   for (const lane of layout.lanes) {
     const foldKey = `${board.id}\n${lane.key}`;
     const folded = foldedLanes.has(foldKey);
@@ -89,7 +99,7 @@ export function renderTaskBoard(container, tasks, board, callbacks, ordered, buc
           onToggle: function toggleLane() {
             if (folded) foldedLanes.delete(foldKey);
             else foldedLanes.add(foldKey);
-            el.remove();
+            shell.remove();
             renderTaskBoard(container, tasks, board, callbacks, ordered, bucketTasks);
           },
           onAdd: addHandler(board.lanes, lane.key, ctx, callbacks),
@@ -120,14 +130,17 @@ export function renderTaskBoard(container, tasks, board, callbacks, ordered, buc
       el.appendChild(cell);
     }
   }
-  container.appendChild(el);
+  shell.appendChild(el);
+  container.appendChild(shell);
   // The tasks view builds its list before attaching it, and a detached board
   // has no layout to scroll or focus, so wait until it is on the page.
   if (el.isConnected) {
     restorePlace(el, board);
+    jumpBar.update();
   } else {
     requestAnimationFrame(function restoreOnceAttached() {
       restorePlace(el, board);
+      jumpBar.update();
     });
   }
 
@@ -135,6 +148,7 @@ export function renderTaskBoard(container, tasks, board, callbacks, ordered, buc
     'scroll',
     function rememberScroll() {
       scrollByBoard.set(board.id, { left: el.scrollLeft, top: el.scrollTop });
+      jumpBar.update();
     },
     { passive: true },
   );

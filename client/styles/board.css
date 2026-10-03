@@ -1,4 +1,48 @@
 /* ── Task kanban board ───────────────────────────────────── */
+.task-board-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.task-board-jump {
+  display: none;
+}
+@media (max-width: 640px) {
+  .task-board-jump {
+    display: flex;
+    flex: none;
+    gap: var(--spacing-xs);
+    overflow-x: auto;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-bottom: var(--spacing-hairline) solid var(--color-border);
+    scrollbar-width: none;
+  }
+  .task-board-jump::-webkit-scrollbar {
+    display: none;
+  }
+  .task-board-jump-button {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--spacing-xs);
+    min-height: var(--spacing-touch);
+    padding: 0 var(--spacing-sm);
+    border: var(--spacing-hairline) solid var(--color-border);
+    border-radius: var(--radius-lg);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    white-space: nowrap;
+  }
+  .task-board-jump-button[aria-current='true'] {
+    border-color: var(--color-accent);
+    background: var(--color-accent-light);
+    color: var(--color-accent);
+  }
+  .task-board-jump-count {
+    font-weight: normal;
+  }
+}
 /* Columns share one grid with every lane's cells, so a column stays aligned
    from the sticky header down through each swim lane while the whole board
    scrolls as one surface. On a phone a column takes most of the width and
@@ -14,7 +58,8 @@
   grid-auto-rows: max-content;
   align-content: start;
   column-gap: var(--spacing-sm);
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
   padding: 0 var(--spacing-sm) var(--spacing-md);
