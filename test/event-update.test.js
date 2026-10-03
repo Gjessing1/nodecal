@@ -7,6 +7,7 @@ const assert = require('node:assert/strict');
 const express = require('express');
 const store = require('../server/cache/store');
 const eventsRouter = require('../server/routes/events');
+const { parseIcs } = require('../server/caldav/vevent');
 
 const realFetch = globalThis.fetch;
 
@@ -108,6 +109,55 @@ it('moves an existing event by creating the target resource before deleting the 
   const cached = store.getEvent('move-me');
   assert.equal(cached.calendarId, '/cal2/');
   assert.equal(cached.href, 'http://localhost:5232/cal2/move-me.ics');
+});
+
+it("keeps another client's attendees and caches the lines it wrote", async () => {
+  const href = 'http://localhost:5232/test/cal1/shared.ics';
+  const [read] = parseIcs(
+    [
+      'BEGIN:VCALENDAR',
+      'BEGIN:VEVENT',
+      'UID:shared',
+      'SUMMARY:Review',
+      'DTSTART:20260820T100000Z',
+      'DTEND:20260820T110000Z',
+      'ATTENDEE;PARTSTAT=ACCEPTED:mailto:kari@example.com',
+      'X-CUSTOM:kept',
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n'),
+  );
+  store.setEventSilent({ ...read, calendarId: '/cal1/', href, etag: 'v1' });
+
+  let putBody = '';
+  globalThis.fetch = /** @type {any} */ (
+    async function stubbedFetch(url, options = {}) {
+      if (String(url).startsWith('http://127.0.0.1')) return realFetch(url, options);
+      putBody = String(options.body);
+      return {
+        ok: true,
+        status: 204,
+        headers: new Headers({ etag: '"v2"' }),
+        text: async () => '',
+      };
+    }
+  );
+
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/events/shared`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'Review (edited)' }),
+    });
+    assert.equal(response.status, 200);
+  });
+
+  assert.match(putBody, /ATTENDEE;PARTSTAT=ACCEPTED:mailto:kari@example\.com/);
+  assert.match(putBody, /X-CUSTOM:kept/);
+  assert.match(putBody, /SUMMARY:Review \(edited\)/);
+  const cached = store.getEvent('shared');
+  assert.ok(cached.rawVevent.includes('SUMMARY:Review (edited)'), 'cache kept the old lines');
+  assert.equal(cached.etag, 'v2');
 });
 
 async function withServer(run) {

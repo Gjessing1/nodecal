@@ -135,17 +135,6 @@ function parseIcsDate(value, params = {}, fallbackTz = 'UTC') {
   };
 }
 
-function parseDuration(dur) {
-  const m = dur.match(/^-?P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/);
-  if (!m) return 0;
-  const w = parseInt(m[1] || 0),
-    d = parseInt(m[2] || 0);
-  const h = parseInt(m[3] || 0),
-    min = parseInt(m[4] || 0),
-    s = parseInt(m[5] || 0);
-  return ((w * 7 + d) * 86400 + h * 3600 + min * 60 + s) * 1000;
-}
-
 // Google's ICS export stamps every exported item with a CATEGORIES entry naming
 // its own type namespace — CATEGORIES:http://schemas.google.com/g/2005#event.
 // It is a machine type marker, not a label anyone chose, and taken at face value
@@ -183,127 +172,6 @@ function escapeIcsText(text) {
     .replace(/\n/g, '\\n');
 }
 
-/**
- * RECURRENCE-ID identifies which occurrence of a series a VEVENT replaces.
- * Stored as an ISO UTC string like every other datetime here, rather than the
- * raw `20260819T100000Z` form: serializeEvent() writes it back through
- * `new Date(event.recurrenceId)`, which yields Invalid Date on the raw form,
- * and matching an occurrence means comparing instants.
- * @param {{value: string, params: Object<string,string>}|undefined} prop
- * @param {string} timezone - fallback zone for a floating value
- * @returns {string|null}
- */
-function parseRecurrenceId(prop, timezone) {
-  if (!prop) return null;
-  const parsed = parseIcsDate(prop.value, prop.params, timezone);
-  if (!parsed) return null;
-  return parsed.date.toISOString();
-}
-
-/**
- * A VEVENT as this parser hands it on. A document can hold several with the
- * same `uid`: the master of a recurring series, plus one per occurrence that
- * was edited individually, each carrying the `recurrenceId` it replaces.
- * @typedef {object} ParsedEvent
- * @property {string} uid
- * @property {string} title
- * @property {string} start - ISO UTC
- * @property {string} end - ISO UTC
- * @property {boolean} allDay
- * @property {string} description
- * @property {string} location
- * @property {string} url
- * @property {string[]} categories
- * @property {string|null} rrule
- * @property {string[]|null} exdates
- * @property {string|null} recurrenceId - ISO UTC instant this VEVENT replaces
- * @property {number|null} alarmMinutes
- */
-
-/**
- * Parse a VCALENDAR ICS string into an array of event objects.
- * @param {string} icsText
- * @param {{ timezone?: string }} [opts]
- * @returns {ParsedEvent[]}
- */
-function parseIcs(icsText, { timezone = 'UTC' } = {}) {
-  const unfolded = unfold(icsText);
-  const events = [];
-  const veventRe = /BEGIN:VEVENT([\s\S]*?)END:VEVENT/g;
-  let match;
-  while ((match = veventRe.exec(unfolded)) !== null) {
-    const props = {};
-    for (const line of match[1].split(/\r?\n/).filter(Boolean)) {
-      const prop = parseProperty(line);
-      if (prop) props[prop.name] = prop;
-    }
-    const uid = props.UID?.value;
-    if (!uid) continue;
-    const startInfo = props.DTSTART
-      ? parseIcsDate(props.DTSTART.value, props.DTSTART.params, timezone)
-      : null;
-    if (!startInfo) continue;
-
-    let endDate;
-    if (props.DTEND) {
-      endDate = parseIcsDate(props.DTEND.value, props.DTEND.params, timezone)?.date;
-    } else if (props.DURATION) {
-      endDate = new Date(startInfo.date.getTime() + parseDuration(props.DURATION.value));
-    } else {
-      endDate = new Date(startInfo.date.getTime() + (startInfo.allDay ? 86400000 : 3600000));
-    }
-
-    // Parse VALARM sub-component (first one found wins)
-    let alarmMinutes = null;
-    const valarmRe = /BEGIN:VALARM([\s\S]*?)END:VALARM/g;
-    let vm;
-    while ((vm = valarmRe.exec(match[1])) !== null && alarmMinutes === null) {
-      for (const vline of vm[1].split(/\r?\n/).filter(Boolean)) {
-        if (/^TRIGGER/i.test(vline)) {
-          const vp = parseProperty(vline);
-          if (vp) {
-            const m2 = vp.value.match(/-P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?)?/i);
-            if (m2) {
-              const d2 = parseInt(m2[1] || '0'),
-                h2 = parseInt(m2[2] || '0'),
-                min2 = parseInt(m2[3] || '0');
-              alarmMinutes = d2 * 1440 + h2 * 60 + min2;
-            }
-          }
-        }
-      }
-    }
-
-    // Collect EXDATE values (may appear multiple times, may be comma-separated)
-    const exdates = [];
-    for (const line of match[1].split(/\r?\n/).filter(Boolean)) {
-      if (/^EXDATE/i.test(line)) {
-        const prop = parseProperty(line);
-        if (prop) for (const v of prop.value.split(',')) exdates.push(v.trim());
-      }
-    }
-
-    const categories = parseCategories(props.CATEGORIES?.value);
-
-    events.push({
-      uid,
-      title: unescapeIcsText(props.SUMMARY?.value || '(No title)'),
-      start: startInfo.date.toISOString(),
-      end: (endDate || startInfo.date).toISOString(),
-      allDay: startInfo.allDay,
-      description: unescapeIcsText(props.DESCRIPTION?.value || ''),
-      location: unescapeIcsText(props.LOCATION?.value || ''),
-      url: unescapeIcsText(props.URL?.value || ''),
-      categories,
-      rrule: props.RRULE?.value || null,
-      exdates: exdates.length > 0 ? exdates : null,
-      recurrenceId: parseRecurrenceId(props['RECURRENCE-ID'], timezone),
-      alarmMinutes: alarmMinutes ?? null,
-    });
-  }
-  return events;
-}
-
 function formatIcsDate(date, allDay) {
   if (allDay) {
     // All-day dates are stored as UTC midnight — read UTC parts to recover the correct calendar date.
@@ -315,87 +183,11 @@ function formatIcsDate(date, allDay) {
   return date.toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
 }
 
-/**
- * Serialize one event into a full VCALENDAR ICS string.
- * Supports: rrule, exdates, recurrenceId in addition to base fields.
- * @param {object} event
- * @returns {string}
- */
-function serializeEvent(event) {
-  return serializeEvents([event]);
-}
-
-/**
- * Serialize a whole CalDAV resource — several VEVENTs in one VCALENDAR.
- *
- * A recurring series and the occurrences edited out of it are *one* resource:
- * the master VEVENT plus one override VEVENT per edited occurrence, sharing the
- * UID and told apart by RECURRENCE-ID. PUTting a single VEVENT there would drop
- * every other one, so any change to an exception rewrites the whole set.
- * @param {Array<object>} events - the master first, then its overrides
- * @returns {string}
- */
-function serializeEvents(events) {
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Nodecal//EN'];
-  for (const event of events) lines.push(...veventLines(event));
-  lines.push('END:VCALENDAR');
-  return lines.map(foldLine).join(CRLF) + CRLF;
-}
-
-/**
- * The BEGIN:VEVENT…END:VEVENT lines for one event.
- * @param {object} event
- * @returns {string[]}
- */
-function veventLines(event) {
-  const lines = [
-    'BEGIN:VEVENT',
-    `UID:${event.uid}`,
-    `DTSTAMP:${new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15)}Z`,
-    `SUMMARY:${escapeIcsText(event.title)}`,
-    `DTSTART${event.allDay ? ';VALUE=DATE' : ''}:${formatIcsDate(new Date(event.start), event.allDay)}`,
-    `DTEND${event.allDay ? ';VALUE=DATE' : ''}:${formatIcsDate(new Date(event.end), event.allDay)}`,
-  ];
-  if (event.categories?.length) lines.push(`CATEGORIES:${event.categories.join(',')}`);
-  if (event.rrule) lines.push(`RRULE:${event.rrule}`);
-  if (event.exdates?.length) {
-    for (const ex of event.exdates)
-      lines.push(`${event.allDay ? 'EXDATE;VALUE=DATE:' : 'EXDATE:'}${ex}`);
-  }
-  if (event.recurrenceId) {
-    const rid = formatIcsDate(new Date(event.recurrenceId), event.allDay);
-    lines.push(`RECURRENCE-ID${event.allDay ? ';VALUE=DATE' : ''}:${rid}`);
-  }
-  if (event.description) lines.push(`DESCRIPTION:${escapeIcsText(event.description)}`);
-  if (event.location) lines.push(`LOCATION:${escapeIcsText(event.location)}`);
-  if (event.url) lines.push(`URL:${event.url}`);
-  if (event.alarmMinutes > 0) {
-    const am = event.alarmMinutes;
-    const trigger =
-      am >= 1440 && am % 1440 === 0
-        ? `-P${am / 1440}D`
-        : am >= 60 && am % 60 === 0
-          ? `-PT${am / 60}H`
-          : `-PT${am}M`;
-    lines.push(
-      'BEGIN:VALARM',
-      'ACTION:DISPLAY',
-      'DESCRIPTION:Reminder',
-      `TRIGGER:${trigger}`,
-      'END:VALARM',
-    );
-  }
-  lines.push('END:VEVENT');
-  return lines;
-}
-
+// Line and value rules shared by vevent.js and vtodo.js.
 module.exports = {
-  parseIcs,
-  serializeEvent,
-  serializeEvents,
   formatIcsDate,
   parseCategories,
-  // Shared with vtodo.js, which reads and writes tasks on the same line rules.
+  resolveTimezone,
   foldLine,
   unfold,
   parseProperty,

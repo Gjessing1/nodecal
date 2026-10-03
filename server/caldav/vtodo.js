@@ -1,12 +1,11 @@
 const {
   foldLine,
-  unfold,
-  parseProperty,
   parseIcsDate,
   parseCategories,
   unescapeIcsText,
   escapeIcsText,
 } = require('./parser');
+const { readCalendar, splitComponent, sameValue } = require('./icsComponents');
 const { DUE_PROPERTIES, dueLines } = require('./vtodoDue');
 
 // Tasks as VTODOs. Nodecal models a subset of a VTODO, but the resource belongs
@@ -43,7 +42,7 @@ const FIELD_PROPERTIES = {
 const STAMP_PROPERTIES = ['UID', 'DTSTAMP', 'LAST-MODIFIED'];
 
 /**
- * @typedef {import('./vtodoDue').IcsProperty} IcsProperty
+ * @typedef {import('./icsComponents').IcsProperty} IcsProperty
  */
 
 /**
@@ -53,10 +52,10 @@ const STAMP_PROPERTIES = ['UID', 'DTSTAMP', 'LAST-MODIFIED'];
  * @returns {Array<object>}
  */
 function parseVtodo(icsText, { timezone = 'UTC' } = {}) {
-  const { todos, timezones } = readCalendar(icsText);
+  const { components: todos, timezones } = readCalendar(icsText, 'VTODO');
   const result = [];
   for (const body of todos) {
-    const { props } = splitTodo(body);
+    const { props } = splitComponent(body);
     const uid = lastValue(props, 'UID');
     if (!uid) continue;
     result.push({
@@ -94,7 +93,7 @@ function parsePriority(raw) {
  */
 function serializeTask(task, { timezone = 'UTC' } = {}) {
   const hasRaw = Array.isArray(task.rawVtodo);
-  const { props, nested } = splitTodo(hasRaw ? task.rawVtodo : []);
+  const { props, nested } = splitComponent(hasRaw ? task.rawVtodo : []);
   const original = todoFields(props, timezone);
   const stamp = icsUtc(new Date().toISOString());
 
@@ -236,71 +235,6 @@ function fieldLines(field, task) {
 }
 
 /**
- * The VTODOs in a document, each as its unfolded content lines (without its
- * own BEGIN/END), plus every VTIMEZONE block whole.
- * @param {string} icsText
- * @returns {{ todos: string[][], timezones: string[] }}
- */
-function readCalendar(icsText) {
-  /** @type {string[][]} */
-  const todos = [];
-  /** @type {string[]} */
-  const timezones = [];
-  let open = '';
-  let depth = 0;
-  /** @type {string[]} */
-  let body = [];
-  for (const line of unfold(icsText).split(/\r?\n/)) {
-    if (!line) continue;
-    const upper = line.toUpperCase();
-    if (!open) {
-      if (upper === 'BEGIN:VTODO' || upper === 'BEGIN:VTIMEZONE') {
-        open = upper.slice('BEGIN:'.length);
-        depth = 0;
-        body = [];
-      }
-      continue;
-    }
-    if (depth === 0 && upper === `END:${open}`) {
-      if (open === 'VTODO') todos.push(body);
-      else timezones.push(`BEGIN:${open}`, ...body, `END:${open}`);
-      open = '';
-      continue;
-    }
-    if (upper.startsWith('BEGIN:')) depth++;
-    if (upper.startsWith('END:')) depth--;
-    body.push(line);
-  }
-  return { todos, timezones };
-}
-
-/**
- * Split a VTODO body into its own properties and the components nested in it,
- * which are kept whole: a VALARM's DESCRIPTION is not the task's.
- * @param {string[]} body
- * @returns {{ props: IcsProperty[], nested: string[] }}
- */
-function splitTodo(body) {
-  /** @type {IcsProperty[]} */
-  const props = [];
-  /** @type {string[]} */
-  const nested = [];
-  let depth = 0;
-  for (const line of body) {
-    const upper = line.toUpperCase();
-    if (upper.startsWith('BEGIN:')) depth++;
-    if (depth > 0) {
-      nested.push(line);
-    } else {
-      const prop = parseProperty(line);
-      if (prop) props.push({ ...prop, line });
-    }
-    if (upper.startsWith('END:')) depth--;
-  }
-  return { props, nested };
-}
-
-/**
  * @param {string} name
  * @returns {string|null} the task field the property feeds
  */
@@ -309,20 +243,6 @@ function fieldOf(name) {
     if (names.includes(name)) return field;
   }
   return null;
-}
-
-/**
- * Whether a field still holds what the original lines parse to. Values are
- * compared as text so a stored 3 and a parsed "3" agree, and a missing value
- * matches an empty one.
- * @param {*} before
- * @param {*} after
- */
-function sameValue(before, after) {
-  if (Array.isArray(before) || Array.isArray(after)) {
-    return JSON.stringify(before || []) === JSON.stringify(after || []);
-  }
-  return String(before ?? '') === String(after ?? '');
 }
 
 /**

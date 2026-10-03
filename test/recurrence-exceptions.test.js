@@ -5,7 +5,7 @@ process.env.CALDAV_PASSWORD = 'test';
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { parseIcs, serializeEvents } = require('../server/caldav/parser');
+const { parseIcs, serializeEvents } = require('../server/caldav/vevent');
 const {
   overrideAt,
   buildOverride,

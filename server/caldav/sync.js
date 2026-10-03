@@ -105,7 +105,9 @@ function computeSyncDiff(serverEtags, cached, from, to) {
 
   for (const { href, etag } of serverEtags) {
     const group = byHref.get(href);
-    if (!group || group.some((ev) => ev.etag !== etag)) {
+    // A record cached before events kept their raw lines would be written back
+    // lossily; fetching it again, once, fills them in.
+    if (!group || group.some((ev) => ev.etag !== etag || !Array.isArray(ev.rawVevent))) {
       syncLog(`etag mismatch: href=${href} local=${group?.[0]?.etag || 'none'} server=${etag}`);
       toFetch.push(href);
     }

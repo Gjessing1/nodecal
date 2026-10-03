@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const { putEvent, putEventAtHref, deleteEvent } = require('../caldav/client');
-const { serializeEvent, formatIcsDate } = require('../caldav/parser');
+const { formatIcsDate } = require('../caldav/parser');
+const { serializeEvent: serializeWithZone, writtenLines } = require('../caldav/vevent');
 const { setRruleUntil, rrulestr } = require('../caldav/recurrence');
 const { indexOverrides, expandSeries, emitOverrides } = require('../caldav/overrides');
 const {
@@ -14,8 +15,36 @@ const {
 const { currentOverrides, writeSeries } = require('../caldav/seriesResource');
 const { relocateEvent } = require('../caldav/relocate');
 const store = require('../cache/store');
+const config = require('../config');
 
 const router = Router();
+
+/**
+ * @param {object} event
+ * @returns {string}
+ */
+function serializeEvent(event) {
+  return serializeWithZone(event, { timezone: config.app.timezone });
+}
+
+/**
+ * The cache record for an event just written. It carries the lines the server
+ * now holds, so the next edit compares against this write, not the one before.
+ * @param {object} event
+ * @param {string} ics - what was PUT
+ * @param {{ href: string, etag: string }} written
+ * @param {string} now - ISO
+ */
+function writtenRecord(event, ics, written, now) {
+  return {
+    ...event,
+    ...writtenLines(ics)[0],
+    href: written.href,
+    etag: written.etag,
+    localModifiedAt: now,
+    lastSyncedAt: now,
+  };
+}
 
 // ── GET /events ───────────────────────────────────────────
 
@@ -81,8 +110,8 @@ router.post('/events', async (req, res) => {
       categories: Array.isArray(categories) ? categories : [],
     };
     const ics = serializeEvent(event);
-    const { href, etag } = await putEvent(calendarId, uid, ics);
-    const stored = { ...event, href, etag, localModifiedAt: now, lastSyncedAt: now };
+    const written = await putEvent(calendarId, uid, ics);
+    const stored = writtenRecord(event, ics, written, now);
     store.setEvent(stored);
     res.status(201).json(toApiShape(stored));
   } catch (err) {
@@ -125,14 +154,7 @@ router.put('/events/:id', async (req, res) => {
     } else {
       written = await putEvent(existing.calendarId, existing.uid, ics, existing.etag);
     }
-    const now = new Date().toISOString();
-    const stored = {
-      ...updated,
-      href: written.href,
-      etag: written.etag,
-      localModifiedAt: now,
-      lastSyncedAt: now,
-    };
+    const stored = writtenRecord(updated, ics, written, new Date().toISOString());
     store.setEvent(stored);
     res.json(toApiShape(stored));
   } catch (err) {
@@ -251,14 +273,7 @@ async function handleSingleOccurrenceRelocation(base, overrides, changes, instan
     throw seriesError;
   }
 
-  const now = new Date().toISOString();
-  const stored = {
-    ...detached,
-    href: written.href,
-    etag: written.etag,
-    localModifiedAt: now,
-    lastSyncedAt: now,
-  };
+  const stored = writtenRecord(detached, ics, written, new Date().toISOString());
   store.setEvent(stored);
   res.status(201).json(toApiShape(stored));
 }
@@ -303,14 +318,7 @@ async function handleFutureEdit(base, changes, instant, res) {
     throw seriesError;
   }
 
-  const now = new Date().toISOString();
-  const stored = {
-    ...newEvent,
-    href: written.href,
-    etag: written.etag,
-    localModifiedAt: now,
-    lastSyncedAt: now,
-  };
+  const stored = writtenRecord(newEvent, newIcs, written, new Date().toISOString());
   store.setEvent(stored);
   res.status(201).json(toApiShape(stored));
 }
@@ -425,8 +433,9 @@ router.post('/events/batch-shift', async (req, res) => {
             end: new Date(evStart.getTime() + durMs + shiftMs).toISOString(),
             ...(ev.rrule ? { exdates: null } : {}),
           };
-          const { href, etag } = await putEventAtHref(ev.href, serializeEvent(updated), ev.etag);
-          store.setEvent({ ...updated, href, etag, localModifiedAt: now, lastSyncedAt: now });
+          const ics = serializeEvent(updated);
+          const written = await putEventAtHref(ev.href, ics, ev.etag);
+          store.setEvent(writtenRecord(updated, ics, written, now));
           shifted++;
           continue;
         }
@@ -443,8 +452,9 @@ router.post('/events/batch-shift', async (req, res) => {
             start: new Date(evStart.getTime() + shiftMs).toISOString(),
             end: new Date(evStart.getTime() + durMs + shiftMs).toISOString(),
           };
-          const { href, etag } = await putEventAtHref(ev.href, serializeEvent(updated), ev.etag);
-          store.setEvent({ ...updated, href, etag, localModifiedAt: now, lastSyncedAt: now });
+          const ics = serializeEvent(updated);
+          const written = await putEventAtHref(ev.href, ics, ev.etag);
+          store.setEvent(writtenRecord(updated, ics, written, now));
           shifted++;
           continue;
         }
@@ -469,8 +479,9 @@ router.post('/events/batch-shift', async (req, res) => {
             end: new Date(newStart.getTime() + durMs).toISOString(),
             exdates: null,
           };
-          const { href, etag } = await putEventAtHref(ev.href, serializeEvent(updated), ev.etag);
-          store.setEvent({ ...updated, href, etag, localModifiedAt: now, lastSyncedAt: now });
+          const ics = serializeEvent(updated);
+          const written = await putEventAtHref(ev.href, ics, ev.etag);
+          store.setEvent(writtenRecord(updated, ics, written, now));
           shifted++;
           continue;
         }
@@ -478,18 +489,9 @@ router.post('/events/batch-shift', async (req, res) => {
         // Split: cap history series, create new shifted series
         const cappedRrule = setRruleUntil(ev.rrule, lastBefore, ev.allDay);
         const cappedBase = { ...ev, rrule: cappedRrule };
-        const { href: bHref, etag: bEtag } = await putEventAtHref(
-          ev.href,
-          serializeEvent(cappedBase),
-          ev.etag,
-        );
-        store.setEvent({
-          ...cappedBase,
-          href: bHref,
-          etag: bEtag,
-          localModifiedAt: now,
-          lastSyncedAt: now,
-        });
+        const cappedIcs = serializeEvent(cappedBase);
+        const cappedWritten = await putEventAtHref(ev.href, cappedIcs, ev.etag);
+        store.setEvent(writtenRecord(cappedBase, cappedIcs, cappedWritten, now));
 
         const newUid = crypto.randomUUID();
         const newStart = new Date(firstAtOrAfter.getTime() + shiftMs);
@@ -502,18 +504,9 @@ router.post('/events/batch-shift', async (req, res) => {
           rrule: openRrule,
           exdates: null,
         };
-        const { href: nHref, etag: nEtag } = await putEvent(
-          ev.calendarId,
-          newUid,
-          serializeEvent(newSeries),
-        );
-        store.setEvent({
-          ...newSeries,
-          href: nHref,
-          etag: nEtag,
-          localModifiedAt: now,
-          lastSyncedAt: now,
-        });
+        const newIcs = serializeEvent(newSeries);
+        const newWritten = await putEvent(ev.calendarId, newUid, newIcs);
+        store.setEvent(writtenRecord(newSeries, newIcs, newWritten, now));
         shifted++;
       } catch (err) {
         console.error(`[batch-shift] skipped "${ev.title}" (${ev.uid}): ${err.message}`);

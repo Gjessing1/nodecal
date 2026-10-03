@@ -8,13 +8,9 @@
 const DATE_TIME = /^\d{8}T\d{6}Z?$/;
 const DAY_MS = 86400000;
 
-/**
- * @typedef {Object} IcsProperty
- * @property {string} name - upper-cased
- * @property {Object<string, string>} params
- * @property {string} value
- * @property {string} line - the unfolded line as it arrived
- */
+const { lastProperty } = require('./icsComponents');
+
+/** @typedef {import('./icsComponents').IcsProperty} IcsProperty */
 
 /** Property names this module owns when a task is written back. */
 const DUE_PROPERTIES = ['DUE', 'DURATION', 'DTSTART'];
@@ -75,19 +71,6 @@ function fittedStart(start, dueLine) {
   // Same or earlier day, other value type: take DUE's form on the start's own date.
   const dueHead = dueLine.slice(3, dueLine.indexOf(':') + 1);
   return 'DTSTART' + dueHead + start.value.slice(0, 8) + dueValue.slice(8);
-}
-
-/**
- * @param {IcsProperty[]} props
- * @param {string} name
- * @returns {IcsProperty|null}
- */
-function lastProperty(props, name) {
-  let found = null;
-  for (const prop of props) {
-    if (prop.name === name) found = prop;
-  }
-  return found;
 }
 
 /**

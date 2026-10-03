@@ -1,7 +1,8 @@
 const { putEvent, putEventAtHref } = require('./client');
 const { relocateEvent } = require('./relocate');
-const { serializeEvents } = require('./parser');
+const { serializeEvents, writtenLines } = require('./vevent');
 const store = require('../cache/store');
+const config = require('../config');
 
 // One CalDAV resource holds a whole series — the master plus every override —
 // so a change to any of them is a rewrite of all of them. Doing that in one
@@ -35,7 +36,7 @@ function currentOverrides(base) {
  * @returns {Promise<{base: object, overrides: Array<object>}>}
  */
 async function writeSeries(base, overrides, source = base) {
-  const ics = serializeEvents([base, ...overrides]);
+  const ics = serializeEvents([base, ...overrides], { timezone: config.app.timezone });
   let written;
   if (source.calendarId !== base.calendarId) {
     written = await relocateEvent(source, base, ics);
@@ -47,11 +48,14 @@ async function writeSeries(base, overrides, source = base) {
   const { href, etag } = written;
 
   // Stamped like every other write path so syncIncremental's overwrite guard
-  // can tell these from a stale remote copy.
+  // can tell these from a stale remote copy. Each record takes the lines it was
+  // just written as; serializeEvents keeps the order it was given.
   const now = new Date().toISOString();
-  function stamp(ev) {
+  const lines = writtenLines(ics);
+  function stamp(ev, index) {
     return {
       ...ev,
+      ...lines[index],
       calendarId: base.calendarId,
       href,
       etag,
@@ -60,8 +64,9 @@ async function writeSeries(base, overrides, source = base) {
     };
   }
 
-  const storedBase = stamp(base);
-  const storedOverrides = overrides.map(stamp);
+  const storedBase = stamp(base, 0);
+  const storedOverrides = [];
+  for (let i = 0; i < overrides.length; i++) storedOverrides.push(stamp(overrides[i], i + 1));
   if (source.href) store.removeEventsByHrefSilent(source.href);
   store.removeEventSilent(store.eventKey(base));
   for (const ov of currentOverrides(base)) store.removeEventSilent(store.eventKey(ov));

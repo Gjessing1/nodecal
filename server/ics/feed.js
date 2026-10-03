@@ -1,6 +1,6 @@
 const fs = require('fs');
 const config = require('../config');
-const { parseIcs } = require('../caldav/parser');
+const { parseIcs } = require('../caldav/vevent');
 
 const SETTINGS_FILE = '/config/settings.json';
 
@@ -37,6 +37,9 @@ async function fetchFeed(feed) {
   const text = await res.text();
   const events = [];
   for (const ev of parseIcs(text, { timezone: config.app.timezone })) {
+    // Nothing writes a feed event back, so its raw lines would only bloat the cache.
+    delete ev.rawVevent;
+    delete ev.rawTimezones;
     events.push({
       ...ev,
       uid: `${feed.id}::${ev.uid}`,

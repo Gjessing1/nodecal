@@ -1,6 +1,6 @@
 const fs = require('fs');
 const config = require('../config');
-const { parseIcs } = require('./parser');
+const { parseIcs } = require('./vevent');
 const { parseVtodo } = require('./vtodo');
 
 function syncLog(msg) {

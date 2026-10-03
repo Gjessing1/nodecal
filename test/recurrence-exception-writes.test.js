@@ -6,7 +6,7 @@ process.env.CALDAV_PASSWORD = 'test';
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const express = require('express');
-const { parseIcs } = require('../server/caldav/parser');
+const { parseIcs } = require('../server/caldav/vevent');
 const store = require('../server/cache/store');
 const eventsRouter = require('../server/routes/events');
 

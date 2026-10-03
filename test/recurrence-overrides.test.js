@@ -5,7 +5,7 @@ process.env.CALDAV_PASSWORD = 'test';
 
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
-const { parseIcs } = require('../server/caldav/parser');
+const { parseIcs } = require('../server/caldav/vevent');
 const {
   indexOverrides,
   expandSeries,
