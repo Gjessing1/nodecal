@@ -56,6 +56,35 @@ function expandRecurring(event, from, to) {
 }
 
 /**
+ * Where a series' rule reaches `at`: its first occurrence at or after that
+ * instant, and how many come before it. EXDATEs are not applied, because COUNT
+ * counts the occurrences they skip. Run on the wall clock like expandRecurring,
+ * so a zoned series splits at the occurrence a DST change moved.
+ * @param {object} event - cached master with .rrule, .start, .zone
+ * @param {Date} at
+ * @returns {{ first: Date|null, before: number }}
+ */
+function splitSeries(event, at) {
+  const zone = event.allDay ? null : event.zone || null;
+  const rule = rrulestr(
+    `DTSTART:${wallStamp(new Date(event.start), zone)}\nRRULE:${wallUntil(event.rrule, zone)}`,
+  );
+  /** @type {Date|null} */
+  let first = null;
+  let before = 0;
+  rule.all(function visit(wall) {
+    const instant = zone ? floatingToUtc(wall.toISOString().slice(0, 19), zone) : wall;
+    if (instant < at) {
+      before++;
+      return true;
+    }
+    first = instant;
+    return false;
+  });
+  return { first, before };
+}
+
+/**
  * DTSTART for the rule: the instant in UTC, or its wall time in `zone` dressed
  * as UTC.
  * @param {Date} date
@@ -159,6 +188,7 @@ function computeNextDue(task, completionDate) {
 
 module.exports = {
   expandRecurring,
+  splitSeries,
   setRruleUntil,
   parseExdate,
   computeNextDue,

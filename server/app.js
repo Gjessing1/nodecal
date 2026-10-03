@@ -39,6 +39,7 @@ app.use(authMiddleware);
 const api = express.Router();
 api.use(require('./routes/auth'));
 api.use(require('./routes/events'));
+api.use(require('./routes/eventBatchShift'));
 api.use(require('./routes/calendars'));
 api.use(require('./routes/sync'));
 api.use(require('./routes/settings'));

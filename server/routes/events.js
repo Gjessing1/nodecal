@@ -1,8 +1,7 @@
 const { Router } = require('express');
 const { putEvent, putEventAtHref, deleteEvent } = require('../caldav/client');
-const { formatIcsDate } = require('../caldav/parser');
 const { serializeEvent: serializeWithZone, writtenLines } = require('../caldav/vevent');
-const { setRruleUntil, rrulestr } = require('../caldav/recurrence');
+const { setRruleUntil } = require('../caldav/recurrence');
 const { indexOverrides, expandSeries, emitOverrides } = require('../caldav/overrides');
 const {
   overrideAt,
@@ -397,129 +396,5 @@ function toApiShape(ev) {
     alarmMinutes: ev.alarmMinutes ?? null,
   };
 }
-
-// ── POST /events/batch-shift ──────────────────────────────
-
-router.post('/events/batch-shift', async (req, res) => {
-  try {
-    const { category, shiftDays, anchorDate } = req.body;
-    if (!category || !shiftDays)
-      return res.status(400).json({ error: 'category and shiftDays required' });
-
-    const shiftMs = Math.round(shiftDays) * 86400000;
-    // Stamped like every other write path so the sync engine can still tell a
-    // locally-edited event from a stale remote one.
-    const now = new Date().toISOString();
-    const anchor = anchorDate ? new Date(anchorDate) : null;
-    const catLower = category.toLowerCase();
-    const matching = store
-      .getAllEvents()
-      .filter((ev) => (ev.categories || []).some((c) => c.toLowerCase() === catLower));
-
-    let shifted = 0,
-      skipped = 0;
-    const errors = [];
-
-    for (const ev of matching) {
-      try {
-        const evStart = new Date(ev.start);
-        const durMs = new Date(ev.end).getTime() - evStart.getTime();
-
-        // ── "Shift all" mode (no anchor) ────────────────────
-        if (!anchor) {
-          const updated = {
-            ...ev,
-            start: new Date(evStart.getTime() + shiftMs).toISOString(),
-            end: new Date(evStart.getTime() + durMs + shiftMs).toISOString(),
-            ...(ev.rrule ? { exdates: null } : {}),
-          };
-          const ics = serializeEvent(updated);
-          const written = await putEventAtHref(ev.href, ics, ev.etag);
-          store.setEvent(writtenRecord(updated, ics, written, now));
-          shifted++;
-          continue;
-        }
-
-        // ── "Shift future" mode (anchor present) ────────────
-        if (!ev.rrule) {
-          // Non-recurring: skip events that ended before anchor
-          if (evStart < anchor) {
-            skipped++;
-            continue;
-          }
-          const updated = {
-            ...ev,
-            start: new Date(evStart.getTime() + shiftMs).toISOString(),
-            end: new Date(evStart.getTime() + durMs + shiftMs).toISOString(),
-          };
-          const ics = serializeEvent(updated);
-          const written = await putEventAtHref(ev.href, ics, ev.etag);
-          store.setEvent(writtenRecord(updated, ics, written, now));
-          shifted++;
-          continue;
-        }
-
-        // Recurring: find split point using rrule library
-        const dtstart = formatIcsDate(evStart, false);
-        const rule = rrulestr(`DTSTART:${dtstart}\nRRULE:${ev.rrule}`);
-        const lastBefore = rule.before(anchor, false); // last occurrence strictly before anchor
-        const firstAtOrAfter = rule.after(anchor, true); // first occurrence at or after anchor
-
-        if (!firstAtOrAfter) {
-          skipped++;
-          continue;
-        } // series already ended before anchor
-
-        if (!lastBefore || evStart >= anchor) {
-          // Entire series is at or after anchor — just shift DTSTART
-          const newStart = new Date(firstAtOrAfter.getTime() + shiftMs);
-          const updated = {
-            ...ev,
-            start: newStart.toISOString(),
-            end: new Date(newStart.getTime() + durMs).toISOString(),
-            exdates: null,
-          };
-          const ics = serializeEvent(updated);
-          const written = await putEventAtHref(ev.href, ics, ev.etag);
-          store.setEvent(writtenRecord(updated, ics, written, now));
-          shifted++;
-          continue;
-        }
-
-        // Split: cap history series, create new shifted series
-        const cappedRrule = setRruleUntil(ev.rrule, lastBefore, ev.allDay);
-        const cappedBase = { ...ev, rrule: cappedRrule };
-        const cappedIcs = serializeEvent(cappedBase);
-        const cappedWritten = await putEventAtHref(ev.href, cappedIcs, ev.etag);
-        store.setEvent(writtenRecord(cappedBase, cappedIcs, cappedWritten, now));
-
-        const newUid = crypto.randomUUID();
-        const newStart = new Date(firstAtOrAfter.getTime() + shiftMs);
-        const openRrule = ev.rrule.replace(/;?(UNTIL|COUNT)=[^;]*/gi, '').replace(/^;|;$/g, '');
-        const newSeries = {
-          ...ev,
-          uid: newUid,
-          start: newStart.toISOString(),
-          end: new Date(newStart.getTime() + durMs).toISOString(),
-          rrule: openRrule,
-          exdates: null,
-        };
-        const newIcs = serializeEvent(newSeries);
-        const newWritten = await putEvent(ev.calendarId, newUid, newIcs);
-        store.setEvent(writtenRecord(newSeries, newIcs, newWritten, now));
-        shifted++;
-      } catch (err) {
-        console.error(`[batch-shift] skipped "${ev.title}" (${ev.uid}): ${err.message}`);
-        errors.push({ uid: ev.uid, title: ev.title, error: err.message });
-        skipped++;
-      }
-    }
-
-    res.json({ ok: true, shifted, skipped, total: matching.length, errors });
-  } catch (err) {
-    console.error('POST /events/batch-shift:', err.message);
-    res.status(502).json({ error: err.message });
-  }
-});
 
 module.exports = router;
