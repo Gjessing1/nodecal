@@ -1,11 +1,22 @@
-const { RRuleSet, rrulestr } = require('rrule');
-const { formatIcsDate } = require('./parser');
+const { rrulestr } = require('rrule');
+const { formatIcsDate, floatingToUtc } = require('./parser');
+const { wallTime } = require('./veventTimes');
+
+// A series written in a zone (`DTSTART;TZID=Europe/Oslo:…T100000`) repeats at
+// 10:00 on the wall, so its UTC instant moves an hour at each DST change.
+// rrule counts in UTC only (its own `tzid` option leans on the server's zone),
+// so the rule is run over the wall times, written as if they were UTC, and
+// each occurrence is converted back to an instant afterwards.
+
+// Wider than any UTC offset, so the wall-time window never cuts off an
+// occurrence whose instant is inside [from, to].
+const WALL_MARGIN_MS = 86400000;
 
 /**
  * Expand a recurring event into individual occurrence objects within [from, to].
  * Each occurrence gets an id of `uid_YYYYMMDDTHHMMSSZ` and carries recurring metadata.
  *
- * @param {object} event - cached event with .rrule, .exdates, .start, .end
+ * @param {object} event - cached event with .rrule, .exdates, .start, .end, .zone
  * @param {Date} from
  * @param {Date} to
  * @returns {Array<object>}
@@ -13,34 +24,58 @@ const { formatIcsDate } = require('./parser');
 function expandRecurring(event, from, to) {
   const baseStart = new Date(event.start);
   const duration = new Date(event.end).getTime() - baseStart.getTime();
-  const dtstart = formatIcsDate(baseStart, false); // YYYYMMDDTHHMMSSZ
+  const zone = event.allDay ? null : event.zone || null;
 
-  let source;
+  let rule;
   try {
-    const rule = rrulestr(`DTSTART:${dtstart}\nRRULE:${event.rrule}`);
-    if (event.exdates?.length) {
-      source = new RRuleSet();
-      source.rrule(rule);
-      for (const ex of event.exdates) source.exdate(parseExdate(ex));
-    } else {
-      source = rule;
-    }
+    rule = rrulestr(`DTSTART:${wallStamp(baseStart, zone)}\nRRULE:${wallUntil(event.rrule, zone)}`);
   } catch (err) {
     console.error(`Failed to parse RRULE for ${event.uid}:`, err.message);
     return [];
   }
 
-  return source.between(from, to, true).map((occStart) => {
-    const occEnd = new Date(occStart.getTime() + duration);
-    const occDateIso = formatIcsDate(occStart, false);
-    return {
+  const skipped = new Set();
+  for (const ex of event.exdates || []) skipped.add(parseExdate(ex, zone).getTime());
+
+  const occurrences = [];
+  const wallFrom = new Date(from.getTime() - WALL_MARGIN_MS);
+  const wallTo = new Date(to.getTime() + WALL_MARGIN_MS);
+  for (const wall of rule.between(wallFrom, wallTo, true)) {
+    const occStart = zone ? floatingToUtc(wall.toISOString().slice(0, 19), zone) : wall;
+    if (occStart < from || occStart > to || skipped.has(occStart.getTime())) continue;
+    occurrences.push({
       ...event,
-      id: `${event.uid}_${occDateIso}`,
+      id: `${event.uid}_${formatIcsDate(occStart, false)}`,
       start: occStart.toISOString(),
-      end: occEnd.toISOString(),
+      end: new Date(occStart.getTime() + duration).toISOString(),
       recurring: true,
       occurrenceDate: occStart.toISOString(),
-    };
+    });
+  }
+  return occurrences;
+}
+
+/**
+ * DTSTART for the rule: the instant in UTC, or its wall time in `zone` dressed
+ * as UTC.
+ * @param {Date} date
+ * @param {string|null} zone
+ */
+function wallStamp(date, zone) {
+  if (!zone) return formatIcsDate(date, false);
+  return `${wallTime(date, zone)}Z`;
+}
+
+/**
+ * The RRULE with a UTC UNTIL moved onto the wall clock the rule runs on, so the
+ * last occurrence is still compared with the instant UNTIL names.
+ * @param {string} rrule
+ * @param {string|null} zone
+ */
+function wallUntil(rrule, zone) {
+  if (!zone) return rrule;
+  return rrule.replace(/UNTIL=(\d{8}T\d{6})Z/i, function toWall(match, stamp) {
+    return `UNTIL=${wallStamp(parseExdate(`${stamp}Z`, null), zone)}`;
   });
 }
 
@@ -58,14 +93,21 @@ function setRruleUntil(rruleStr, untilDate, allDay = false) {
 }
 
 /**
- * Parse an EXDATE string (YYYYMMDDTHHMMSSZ or YYYYMMDD) to a Date.
+ * Parse an EXDATE string (YYYYMMDDTHHMMSSZ, YYYYMMDDTHHMMSS or YYYYMMDD) to a Date.
+ * A time without Z is a wall time in the series' zone: the TZID it was written
+ * with is not kept on the value, and clients write it in DTSTART's zone.
  * @param {string} str
+ * @param {string|null} [zone] - the series' zone; UTC when absent
  * @returns {Date}
  */
-function parseExdate(str) {
+function parseExdate(str, zone = null) {
   const s = str.trim();
-  const m = s.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z?)$/);
-  if (m) return new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}${m[7] ? 'Z' : ''}`);
+  const m = s.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z?)$/i);
+  if (m) {
+    const wall = `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`;
+    if (m[7] || !zone) return new Date(`${wall}Z`);
+    return floatingToUtc(wall, zone);
+  }
   const d = s.match(/^(\d{4})(\d{2})(\d{2})$/);
   if (d) return new Date(`${d[1]}-${d[2]}-${d[3]}T00:00:00Z`);
   return new Date(s);

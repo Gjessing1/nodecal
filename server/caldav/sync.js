@@ -68,6 +68,17 @@ function overlapsWindow(ev, from, to) {
 }
 
 /**
+ * Was this record cached before events kept their raw lines and zone? Written
+ * back it would drop what other clients put in it, and a series would expand
+ * in UTC; fetching it again, once, fills both in.
+ * @param {object} ev
+ * @returns {boolean}
+ */
+function isStale(ev) {
+  return !Array.isArray(ev.rawVevent) || ev.zone === undefined;
+}
+
+/**
  * Pure function — computes what to fetch and what to delete based on
  * the server's current etag list vs the local cache.
  *
@@ -105,9 +116,7 @@ function computeSyncDiff(serverEtags, cached, from, to) {
 
   for (const { href, etag } of serverEtags) {
     const group = byHref.get(href);
-    // A record cached before events kept their raw lines would be written back
-    // lossily; fetching it again, once, fills them in.
-    if (!group || group.some((ev) => ev.etag !== etag || !Array.isArray(ev.rawVevent))) {
+    if (!group || group.some((ev) => ev.etag !== etag || isStale(ev))) {
       syncLog(`etag mismatch: href=${href} local=${group?.[0]?.etag || 'none'} server=${etag}`);
       toFetch.push(href);
     }
@@ -164,13 +173,16 @@ async function syncIncremental() {
 
   for (const cal of calendars) {
     const storedCtag = store.getCalendarCtag(cal.id);
+    const cachedEvents = store.getEventsByCalendar(cal.id);
 
-    if (cal.ctag && cal.ctag === storedCtag) {
-      continue; // nothing changed in this calendar
+    // An unchanged ctag says nothing changed on the server, but stale records
+    // still need their one re-fetch. Only those inside the window count: the
+    // etag listing never names the others, so they would re-list every sync.
+    if (cal.ctag && cal.ctag === storedCtag && !cachedEvents.some(needsRefetch)) {
+      continue;
     }
 
     const serverEtags = await withRetry(() => listEventEtags(cal.href, from, to));
-    const cachedEvents = store.getEventsByCalendar(cal.id);
     const { toFetch, toDelete } = computeSyncDiff(serverEtags, cachedEvents, from, to);
 
     // Fetch updated/new events BEFORE modifying the store so that a concurrent
@@ -208,6 +220,11 @@ async function syncIncremental() {
     }
 
     store.setCalendarCtag(cal.id, cal.ctag);
+  }
+
+  /** @param {object} ev */
+  function needsRefetch(ev) {
+    return isStale(ev) && overlapsWindow(ev, from, to);
   }
 
   let tasksChanged = 0;
@@ -338,7 +355,7 @@ function feedSignature(events) {
   return events
     .map(
       (e) =>
-        `${e.uid}|${e.start}|${e.end}|${e.allDay}|${e.title}|${e.rrule || ''}|${e.location || ''}|${e.description || ''}`,
+        `${e.uid}|${e.start}|${e.end}|${e.allDay}|${e.title}|${e.rrule || ''}|${e.location || ''}|${e.description || ''}|${e.zone ?? ''}`,
     )
     .sort()
     .join('\n');

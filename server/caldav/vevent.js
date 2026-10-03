@@ -5,8 +5,14 @@ const {
   unescapeIcsText,
   escapeIcsText,
 } = require('./parser');
-const { readCalendar, splitComponent, sameValue } = require('./icsComponents');
-const { TIME_PROPERTIES, eventTimes, timeLines, recurrenceIdLines } = require('./veventTimes');
+const { readCalendar, splitComponent, sameValue, lastProperty } = require('./icsComponents');
+const {
+  TIME_PROPERTIES,
+  eventTimes,
+  startZone,
+  timeLines,
+  recurrenceIdLines,
+} = require('./veventTimes');
 const { alarmMinutes, alarmLines } = require('./veventAlarm');
 
 // Events as VEVENTs. As with tasks (vtodo.js), the resource is shared with
@@ -46,6 +52,8 @@ const RECURRENCE_SET_PROPERTIES = ['RDATE', 'EXRULE'];
  * @property {string} start - ISO UTC
  * @property {string} end - ISO UTC
  * @property {boolean} allDay
+ * @property {string|null} zone - IANA zone DTSTART's wall time is in; null for
+ *   a UTC time or a whole day
  * @property {string} description
  * @property {string} location
  * @property {string} url
@@ -118,13 +126,20 @@ function serializeEvents(events, { timezone = 'UTC' } = {}) {
 /**
  * The lines each VEVENT of a document was written as, in order, for the cache
  * record of what was just PUT: the next edit then compares against this write.
+ * The zone comes along because it follows the DTSTART line, and a time moved
+ * on a new series is written in UTC whatever zone the record it came from had.
  * @param {string} icsText
- * @returns {Array<{ rawVevent: string[], rawTimezones: string[] }>}
+ * @param {{ timezone?: string }} [opts] - zone a floating time is read in
+ * @returns {Array<{ rawVevent: string[], rawTimezones: string[], zone: string|null }>}
  */
-function writtenLines(icsText) {
+function writtenLines(icsText, { timezone = 'UTC' } = {}) {
   const { components, timezones } = readCalendar(icsText, 'VEVENT');
   const written = [];
-  for (const body of components) written.push({ rawVevent: body, rawTimezones: timezones });
+  for (const body of components) {
+    const dtstart = lastProperty(splitComponent(body).props, 'DTSTART');
+    const zone = dtstart ? startZone(dtstart, timezone) : null;
+    written.push({ rawVevent: body, rawTimezones: timezones, zone });
+  }
   return written;
 }
 
@@ -199,6 +214,7 @@ function eventFields(body, timezone) {
     start: times.start,
     end: times.end,
     allDay: times.allDay,
+    zone: times.zone,
     description: unescapeIcsText(byName.DESCRIPTION?.value || ''),
     location: unescapeIcsText(byName.LOCATION?.value || ''),
     url: unescapeIcsText(byName.URL?.value || ''),

@@ -51,7 +51,7 @@ async function writeSeries(base, overrides, source = base) {
   // can tell these from a stale remote copy. Each record takes the lines it was
   // just written as; serializeEvents keeps the order it was given.
   const now = new Date().toISOString();
-  const lines = writtenLines(ics);
+  const lines = writtenLines(ics, { timezone: config.app.timezone });
   function stamp(ev, index) {
     return {
       ...ev,

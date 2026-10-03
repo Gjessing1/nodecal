@@ -15,7 +15,7 @@ const TIME_PROPERTIES = ['DTSTART', 'DTEND', 'DURATION'];
 /**
  * @param {Object<string, IcsProperty>} byName - the VEVENT's own properties
  * @param {string} timezone - zone a floating time is read in
- * @returns {{ start: string, end: string, allDay: boolean }|null} ISO UTC
+ * @returns {{ start: string, end: string, allDay: boolean, zone: string|null }|null} ISO UTC
  */
 function eventTimes(byName, timezone) {
   const startInfo = byName.DTSTART
@@ -35,7 +35,21 @@ function eventTimes(byName, timezone) {
     start: startInfo.date.toISOString(),
     end: (endDate || startInfo.date).toISOString(),
     allDay: startInfo.allDay,
+    zone: startZone(byName.DTSTART, timezone),
   };
+}
+
+/**
+ * The zone a DTSTART's wall time is in: its TZID, or `timezone` for a floating
+ * time. A series repeats at that wall time, so it is what recurrence expands
+ * in. Null for a UTC time or a whole day, which no DST change can move.
+ * @param {IcsProperty} prop
+ * @param {string} timezone - zone a floating time is read in
+ * @returns {string|null} a valid IANA name
+ */
+function startZone(prop, timezone) {
+  if (isDate(prop.value) || /Z$/i.test(prop.value)) return null;
+  return resolveTimezone(prop.params.TZID, timezone);
 }
 
 /**
@@ -156,4 +170,12 @@ function parseDuration(dur) {
   return ((w * 7 + d) * 86400 + h * 3600 + min * 60 + s) * 1000;
 }
 
-module.exports = { TIME_PROPERTIES, eventTimes, timeLines, recurrenceIdLines, sameInstant };
+module.exports = {
+  TIME_PROPERTIES,
+  eventTimes,
+  startZone,
+  wallTime,
+  timeLines,
+  recurrenceIdLines,
+  sameInstant,
+};

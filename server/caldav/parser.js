@@ -188,6 +188,7 @@ module.exports = {
   formatIcsDate,
   parseCategories,
   resolveTimezone,
+  floatingToUtc,
   foldLine,
   unfold,
   parseProperty,

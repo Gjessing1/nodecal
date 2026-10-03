@@ -38,7 +38,7 @@ function serializeEvent(event) {
 function writtenRecord(event, ics, written, now) {
   return {
     ...event,
-    ...writtenLines(ics)[0],
+    ...writtenLines(ics, { timezone: config.app.timezone })[0],
     href: written.href,
     etag: written.etag,
     localModifiedAt: now,
