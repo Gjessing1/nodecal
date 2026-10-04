@@ -1,4 +1,4 @@
-import { cardsAbove, markSlot, slotIndex } from './boardDropSlot.js';
+import { cardsAbove, openGap, slotIndex } from './boardDropSlot.js';
 
 // Matches dnd.js: the same hold lifts an event in the calendar grids.
 const LONG_PRESS_MS = 400;
@@ -21,9 +21,12 @@ const EDGE_STEP_PX = 12;
  * can re-render the board mid-drag, and a detached card would take the capture
  * (and the ghost's cleanup) with it.
  *
- * On an ordered board the drop also has a place: the gap between the two cards
- * nearest the pointer, marked with a line, and a card can be dropped back into
- * its own cell at a new place.
+ * On an ordered board the drop also has a place: the lifted card leaves its
+ * cell and a gap of its height opens where it would land, pushing the cards
+ * apart. A thin line there hid under the dragged card on a phone, where the
+ * card is nearly as wide as the column. A card can be dropped back into its
+ * own cell at a new place; with no drop under the pointer the gap goes back
+ * to where the card came from.
  *
  * @param {HTMLElement} boardEl - the scrolling board; cells are `.task-board-cell`
  * @param {object} opts
@@ -75,7 +78,7 @@ export function initBoardDnd(boardEl, { ordered = false, canDrop, onDrop }) {
     let hovered = null;
     let hoveredIndex = -1;
     /** @type {HTMLElement|null} */
-    let marked = null;
+    let gap = null;
     let frame = 0;
     let timer = 0;
     if (!isMouse) timer = window.setTimeout(lift, LONG_PRESS_MS);
@@ -84,8 +87,15 @@ export function initBoardDnd(boardEl, { ordered = false, canDrop, onDrop }) {
       timer = 0;
       dragging = true;
       card.classList.add('is-dragging');
+      if (ordered) {
+        card.classList.add('is-lifted');
+        gap = document.createElement('div');
+        gap.className = 'task-card-gap';
+        gap.style.height = `${rect.height}px`;
+        card.after(gap);
+      }
       ghost = /** @type {HTMLElement} */ (card.cloneNode(true));
-      ghost.classList.remove('is-dragging');
+      ghost.classList.remove('is-dragging', 'is-lifted');
       ghost.classList.add('task-card-ghost');
       ghost.style.width = `${rect.width}px`;
       document.body.appendChild(ghost);
@@ -109,9 +119,9 @@ export function initBoardDnd(boardEl, { ordered = false, canDrop, onDrop }) {
         cell.classList.add('is-drop-blocked');
         return;
       }
-      // Reordering within its own cell only needs the line.
+      // Reordering within its own cell only needs the gap.
       if (cell !== originCell) cell.classList.add('is-drop-target');
-      if (ordered) marked = markSlot(cell, id, index);
+      if (gap) openGap(cell, id, index, gap);
     }
 
     /**
@@ -127,8 +137,7 @@ export function initBoardDnd(boardEl, { ordered = false, canDrop, onDrop }) {
     }
 
     function clearHover() {
-      if (marked) marked.classList.remove('is-drop-before', 'is-drop-after');
-      marked = null;
+      if (gap) card.after(gap);
       if (!hovered) return;
       hovered.classList.remove('is-drop-target', 'is-drop-blocked');
       hovered = null;
@@ -193,7 +202,9 @@ export function initBoardDnd(boardEl, { ordered = false, canDrop, onDrop }) {
       clearHover();
       if (ghost) ghost.remove();
       ghost = null;
-      card.classList.remove('is-dragging');
+      if (gap) gap.remove();
+      gap = null;
+      card.classList.remove('is-dragging', 'is-lifted');
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onCancel);

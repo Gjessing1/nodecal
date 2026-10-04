@@ -1,5 +1,5 @@
 // Where in a cell a dragged card would land on a board in manual order, and the
-// line that shows it. Positions count the cell's cards without the dragged one,
+// gap that shows it. Positions count the cell's cards without the dragged one,
 // matching boardOrder.placedMove.
 
 /**
@@ -33,23 +33,20 @@ export function slotIndex(cell, draggedId, y) {
 }
 
 /**
- * Draw the drop line: on top of the card the drop goes before, or under the
- * last card. Nothing in an empty cell, where the cell's own highlight says it.
+ * Open the gap where the drop goes: before the card it lands above, or after
+ * the last card. Cells hold only cards, so the end of the cell is after it.
+ * The gap moves the cards below it, which `slotIndex` then measures; that is
+ * stable, because a card only swaps sides once the pointer passes its middle
+ * as drawn, gap included.
  * @param {HTMLElement} cell
  * @param {string} draggedId
  * @param {number} index
- * @returns {HTMLElement|null} the card carrying the line
+ * @param {HTMLElement} gap
  */
-export function markSlot(cell, draggedId, index) {
+export function openGap(cell, draggedId, index, gap) {
   const cards = otherCards(cell, draggedId);
-  if (index < cards.length) {
-    cards[index].classList.add('is-drop-before');
-    return cards[index];
-  }
-  const lastCard = cards[cards.length - 1];
-  if (!lastCard) return null;
-  lastCard.classList.add('is-drop-after');
-  return lastCard;
+  if (index < cards.length) cards[index].before(gap);
+  else cell.appendChild(gap);
 }
 
 /**
