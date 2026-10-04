@@ -105,8 +105,11 @@ function recurrenceIdLines(props, originalId, event, timezone) {
 }
 
 /**
- * A date property for `iso`, in the zone `template` was written in when it had
- * one, else in UTC.
+ * A date property for `iso`, in the zone `template` was written in. A time
+ * with no timed line before it (a new event, or a whole day made timed) goes
+ * in the configured zone, so a series made here keeps its wall time across
+ * DST. One that was in UTC stays there: its EXDATEs and overrides name
+ * occurrences by UTC instants, which a zone would move.
  * @param {string} name
  * @param {string} iso
  * @param {boolean} allDay
@@ -116,7 +119,13 @@ function recurrenceIdLines(props, originalId, event, timezone) {
 function dateLine(name, iso, allDay, template, timezone) {
   const date = new Date(iso);
   if (allDay) return `${name};VALUE=DATE:${formatIcsDate(date, true)}`;
-  const tzid = template && !isDate(template.value) ? template.params.TZID : undefined;
+  let tzid;
+  if (template && !isDate(template.value)) {
+    tzid = template.params.TZID;
+  } else {
+    const zone = resolveTimezone(timezone, 'UTC');
+    if (zone !== 'UTC') tzid = zone;
+  }
   if (!tzid) return `${name}:${formatIcsDate(date, false)}`;
   return `${name};TZID=${tzid}:${wallTime(date, resolveTimezone(tzid, timezone))}`;
 }

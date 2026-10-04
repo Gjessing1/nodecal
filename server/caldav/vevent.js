@@ -4,6 +4,8 @@ const {
   parseCategories,
   unescapeIcsText,
   escapeIcsText,
+  resolveTimezone,
+  parseProperty,
 } = require('./parser');
 const { readCalendar, splitComponent, sameValue, lastProperty } = require('./icsComponents');
 const {
@@ -14,6 +16,7 @@ const {
   recurrenceIdLines,
 } = require('./veventTimes');
 const { alarmMinutes, alarmLines } = require('./veventAlarm');
+const { vtimezoneLines } = require('./vtimezone');
 
 // Events as VEVENTs. As with tasks (vtodo.js), the resource is shared with
 // every other client on the calendar: attendees, extra alarms, X- properties
@@ -119,18 +122,48 @@ function serializeEvents(events, { timezone = 'UTC' } = {}) {
     seen.add(key);
     lines.push(...event.rawTimezones);
   }
+  const vevents = [];
   for (const event of events) {
-    lines.push('BEGIN:VEVENT', ...veventLines(event, timezone), 'END:VEVENT');
+    vevents.push('BEGIN:VEVENT', ...veventLines(event, timezone), 'END:VEVENT');
   }
-  lines.push('END:VCALENDAR');
+  lines.push(...missingTimezones(lines, vevents, events), ...vevents, 'END:VCALENDAR');
   return lines.map(foldLine).join(CRLF) + CRLF;
+}
+
+/**
+ * VTIMEZONE blocks for the zones `vevents` name that `head` has none for: a
+ * time Nodecal wrote in a zone the document did not hold yet. Built on the
+ * rules of the year the earliest event starts in.
+ * @param {string[]} head - the document so far, VTIMEZONE blocks included
+ * @param {string[]} vevents
+ * @param {Array<{ start: string }>} events
+ * @returns {string[]}
+ */
+function missingTimezones(head, vevents, events) {
+  const defined = new Set();
+  for (const line of head) {
+    if (/^TZID:/i.test(line)) defined.add(line.slice(5));
+  }
+  const missing = new Set();
+  for (const line of vevents) {
+    const prop = parseProperty(line);
+    const tzid = prop?.params.TZID;
+    if (tzid && !defined.has(tzid) && resolveTimezone(tzid, '') === tzid) missing.add(tzid);
+  }
+  if (missing.size === 0) return [];
+
+  let year = Infinity;
+  for (const event of events) year = Math.min(year, new Date(event.start).getUTCFullYear());
+  const blocks = [];
+  for (const zone of missing) blocks.push(...vtimezoneLines(zone, year));
+  return blocks;
 }
 
 /**
  * The lines each VEVENT of a document was written as, in order, for the cache
  * record of what was just PUT: the next edit then compares against this write.
- * The zone comes along because it follows the DTSTART line, and a time moved
- * on a new series is written in UTC whatever zone the record it came from had.
+ * The zone comes along because it follows the DTSTART line, which a new event
+ * or a whole day made timed only gets on writing (see dateLine).
  * @param {string} icsText
  * @param {{ timezone?: string }} [opts] - zone a floating time is read in
  * @returns {Array<{ rawVevent: string[], rawTimezones: string[], zone: string|null }>}
