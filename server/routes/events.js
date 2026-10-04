@@ -12,6 +12,7 @@ const {
 } = require('../caldav/exceptions');
 const { currentOverrides, writeSeries, writeSplit } = require('../caldav/seriesResource');
 const { seriesHead, seriesTail } = require('../caldav/seriesShift');
+const { retimeSeries } = require('../caldav/seriesRetime');
 const { relocateEvent } = require('../caldav/relocate');
 const store = require('../cache/store');
 const config = require('../config');
@@ -138,7 +139,7 @@ router.put('/events/:id', async (req, res) => {
     }
 
     // Simple update (non-recurring, or 'all' scope on recurring base)
-    if (existing.rrule) return handleSeriesEdit(existing, changes, res);
+    if (existing.rrule) return handleSeriesEdit(existing, changes, instant, res);
     const updated = editedEvent(existing, changes);
 
     const ics = serializeEvent(updated);
@@ -275,13 +276,17 @@ async function handleSingleOccurrenceRelocation(base, overrides, changes, instan
 }
 
 /**
- * "All events" — rewrite the master with the edit, its overrides unchanged.
+ * "All events" — rewrite the master with the edit, moved as far as the editor
+ * moved the occurrence it was opened on (see retimeSeries).
  * @param {object} base - the master event
  * @param {object} changes
+ * @param {string|undefined} instant - ISO UTC start the occurrence had
  * @param {import('express').Response} res
  */
-async function handleSeriesEdit(base, changes, res) {
-  const written = await writeSeries(editedEvent(base, changes), currentOverrides(base), base);
+async function handleSeriesEdit(base, changes, instant, res) {
+  const series = { base, overrides: currentOverrides(base) };
+  const edited = editedSeries(series, changes, instant || base.start, base.rrule);
+  const written = await writeSeries(edited.base, edited.overrides, base);
   res.json(toApiShape(written.base));
 }
 
@@ -289,8 +294,8 @@ async function handleSeriesEdit(base, changes, res) {
  * "This and following" — start a new series at this occurrence and cap the old
  * one before it. The new series is the master's own resource from here on, so
  * attendees, extra alarms and X- properties come along; COUNT keeps only the
- * occurrences left. Its EXDATEs, RDATEs and overrides name occurrences at the
- * series' old times and rule, so they only come along while the edit keeps both.
+ * occurrences left. Its EXDATEs, RDATEs and overrides move with a moved time,
+ * and are dropped with a changed rule, which they no longer line up with.
  * @param {object} base - the master event
  * @param {object} changes
  * @param {string} instant - ISO UTC start the occurrence would have had
@@ -300,33 +305,43 @@ async function handleFutureEdit(base, changes, instant, res) {
   const { first, before } = splitSeries(base, new Date(instant));
   if (!first) return res.status(409).json({ error: 'Occurrence is past the end of the series' });
   // From the first occurrence on, "this and following" is every occurrence.
-  if (before === 0) return handleSeriesEdit(base, changes, res);
+  if (before === 0) return handleSeriesEdit(base, changes, instant, res);
 
   const overrides = currentOverrides(base);
   const tail = seriesTail(base, overrides, first, before, crypto.randomUUID());
-  const filtered = filterChanges(changes);
-  const edited = { ...tail.base, ...filtered };
-  // The editor sends the rule back as it was; the tail's COUNT is what is left of it.
-  const ruleKept = !('rrule' in filtered) || filtered.rrule === base.rrule;
-  if (ruleKept) edited.rrule = tail.base.rrule;
-  let tailOverrides = tail.overrides;
-  if (!ruleKept || startMoved(tail.base, edited)) {
-    edited.exdates = null;
-    edited.rdates = null;
-    tailOverrides = [];
+  const edited = editedSeries(tail, changes, first.toISOString(), base.rrule);
+  if (edited.ruleChanged) {
+    edited.base.exdates = null;
+    edited.base.rdates = null;
+    edited.overrides = [];
   }
 
-  const written = await writeSplit(base, overrides, first, {
-    base: edited,
-    overrides: tailOverrides,
-  });
+  const written = await writeSplit(base, overrides, first, edited);
   res.status(201).json(toApiShape(written.base));
 }
 
 /**
- * An event with the editor's changes applied. A series whose start the editor
- * moves loses its RDATEs: there is no telling whether those extra dates were
- * meant to move with it, and Nodecal does not show them to ask.
+ * A series with the editor's changes applied. The editor sends the rule back
+ * as it was; the series' own copy is kept then, since a moved series has moved
+ * its UNTIL and a split one has counted down its COUNT.
+ * @param {{ base: object, overrides: Array<object> }} series
+ * @param {object} changes
+ * @param {string} occurrence - ISO UTC start of the occurrence the editor showed
+ * @param {string} rule - the RRULE the editor was opened with
+ */
+function editedSeries(series, changes, occurrence, rule) {
+  const { start, end, allDay, rrule, ...fields } = filterChanges(changes);
+  const retimed = retimeSeries(series, occurrence, { start, end, allDay }, config.app.timezone);
+  const ruleChanged = rrule !== undefined && rrule !== rule;
+  const base = { ...retimed.base, ...fields };
+  if (ruleChanged) base.rrule = rrule;
+  return { base, overrides: retimed.overrides, ruleChanged };
+}
+
+/**
+ * An event with the editor's changes applied. One with RDATEs but no rule
+ * loses them when its start moves: there is no telling whether those extra
+ * dates were meant to move with it, and Nodecal does not show them to ask.
  * @param {object} existing
  * @param {object} changes
  */

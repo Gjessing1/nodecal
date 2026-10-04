@@ -4,30 +4,49 @@ const { parseExdate, setRruleUntil } = require('./recurrence');
 const { recurrenceInstant } = require('./overrides');
 const { overridesBefore } = require('./exceptions');
 
-// Moving a series by whole days has to move every value that names one of its
-// occurrences: DTSTART, the EXDATEs and RDATEs, UNTIL and each override's
-// RECURRENCE-ID.
+// Moving a series has to move every value that names one of its occurrences:
+// DTSTART, the EXDATEs and RDATEs, UNTIL and each override's RECURRENCE-ID.
 // If one is left behind, the series stops lining up with its own exceptions.
 // An EXDATE then skips nothing, and an override replaces an occurrence that no
-// longer exists, so the original occurrence shows again. Days are counted on
-// the series' wall clock, so a weekly 10:00 Europe/Oslo moved across a DST
+// longer exists, so the original occurrence shows again. The move is measured
+// on the series' wall clock, so a weekly 10:00 Europe/Oslo moved across a DST
 // change stays at 10:00.
 
 const DAY_MS = 86400000;
 
 /**
- * `iso` moved by `days` on the wall clock of `zone`, or by whole UTC days.
+ * `iso` read on the wall clock of `zone`, as ms since the epoch as if that
+ * reading were UTC. A null zone is UTC itself.
  * @param {string} iso
- * @param {number} days
+ * @param {string|null} zone
+ * @returns {number}
+ */
+function wallMs(iso, zone) {
+  if (!zone) return Date.parse(iso);
+  return parseExdate(`${wallTime(new Date(iso), zone)}Z`).getTime();
+}
+
+/**
+ * The instant a wall-clock reading (see wallMs) names in `zone`.
+ * @param {number} ms
  * @param {string|null} zone
  * @returns {string} ISO UTC
  */
-function shiftInstant(iso, days, zone) {
-  const date = new Date(iso);
-  if (!zone) return new Date(date.getTime() + days * DAY_MS).toISOString();
-  const wall = parseExdate(`${wallTime(date, zone)}Z`);
-  const moved = new Date(wall.getTime() + days * DAY_MS);
-  return floatingToUtc(moved.toISOString().slice(0, 19), zone).toISOString();
+function fromWallMs(ms, zone) {
+  const wall = new Date(ms).toISOString();
+  if (!zone) return wall;
+  return floatingToUtc(wall.slice(0, 19), zone).toISOString();
+}
+
+/**
+ * `iso` moved by `ms` on the wall clock of `zone`, or in UTC.
+ * @param {string} iso
+ * @param {number} ms
+ * @param {string|null} zone
+ * @returns {string} ISO UTC
+ */
+function moveInstant(iso, ms, zone) {
+  return fromWallMs(wallMs(iso, zone) + ms, zone);
 }
 
 /**
@@ -43,26 +62,36 @@ function seriesZone(event) {
 /**
  * An event with its start and end moved.
  * @param {object} event
+ * @param {number} ms
+ * @param {string|null} zone
+ */
+function moveTimes(event, ms, zone) {
+  return {
+    ...event,
+    start: moveInstant(event.start, ms, zone),
+    end: moveInstant(event.end, ms, zone),
+  };
+}
+
+/**
+ * An event with its start and end moved by whole days.
+ * @param {object} event
  * @param {number} days
  * @param {string|null} zone
  */
 function shiftTimes(event, days, zone) {
-  return {
-    ...event,
-    start: shiftInstant(event.start, days, zone),
-    end: shiftInstant(event.end, days, zone),
-  };
+  return moveTimes(event, days * DAY_MS, zone);
 }
 
 /**
  * An EXDATE or UNTIL value moved. Written in UTC, or as a date when it was one:
  * a TZID'd original line is not kept for a changed value.
  * @param {string} value
- * @param {number} days
+ * @param {number} ms
  * @param {string|null} zone
  */
-function shiftDateValue(value, days, zone) {
-  const moved = shiftInstant(parseExdate(value, zone).toISOString(), days, zone);
+function shiftDateValue(value, ms, zone) {
+  const moved = moveInstant(parseExdate(value, zone).toISOString(), ms, zone);
   return formatIcsDate(new Date(moved), /^\d{8}$/.test(value.trim()));
 }
 
@@ -70,15 +99,15 @@ function shiftDateValue(value, days, zone) {
  * An RDATE value moved: a date, a date-time, or a period whose end moves with
  * its start (a duration end stays as it is).
  * @param {string} value
- * @param {number} days
+ * @param {number} ms
  * @param {string|null} zone
  */
-function shiftRdateValue(value, days, zone) {
+function shiftRdateValue(value, ms, zone) {
   const [from, to] = value.split('/');
-  const movedFrom = shiftDateValue(from, days, zone);
+  const movedFrom = shiftDateValue(from, ms, zone);
   if (to === undefined) return movedFrom;
   if (/^[+-]?P/i.test(to)) return `${movedFrom}/${to}`;
-  return `${movedFrom}/${shiftDateValue(to, days, zone)}`;
+  return `${movedFrom}/${shiftDateValue(to, ms, zone)}`;
 }
 
 /**
@@ -98,21 +127,21 @@ function movedList(values, move) {
  * A whole series moved, the master and every override together.
  * @param {object} base - the master event
  * @param {Array<object>} overrides
- * @param {number} days
+ * @param {number} ms - on the series' wall clock
  * @returns {{ base: object, overrides: Array<object> }}
  */
-function shiftSeries(base, overrides, days) {
+function moveSeries(base, overrides, ms) {
   const zone = seriesZone(base);
   const movedBase = {
-    ...shiftTimes(base, days, zone),
+    ...moveTimes(base, ms, zone),
     rrule: base.rrule.replace(/UNTIL=(\d{8}(?:T\d{6}Z?)?)/i, function movedUntil(match, value) {
-      return `UNTIL=${shiftDateValue(value, days, zone)}`;
+      return `UNTIL=${shiftDateValue(value, ms, zone)}`;
     }),
     exdates: movedList(base.exdates, function movedExdate(value) {
-      return shiftDateValue(value, days, zone);
+      return shiftDateValue(value, ms, zone);
     }),
     rdates: movedList(base.rdates, function movedRdate(value) {
-      return shiftRdateValue(value, days, zone);
+      return shiftRdateValue(value, ms, zone);
     }),
   };
 
@@ -124,11 +153,21 @@ function shiftSeries(base, overrides, days) {
     if (!ov.allDay) ownZone = ov.zone || zone;
     const replaced = new Date(recurrenceInstant(ov.recurrenceId) ?? NaN).toISOString();
     movedOverrides.push({
-      ...shiftTimes(ov, days, ownZone),
-      recurrenceId: shiftInstant(replaced, days, zone),
+      ...moveTimes(ov, ms, ownZone),
+      recurrenceId: moveInstant(replaced, ms, zone),
     });
   }
   return { base: movedBase, overrides: movedOverrides };
+}
+
+/**
+ * A whole series moved by whole days.
+ * @param {object} base - the master event
+ * @param {Array<object>} overrides
+ * @param {number} days
+ */
+function shiftSeries(base, overrides, days) {
+  return moveSeries(base, overrides, days * DAY_MS);
 }
 
 /**
@@ -218,4 +257,13 @@ function newResource(event, uid) {
   return copy;
 }
 
-module.exports = { shiftInstant, shiftTimes, shiftSeries, seriesHead, seriesTail };
+module.exports = {
+  wallMs,
+  fromWallMs,
+  seriesZone,
+  shiftTimes,
+  moveSeries,
+  shiftSeries,
+  seriesHead,
+  seriesTail,
+};

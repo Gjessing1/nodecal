@@ -5,35 +5,16 @@ process.env.CALDAV_PASSWORD = 'test';
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
-const express = require('express');
 const { parseIcs } = require('../server/caldav/vevent');
 const store = require('../server/cache/store');
-const eventsRouter = require('../server/routes/events');
+const { stubCaldav, restoreFetch, putEventRoute } = require('./helpers/caldav-stub');
 
 // "This and following" starts a new series from the edited occurrence on. It
 // is the old series' resource from there, not a bare event built from the
 // editor's fields: other clients' lines, the later EXDATEs, RDATEs and
 // overrides, and what COUNT has left all come along.
-const realFetch = globalThis.fetch;
 /** @type {Array<{method: string, url: string, body: string}>} */
 let requests = [];
-
-function stubCaldav() {
-  requests = [];
-  globalThis.fetch = /** @type {any} */ (
-    async function stubbedFetch(url, opts = {}) {
-      const u = String(url);
-      if (u.startsWith('http://127.0.0.1')) return realFetch(url, opts);
-      requests.push({ method: opts.method, url: u, body: String(opts.body || '') });
-      return {
-        ok: true,
-        status: 200,
-        headers: new Headers({ etag: '"v2"' }),
-        text: async () => '',
-      };
-    }
-  );
-}
 
 const HREF = 'http://localhost:5232/test/cal1/series-1.ics';
 const ATTENDEE = 'ATTENDEE;CN=Kari;PARTSTAT=ACCEPTED:mailto:kari@example.com';
@@ -74,31 +55,16 @@ function seed() {
  * PUT /events/series-1 the way the editor sends it.
  * @param {object} body
  */
-async function edit(body) {
-  const app = express();
-  app.use(express.json());
-  app.use(eventsRouter);
-  const server = app.listen(0);
-  await new Promise((resolve) => server.once('listening', resolve));
-  const { port } = /** @type {any} */ (server.address());
-  try {
-    const res = await fetch(`http://127.0.0.1:${port}/events/series-1`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        uid: 'series-1',
-        calendarId: '/cal1/',
-        title: 'Standup',
-        allDay: false,
-        rrule: 'FREQ=WEEKLY;COUNT=6',
-        recurrenceId: null,
-        ...body,
-      }),
-    });
-    return res.status;
-  } finally {
-    server.close();
-  }
+function edit(body) {
+  return putEventRoute('series-1', {
+    uid: 'series-1',
+    calendarId: '/cal1/',
+    title: 'Standup',
+    allDay: false,
+    rrule: 'FREQ=WEEKLY;COUNT=6',
+    recurrenceId: null,
+    ...body,
+  });
 }
 
 /** @param {{body: string}} req */
@@ -115,10 +81,10 @@ describe('this and following', () => {
   beforeEach(() => {
     store.clearEvents();
     seed();
-    stubCaldav();
+    requests = stubCaldav();
   });
   afterEach(() => {
-    globalThis.fetch = realFetch;
+    restoreFetch();
     store.clearEvents();
   });
 
@@ -160,7 +126,7 @@ describe('this and following', () => {
     assert.equal(store.getOverrides()[0].uid, tail.uid);
   });
 
-  it('starts without the old occurrences when the time moves', async () => {
+  it('moves the later exceptions with a moved time', async () => {
     await edit({
       recurringScope: 'future',
       occurrenceDate: '2026-10-19T10:00:00.000Z',
@@ -170,11 +136,16 @@ describe('this and following', () => {
 
     const tail = master(requests[0]);
     assert.equal(tail.start, '2026-10-19T12:00:00.000Z');
+    assert.equal(tail.end, '2026-10-19T13:00:00.000Z');
     assert.equal(tail.rrule, 'FREQ=WEEKLY;COUNT=4');
-    assert.equal(tail.exdates, null);
-    assert.equal(tail.rdates, null);
-    assert.equal(vevents(requests[0]).length, 1);
+    assert.deepEqual(tail.exdates, ['20261102T120000Z']);
+    assert.deepEqual(tail.rdates, ['20261028T120000Z']);
     assert.match(requests[0].body, /ATTENDEE;CN=Kari/);
+    const moved = vevents(requests[0]).filter((ev) => ev.recurrenceId);
+    assert.equal(moved.length, 1, 'the edited 9 Nov was lost');
+    assert.equal(moved[0].recurrenceId, '2026-11-09T12:00:00.000Z');
+    assert.equal(moved[0].start, '2026-11-09T13:00:00.000Z');
+    assert.equal(moved[0].title, 'Standup (late)');
   });
 
   it('takes the editor’s rule when it changed', async () => {
@@ -205,37 +176,5 @@ describe('this and following', () => {
     assert.equal(requests[0].url, HREF);
     assert.equal(master(requests[0]).title, 'Retro');
     assert.equal(vevents(requests[0]).length, 2);
-  });
-});
-
-describe('editing every occurrence', () => {
-  beforeEach(() => {
-    store.clearEvents();
-    seed();
-    stubCaldav();
-  });
-  afterEach(() => {
-    globalThis.fetch = realFetch;
-    store.clearEvents();
-  });
-
-  it('keeps RDATEs while the start stays', async () => {
-    await edit({
-      recurringScope: 'all',
-      title: 'Retro',
-      start: '2026-10-05T10:00:00.000Z',
-      end: '2026-10-05T11:00:00.000Z',
-    });
-    assert.match(requests[0].body, /RDATE:20261007T100000Z,20261028T100000Z/);
-  });
-
-  it('drops RDATEs when the start moves', async () => {
-    await edit({
-      recurringScope: 'all',
-      start: '2026-10-06T10:00:00.000Z',
-      end: '2026-10-06T11:00:00.000Z',
-    });
-    assert.doesNotMatch(requests[0].body, /RDATE/);
-    assert.equal(store.getEvent('series-1').rdates, null);
   });
 });
