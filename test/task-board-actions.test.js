@@ -106,6 +106,24 @@ test('adding into a bucket prefills what that bucket means', async () => {
   });
 });
 
+test('adding on a filtered board prefills filters without replacing a chosen bucket', async () => {
+  const { bucketDraft } = await load('boardActions.js');
+  const filters = { source: 'https://dav/work/', category: 'work' };
+  assert.deepStrictEqual(bucketDraft('status', 'doing', CTX, filters), {
+    status: 'IN-PROCESS',
+    source: 'https://dav/work/',
+    categories: ['work'],
+  });
+  assert.deepStrictEqual(bucketDraft('starred', 'starred', CTX, filters).categories, [
+    'important',
+    'work',
+  ]);
+  assert.deepStrictEqual(bucketDraft('source', 'https://dav/home/', CTX, filters), {
+    source: 'https://dav/home/',
+    categories: ['work'],
+  });
+});
+
 test('buckets without a single meaning for a new task offer no add', async () => {
   const { bucketDraft } = await load('boardActions.js');
   assert.strictEqual(bucketDraft('status', 'done', CTX), null);

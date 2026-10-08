@@ -82,19 +82,27 @@ export function moveGroups(board, layout, task, ctx, ordered = false) {
  * @param {BoardField} field
  * @param {string} key
  * @param {BoardContext} ctx
+ * @param {{source: string, category: string}} [filters] - prefill active filters where compatible
  * @returns {Partial<Task>|null}
  */
-export function bucketDraft(field, key, ctx) {
+export function bucketDraft(field, key, ctx, filters = { source: '', category: '' }) {
+  /** @type {Partial<Task>} */
+  let draft;
   if (field === 'source') {
     if (key === NO_VALUE) return null;
-    return { source: key };
+    draft = { source: key };
+  } else {
+    if (field === 'status' && key === 'done') return null;
+    const changes = moveChanges(field, BLANK_TASK, key, ctx);
+    if (!changes) return null;
+    // `completed: null` undoes a finished task on a move; a new one has nothing to undo.
+    draft = { ...changes };
+    delete draft.completed;
   }
-  if (field === 'status' && key === 'done') return null;
-  const changes = moveChanges(field, BLANK_TASK, key, ctx);
-  if (!changes) return null;
-  // `completed: null` undoes a finished task on a move; a new one has nothing to undo.
-  const draft = { ...changes };
-  delete draft.completed;
+  if (filters.source && !draft.source) draft.source = filters.source;
+  if (filters.category && !(draft.categories || []).includes(filters.category)) {
+    draft.categories = [...(draft.categories || []), filters.category];
+  }
   return draft;
 }
 

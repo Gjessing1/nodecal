@@ -5,32 +5,47 @@ import { effectiveTaskSource, rememberTaskSource } from '../app/profileTargets.j
 import { openTaskModal } from './taskModal.js';
 
 const DATE_CHIP_CLASSES =
-  'rounded-lg border border-border px-chip-x py-xs text-sm text-text-muted transition-colors duration-100 aria-pressed:border-accent aria-pressed:bg-accent-light aria-pressed:text-accent';
+  'shrink-0 whitespace-nowrap rounded-lg border border-border px-chip-x py-xs text-sm text-text-muted transition-colors duration-100 aria-pressed:border-accent aria-pressed:bg-accent-light aria-pressed:text-accent';
 
 let _quickAddEl = null;
+let _syncBoardFilters = null;
+const statusByBoard = new Map();
 
 export function destroyTaskQuickAdd() {
   if (_quickAddEl) {
     _quickAddEl.remove();
     _quickAddEl = null;
   }
+  _syncBoardFilters = null;
   document.getElementById('app')?.classList.remove('tasks-quickadd-visible');
+}
+
+export function syncTaskQuickAddBoardFilters() {
+  if (_syncBoardFilters) _syncBoardFilters();
 }
 
 export function focusTaskQuickAdd() {
   document.getElementById('task-quick-add-input')?.focus();
 }
 
-export function mountTaskQuickAdd(callbacks) {
+/**
+ * @param {Record<string, Function|null>} callbacks
+ * @param {{statusBoardId?: string, getFilters?: () => {source: string, category: string}}} [boardOptions]
+ */
+export function mountTaskQuickAdd(callbacks, boardOptions = {}) {
   destroyTaskQuickAdd();
-  _quickAddEl = buildQuickAdd(callbacks);
+  _quickAddEl = buildQuickAdd(callbacks, boardOptions);
   const app = document.getElementById('app');
   const bottomNav = document.getElementById('bottom-nav');
   if (bottomNav) app.insertBefore(_quickAddEl, bottomNav);
   app.classList.add('tasks-quickadd-visible');
 }
 
-function buildQuickAdd(callbacks) {
+/**
+ * @param {Record<string, Function|null>} callbacks
+ * @param {{statusBoardId?: string, getFilters?: () => {source: string, category: string}}} boardOptions
+ */
+function buildQuickAdd(callbacks, boardOptions) {
   const bar = document.createElement('div');
   bar.className =
     'task-quickadd fixed right-0 bottom-[calc(var(--nav-height)+var(--app-safe-area-bottom))] left-0 z-50 border-t border-border bg-bg pt-xs pr-[calc(var(--spacing-md)+var(--app-safe-area-right))] pb-sm pl-[calc(var(--spacing-md)+var(--app-safe-area-left))]';
@@ -165,7 +180,7 @@ function buildQuickAdd(callbacks) {
   inputWrap.appendChild(nlpFb);
 
   const dates = document.createElement('div');
-  dates.className = 'task-quickadd-extra mt-xs flex flex-wrap gap-sm';
+  dates.className = 'task-quickadd-extra mt-xs flex gap-sm overflow-x-auto [scrollbar-width:none]';
 
   let selectedDue = null;
   const today = localDateStr(new Date());
@@ -228,10 +243,34 @@ function buildQuickAdd(callbacks) {
   dates.appendChild(pickBtn);
   dates.appendChild(datePicker);
 
+  // One compact choice keeps quick-add usable on the status board without
+  // adding a separate action button for every status.
+  let selectedStatus = 'NEEDS-ACTION';
+  if (boardOptions.statusBoardId) {
+    selectedStatus = statusByBoard.get(boardOptions.statusBoardId) || selectedStatus;
+    const statusSelect = document.createElement('select');
+    statusSelect.className =
+      'shrink-0 rounded-lg border border-border bg-bg px-chip-x py-xs text-sm text-text-muted';
+    statusSelect.setAttribute('aria-label', 'New task status');
+    statusSelect.append(
+      new Option('To do', 'NEEDS-ACTION'),
+      new Option('In progress', 'IN-PROCESS'),
+    );
+    statusSelect.value = selectedStatus;
+    statusSelect.addEventListener('change', function chooseStatus() {
+      selectedStatus = statusSelect.value;
+      statusByBoard.set(boardOptions.statusBoardId, selectedStatus);
+      input.focus();
+    });
+    dates.prepend(statusSelect);
+  }
+
   // Source selector (only shown when multiple sources configured). Pre-select
   // the active profile's task source so switching profiles changes where new
   // tasks land.
-  let selectedSource = effectiveTaskSource() || null;
+  let filterSource = boardOptions.getFilters?.().source || '';
+  let selectedSource = filterSource || effectiveTaskSource() || null;
+  let sourceExplicit = false;
   const sourceRow = document.createElement('div');
   sourceRow.className = 'task-quickadd-extra mt-xs flex flex-wrap gap-sm';
   sourceRow.style.display = 'none';
@@ -257,6 +296,7 @@ function buildQuickAdd(callbacks) {
       // folds away as soon as focus leaves the bar.
       btn.addEventListener('mousedown', (e) => e.preventDefault());
       btn.addEventListener('click', () => {
+        sourceExplicit = true;
         selectedSource = selectedSource === src.url ? null : src.url;
         // Picking a source makes it the active profile's default, so the next
         // task lands in the same place without picking again.
@@ -267,6 +307,14 @@ function buildQuickAdd(callbacks) {
     }
   }
   buildSourceSelector();
+  _syncBoardFilters = function syncBoardFilters() {
+    const nextSource = boardOptions.getFilters?.().source || '';
+    if (nextSource === filterSource) return;
+    filterSource = nextSource;
+    if (sourceExplicit) return;
+    selectedSource = nextSource || effectiveTaskSource() || null;
+    buildSourceSelector();
+  };
 
   async function submit() {
     const raw = input.value.trim();
@@ -279,6 +327,14 @@ function buildQuickAdd(callbacks) {
     input.value = '';
     nlpFb.classList.add('hidden');
     const source = selectedSource || undefined;
+    const categories = [...tags];
+    const boardCategory = boardOptions.getFilters?.().category;
+    if (boardCategory && !categories.includes(boardCategory)) categories.push(boardCategory);
+    const taskFields = {
+      categories: categories.length ? categories : undefined,
+      source,
+      status: selectedStatus,
+    };
 
     // If user has selected a specific due date, use it and skip NLP date parsing
     if (selectedDue) {
@@ -288,8 +344,7 @@ function buildQuickAdd(callbacks) {
       await callbacks.onAdd({
         title: rawTitle,
         due,
-        categories: tags.length ? tags : undefined,
-        source,
+        ...taskFields,
       });
       return;
     }
@@ -308,26 +363,23 @@ function buildQuickAdd(callbacks) {
         await callbacks.onAdd({
           title: nlp.title || rawTitle,
           due: nlp.due || null,
-          categories: tags.length ? tags : undefined,
+          ...taskFields,
           rrule: nlp.rrule || undefined,
           xRecurringType: nlp.xRecurringType || undefined,
           xRecurringInterval: nlp.xRecurringInterval || undefined,
-          source,
         });
       } else {
         await callbacks.onAdd({
           title: rawTitle,
           due: null,
-          categories: tags.length ? tags : undefined,
-          source,
+          ...taskFields,
         });
       }
     } catch {
       await callbacks.onAdd({
         title: rawTitle,
         due: null,
-        categories: tags.length ? tags : undefined,
-        source,
+        ...taskFields,
       });
     }
   }
@@ -348,7 +400,11 @@ function buildQuickAdd(callbacks) {
     // Seed the full form with the profile's task source (or the one picked in
     // the source row) so new tasks — including recurring ones — land there.
     const source = selectedSource || effectiveTaskSource() || undefined;
-    openTaskModal({ source }, { onSave: (data) => callbacks.onAdd(data), onDelete: () => {} });
+    const boardCategory = boardOptions.getFilters?.().category;
+    openTaskModal(
+      { source, status: selectedStatus, categories: boardCategory ? [boardCategory] : undefined },
+      { onSave: (data) => callbacks.onAdd(data), onDelete: () => {} },
+    );
   });
 
   const row = document.createElement('div');

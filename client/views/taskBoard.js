@@ -46,8 +46,17 @@ function boardContext() {
  * @param {boolean} ordered - tasks are in manual order, so a card's place in its
  *   cell can be changed and is kept
  * @param {Task[]} [bucketTasks=tasks] - source-visible tasks before search and filters
+ * @param {{source: string, category: string}} [viewFilters]
  */
-export function renderTaskBoard(container, tasks, board, callbacks, ordered, bucketTasks = tasks) {
+export function renderTaskBoard(
+  container,
+  tasks,
+  board,
+  callbacks,
+  ordered,
+  bucketTasks = tasks,
+  viewFilters = { source: '', category: '' },
+) {
   const ctx = boardContext();
   const layout = buildBoard(tasks, board, ctx, bucketTasks);
   const hiddenFields = board.lanes ? [board.columns, board.lanes] : [board.columns];
@@ -81,13 +90,13 @@ export function renderTaskBoard(container, tasks, board, callbacks, ordered, buc
     if (column.key === 'done' && board.columns === 'status') {
       hint = `Completed in the last ${DONE_WINDOW_DAYS} days`;
     }
-    const onAdd = addHandler(board.columns, column.key, ctx, callbacks);
+    const onAdd = addHandler(board.columns, column.key, ctx, callbacks, viewFilters);
     const count = columnCount(layout, column.key);
     const head = buildColumnHead(column.label, count, { hint, onAdd });
     el.appendChild(head);
     jumpColumns.push({ label: column.label, count, head });
   }
-  const jumpBar = buildBoardJumpBar(el, jumpColumns);
+  const jumpBar = buildBoardJumpBar(el, jumpColumns, board.columns === 'status');
   shell.appendChild(jumpBar.element);
   for (const lane of layout.lanes) {
     const foldKey = `${board.id}\n${lane.key}`;
@@ -100,9 +109,9 @@ export function renderTaskBoard(container, tasks, board, callbacks, ordered, buc
             if (folded) foldedLanes.delete(foldKey);
             else foldedLanes.add(foldKey);
             shell.remove();
-            renderTaskBoard(container, tasks, board, callbacks, ordered, bucketTasks);
+            renderTaskBoard(container, tasks, board, callbacks, ordered, bucketTasks, viewFilters);
           },
-          onAdd: addHandler(board.lanes, lane.key, ctx, callbacks),
+          onAdd: addHandler(board.lanes, lane.key, ctx, callbacks, viewFilters),
         }),
       );
     }
@@ -219,11 +228,12 @@ function restorePlace(el, board) {
  * @param {string} key
  * @param {BoardContext} ctx
  * @param {Record<string, Function|null>} callbacks
+ * @param {{source: string, category: string}} viewFilters
  * @returns {(() => void)|null}
  */
-function addHandler(field, key, ctx, callbacks) {
+function addHandler(field, key, ctx, callbacks, viewFilters) {
   if (!callbacks.onBoardAdd) return null;
-  const draft = bucketDraft(field, key, ctx);
+  const draft = bucketDraft(field, key, ctx, viewFilters);
   if (!draft) return null;
   return function addToBucket() {
     callbacks.onBoardAdd(draft);

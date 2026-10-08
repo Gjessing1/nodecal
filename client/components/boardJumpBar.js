@@ -3,11 +3,12 @@
 /**
  * @param {HTMLElement} board
  * @param {{label: string, count: number, head: HTMLElement}[]} columns
+ * @param {boolean} [statusColumns] - the fixed three-column status board
  * @returns {{element: HTMLElement, update: () => void}}
  */
-export function buildBoardJumpBar(board, columns) {
+export function buildBoardJumpBar(board, columns, statusColumns = false) {
   const bar = document.createElement('nav');
-  bar.className = 'task-board-jump';
+  bar.className = 'task-board-jump' + (statusColumns ? ' task-board-jump-status' : '');
   bar.setAttribute('aria-label', 'Board columns');
 
   const buttons = [];

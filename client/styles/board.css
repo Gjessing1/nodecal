@@ -39,6 +39,29 @@
     background: var(--color-accent-light);
     color: var(--color-accent);
   }
+  .task-board-jump-status {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    overflow: hidden;
+    padding: 0 var(--spacing-sm);
+  }
+  .task-board-jump-status .task-board-jump-button {
+    min-width: 0;
+    justify-content: center;
+    padding: 0 var(--spacing-xs);
+    border: 0;
+    border-bottom: var(--spacing-2xs) solid transparent;
+    border-radius: 0;
+  }
+  .task-board-jump-status .task-board-jump-button[aria-current='true'] {
+    border-bottom-color: var(--color-accent);
+    background: transparent;
+  }
+  .task-board-jump-status .task-board-jump-button span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .task-board-jump-count {
     font-weight: normal;
   }

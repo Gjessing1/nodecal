@@ -7,10 +7,11 @@ import {
   taskSourceVisible,
 } from '../app/taskUtils.js';
 import { formatShortDate, localDateStr } from '../app/utils.js';
-import { mountTaskQuickAdd } from '../components/taskQuickAdd.js';
+import { mountTaskQuickAdd, syncTaskQuickAddBoardFilters } from '../components/taskQuickAdd.js';
 import { renderTaskBoard } from './taskBoard.js';
 import { compareManual } from '../app/manualOrder.js';
 import { boardForLayout, buildLayoutSelect, readStoredLayout, storeLayout } from './taskLayout.js';
+import { readTaskViewPrefs, storeTaskViewPrefs } from './taskViewPrefs.js';
 
 // tasks-filter-row: folded behind the Filters button on landscape phones (tasks.css).
 const FILTER_ROW_CLASSES =
@@ -22,15 +23,13 @@ const FILTER_CHIP_CLASSES =
   'shrink-0 whitespace-nowrap rounded-lg border border-border px-control py-pill-y text-sm text-text-muted transition-colors duration-100 aria-pressed:border-accent aria-pressed:bg-accent-light aria-pressed:text-accent';
 
 // Persist filter state across renders so toggling a task doesn't reset UI state
+const initialLayout = readStoredLayout();
 const _persist = {
   showDone: false,
-  starredOnly: false,
-  groupBy: readStoredLayout(),
-  filterCat: '',
-  filterSource: '',
+  groupBy: initialLayout,
+  ...readTaskViewPrefs(initialLayout),
   query: '',
   filtersOpen: false,
-  sortOrder: null, // null means use state.config.taskSortOrder
 };
 
 /**
@@ -39,6 +38,15 @@ const _persist = {
  * @param {object} callbacks - { onComplete, onStar, onAdd, onEdit, onDelete }
  */
 export function renderTasks(container, callbacks) {
+  // A board removed in Settings cannot keep its filters active on the list.
+  if (
+    _persist.groupBy !== 'date' &&
+    _persist.groupBy !== 'category' &&
+    !boardForLayout(_persist.groupBy)
+  ) {
+    _persist.groupBy = 'date';
+    Object.assign(_persist, readTaskViewPrefs('date'));
+  }
   // Completing/starring a task re-renders the whole view — keep the reading position.
   const prevScrollTop = container.querySelector('.tasks-list')?.scrollTop || 0;
   container.innerHTML = '';
@@ -50,6 +58,27 @@ export function renderTasks(container, callbacks) {
   const filterState = { showDone: _persist.showDone, starredOnly: _persist.starredOnly };
   let currentGroupBy = _persist.groupBy;
   let currentFilterCat = _persist.filterCat;
+
+  function rememberPrefs() {
+    storeTaskViewPrefs(currentGroupBy, {
+      filterCat: currentFilterCat,
+      filterSource: currentSourceFilter,
+      starredOnly: filterState.starredOnly,
+      sortOrder: _persist.sortOrder,
+    });
+  }
+
+  function quickAddOptions() {
+    const board = boardForLayout(currentGroupBy);
+    if (!board) return {};
+    const options = {
+      getFilters: () => ({ source: currentSourceFilter, category: currentFilterCat }),
+    };
+    if (board.columns === 'status' || board.lanes === 'status') {
+      return { ...options, statusBoardId: board.id };
+    }
+    return options;
+  }
 
   // ── Controls row ───────────────────────────────────────────
   const controls = document.createElement('div');
@@ -78,6 +107,7 @@ export function renderTasks(container, callbacks) {
   starredOnlyCheck.checked = _persist.starredOnly;
   starredOnlyCheck.addEventListener('change', () => {
     filterState.starredOnly = _persist.starredOnly = starredOnlyCheck.checked;
+    rememberPrefs();
     rerender();
   });
   starredOnlyLabel.appendChild(starredOnlyCheck);
@@ -115,15 +145,17 @@ export function renderTasks(container, callbacks) {
   rightControls.className = 'flex items-center gap-sm';
 
   const groupSel = buildLayoutSelect();
-  // The chosen board may have been deleted in Settings since.
-  if (currentGroupBy !== 'category' && !boardForLayout(currentGroupBy)) {
-    currentGroupBy = _persist.groupBy = 'date';
-  }
   groupSel.addEventListener('change', () => {
     currentGroupBy = _persist.groupBy = groupSel.value;
     storeLayout(groupSel.value);
+    Object.assign(_persist, readTaskViewPrefs(currentGroupBy));
+    filterState.starredOnly = starredOnlyCheck.checked = _persist.starredOnly;
+    currentFilterCat = _persist.filterCat;
+    currentSourceFilter = _persist.filterSource;
+    sortSel.value = _persist.sortOrder || state.config.taskSortOrder || 'due';
     showDoneLabel.hidden = !!boardForLayout(currentGroupBy);
     rerender();
+    if (callbacks.onAdd) mountTaskQuickAdd(callbacks, quickAddOptions());
   });
 
   const sortSel = document.createElement('select');
@@ -142,6 +174,7 @@ export function renderTasks(container, callbacks) {
   sortSel.value = _persist.sortOrder || state.config.taskSortOrder || 'due';
   sortSel.addEventListener('change', () => {
     _persist.sortOrder = sortSel.value;
+    rememberPrefs();
     rerender();
   });
 
@@ -186,7 +219,7 @@ export function renderTasks(container, callbacks) {
     // Only offer sources whose calendar is active in the current profile —
     // a deactivated calendar (hidden via drawer/profile) hides its tasks too.
     const sources = (state.taskSources || []).filter((s) => !state.hiddenCalendars.has(s.url));
-    if (!sources || sources.length < 2) return;
+    if (sources.length < 2 && !currentSourceFilter) return;
 
     const label = document.createElement('span');
     label.className = 'shrink-0 text-sm text-text-muted';
@@ -199,6 +232,7 @@ export function renderTasks(container, callbacks) {
     allChip.textContent = 'All';
     allChip.addEventListener('click', () => {
       currentSourceFilter = _persist.filterSource = '';
+      rememberPrefs();
       buildSourceFilter();
       rerender();
     });
@@ -212,6 +246,7 @@ export function renderTasks(container, callbacks) {
       chip.addEventListener('click', () => {
         currentSourceFilter = _persist.filterSource =
           currentSourceFilter === src.url ? '' : src.url;
+        rememberPrefs();
         buildSourceFilter();
         rerender();
       });
@@ -229,7 +264,7 @@ export function renderTasks(container, callbacks) {
     const hidden = state.config.hiddenCategories || [];
     const sourceVisible = state.tasks.filter((t) => taskSourceVisible(t, state.hiddenCalendars));
     const allCats = getAllCategories(sourceVisible).filter((c) => !hidden.includes(c));
-    if (!allCats.length) return;
+    if (!allCats.length && !currentFilterCat) return;
 
     const label = document.createElement('span');
     label.className = 'shrink-0 text-sm text-text-muted';
@@ -242,6 +277,7 @@ export function renderTasks(container, callbacks) {
     allChip.textContent = 'All';
     allChip.addEventListener('click', () => {
       currentFilterCat = _persist.filterCat = '';
+      rememberPrefs();
       buildCatFilter();
       rerender();
     });
@@ -254,6 +290,7 @@ export function renderTasks(container, callbacks) {
       chip.textContent = cat;
       chip.addEventListener('click', () => {
         currentFilterCat = _persist.filterCat = currentFilterCat === cat ? '' : cat;
+        rememberPrefs();
         buildCatFilter();
         rerender();
       });
@@ -270,6 +307,7 @@ export function renderTasks(container, callbacks) {
     buildSourceFilter();
     buildCatFilter();
     updateFiltersToggle();
+    syncTaskQuickAddBoardFilters();
     renderList(
       list,
       filterState,
@@ -301,7 +339,7 @@ export function renderTasks(container, callbacks) {
   // Browser clamps to the new content height if the list got shorter.
   if (prevScrollTop) list.scrollTop = prevScrollTop;
 
-  if (callbacks.onAdd) mountTaskQuickAdd(callbacks);
+  if (callbacks.onAdd) mountTaskQuickAdd(callbacks, quickAddOptions());
 }
 
 // ── List rendering ─────────────────────────────────────────
@@ -352,6 +390,7 @@ function renderList(
       callbacks,
       ordered,
       sourceVisibleTasks,
+      { source: filterSource, category: filterCat },
     );
     return;
   }
