@@ -3,8 +3,9 @@ import { PRIORITY_LEVELS, PRIORITY_VALUES } from '../app/taskUtils.js';
 /**
  * Less-used quick-add fields stay behind one disclosure beside the title.
  * @param {() => void} onFullEditor
+ * @param {{sources: import('../app/state.js').TaskSource[], source: string|null, onSourceChange: (url: string) => void}} sourceOptions
  */
-export function buildTaskQuickAddDetails(onFullEditor) {
+export function buildTaskQuickAddDetails(onFullEditor, sourceOptions) {
   const trigger = document.createElement('button');
   trigger.type = 'button';
   trigger.className =
@@ -39,6 +40,23 @@ export function buildTaskQuickAddDetails(onFullEditor) {
     new Option('Evening before', 'evening-before'),
   );
   fields.appendChild(labelled('Reminder', reminder));
+
+  /** @type {HTMLSelectElement|null} */
+  let source = null;
+  if (sourceOptions.sources.length > 1) {
+    source = document.createElement('select');
+    source.setAttribute('aria-label', 'New task source');
+    for (const item of sourceOptions.sources) {
+      source.appendChild(new Option(item.name || item.url, item.url));
+    }
+    source.value = sourceOptions.source || '';
+    source.addEventListener('change', function changeSource() {
+      sourceOptions.onSourceChange(source.value);
+    });
+    const sourceField = labelled('Source', source);
+    sourceField.classList.add('col-span-2');
+    fields.appendChild(sourceField);
+  }
   panel.appendChild(fields);
 
   const notes = document.createElement('textarea');
@@ -65,6 +83,9 @@ export function buildTaskQuickAddDetails(onFullEditor) {
   return {
     trigger,
     panel,
+    setSource(url) {
+      if (source) source.value = url || '';
+    },
     read() {
       return {
         priority: PRIORITY_VALUES[priority.value] || undefined,

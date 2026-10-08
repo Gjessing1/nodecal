@@ -5,8 +5,8 @@ import { effectiveTaskSource, rememberTaskSource } from '../app/profileTargets.j
 import { openTaskModal } from './taskModal.js';
 import { buildTaskQuickAddDetails } from './taskQuickAddDetails.js';
 
-const DATE_CHIP_CLASSES =
-  'shrink-0 whitespace-nowrap rounded-lg border border-border px-chip-x py-xs text-sm text-text-muted transition-colors duration-100 aria-pressed:border-accent aria-pressed:bg-accent-light aria-pressed:text-accent';
+const QUICK_SELECT_CLASSES =
+  'shrink-0 rounded-lg border border-border bg-bg px-sm py-xs text-sm text-text-muted';
 
 let _quickAddEl = null;
 let _syncBoardFilters = null;
@@ -180,34 +180,21 @@ function buildQuickAdd(callbacks, boardOptions) {
   inputWrap.appendChild(autocompleteList);
   inputWrap.appendChild(nlpFb);
 
-  const dates = document.createElement('div');
-  dates.className = 'task-quickadd-extra mt-xs flex gap-sm overflow-x-auto [scrollbar-width:none]';
+  const choices = document.createElement('div');
+  choices.className = 'task-quickadd-extra mt-xs flex items-center gap-xs';
 
   let selectedDue = null;
   const today = localDateStr(new Date());
   const tomorrow = localDateStr(new Date(Date.now() + 86400000));
-
-  function makeShortcut(label, value) {
-    const btn = document.createElement('button');
-    btn.className = DATE_CHIP_CLASSES;
-    btn.setAttribute('aria-pressed', 'false');
-    btn.textContent = label;
-    // Prevent focus theft: keep mobile keyboard visible when tapping date shortcuts
-    btn.addEventListener('mousedown', (e) => e.preventDefault());
-    btn.addEventListener('click', () => {
-      selectedDue = selectedDue === value ? null : value;
-      updateActive();
-      input.focus();
-    });
-    return btn;
-  }
-
-  const todayBtn = makeShortcut('Today', today);
-  const tomorrowBtn = makeShortcut('Tomorrow', tomorrow);
-  const pickBtn = document.createElement('button');
-  pickBtn.className = DATE_CHIP_CLASSES;
-  pickBtn.setAttribute('aria-pressed', 'false');
-  pickBtn.textContent = 'Pick date';
+  const dueSelect = document.createElement('select');
+  dueSelect.className = QUICK_SELECT_CLASSES;
+  dueSelect.setAttribute('aria-label', 'New task due date');
+  dueSelect.append(
+    new Option('Due', ''),
+    new Option('Today', today),
+    new Option('Tomorrow', tomorrow),
+    new Option('Pick date…', 'pick'),
+  );
 
   const datePicker = document.createElement('input');
   datePicker.type = 'date';
@@ -215,34 +202,42 @@ function buildQuickAdd(callbacks, boardOptions) {
   datePicker.addEventListener('change', () => {
     if (datePicker.value) {
       selectedDue = datePicker.value;
-      updateActive();
+      updateDueSelect();
+      nlpFb.classList.add('hidden');
+      input.focus();
     }
   });
-  pickBtn.addEventListener('mousedown', (e) => e.preventDefault());
-  pickBtn.addEventListener('click', () => {
-    if (datePicker.showPicker) datePicker.showPicker();
-    else datePicker.click();
+  dueSelect.addEventListener('change', function chooseDue() {
+    if (dueSelect.value === 'pick') {
+      updateDueSelect();
+      try {
+        if (datePicker.showPicker) datePicker.showPicker();
+        else datePicker.click();
+      } catch {
+        datePicker.click();
+      }
+      return;
+    }
+    selectedDue = dueSelect.value || null;
+    updateDueSelect();
+    nlpFb.classList.add('hidden');
+    input.focus();
   });
 
-  function updateActive() {
-    const todayActive = selectedDue === today;
-    const tomorrowActive = selectedDue === tomorrow;
-    const pickerActive = Boolean(selectedDue && !todayActive && !tomorrowActive);
-    todayBtn.setAttribute('aria-pressed', String(todayActive));
-    tomorrowBtn.setAttribute('aria-pressed', String(tomorrowActive));
-    pickBtn.setAttribute('aria-pressed', String(pickerActive));
-    if (pickerActive && selectedDue) {
-      const d = new Date(selectedDue + 'T00:00:00');
-      pickBtn.textContent = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    } else {
-      pickBtn.textContent = 'Pick date';
+  function updateDueSelect() {
+    const custom = dueSelect.querySelector('option[data-custom]');
+    if (custom) custom.remove();
+    if (selectedDue && selectedDue !== today && selectedDue !== tomorrow) {
+      const date = new Date(selectedDue + 'T00:00:00');
+      const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const option = new Option(label, selectedDue);
+      option.dataset.custom = '';
+      dueSelect.add(option, dueSelect.querySelector('option[value="pick"]'));
     }
+    dueSelect.value = selectedDue || '';
   }
 
-  dates.appendChild(todayBtn);
-  dates.appendChild(tomorrowBtn);
-  dates.appendChild(pickBtn);
-  dates.appendChild(datePicker);
+  choices.append(dueSelect, datePicker);
 
   // One compact choice keeps quick-add usable on the status board without
   // adding a separate action button for every status.
@@ -250,72 +245,23 @@ function buildQuickAdd(callbacks, boardOptions) {
   if (boardOptions.statusBoardId) {
     selectedStatus = statusByBoard.get(boardOptions.statusBoardId) || selectedStatus;
     const statusSelect = document.createElement('select');
-    statusSelect.className =
-      'shrink-0 rounded-lg border border-border bg-bg px-chip-x py-xs text-sm text-text-muted';
+    statusSelect.className = QUICK_SELECT_CLASSES;
     statusSelect.setAttribute('aria-label', 'New task status');
-    statusSelect.append(
-      new Option('To do', 'NEEDS-ACTION'),
-      new Option('In progress', 'IN-PROCESS'),
-    );
+    statusSelect.append(new Option('To do', 'NEEDS-ACTION'), new Option('Doing', 'IN-PROCESS'));
     statusSelect.value = selectedStatus;
     statusSelect.addEventListener('change', function chooseStatus() {
       selectedStatus = statusSelect.value;
       statusByBoard.set(boardOptions.statusBoardId, selectedStatus);
       input.focus();
     });
-    dates.prepend(statusSelect);
+    choices.prepend(statusSelect);
   }
 
-  // Source selector (only shown when multiple sources configured). Pre-select
-  // the active profile's task source so switching profiles changes where new
-  // tasks land.
+  // Boards can narrow the source; keep that as the add target until the user
+  // deliberately chooses another source in the expanded fields.
   let filterSource = boardOptions.getFilters?.().source || '';
   let selectedSource = filterSource || effectiveTaskSource() || null;
   let sourceExplicit = false;
-  const sourceRow = document.createElement('div');
-  sourceRow.className = 'task-quickadd-extra mt-xs flex flex-wrap gap-sm';
-  sourceRow.style.display = 'none';
-
-  function buildSourceSelector() {
-    const sources = state.taskSources;
-    if (!sources || sources.length < 2) {
-      sourceRow.style.display = 'none';
-      return;
-    }
-    sourceRow.style.display = '';
-    sourceRow.innerHTML = '';
-    const lbl = document.createElement('span');
-    lbl.className = 'shrink-0 text-sm text-text-muted';
-    lbl.textContent = 'To:';
-    sourceRow.appendChild(lbl);
-    for (const src of sources) {
-      const btn = document.createElement('button');
-      btn.className = DATE_CHIP_CLASSES;
-      btn.setAttribute('aria-pressed', String(selectedSource === src.url));
-      btn.textContent = src.name || src.url;
-      // Keep focus in the input like the date chips do: in landscape this row
-      // folds away as soon as focus leaves the bar.
-      btn.addEventListener('mousedown', (e) => e.preventDefault());
-      btn.addEventListener('click', () => {
-        sourceExplicit = true;
-        selectedSource = selectedSource === src.url ? null : src.url;
-        // Picking a source makes it the active profile's default, so the next
-        // task lands in the same place without picking again.
-        if (selectedSource) rememberTaskSource(selectedSource);
-        buildSourceSelector();
-      });
-      sourceRow.appendChild(btn);
-    }
-  }
-  buildSourceSelector();
-  _syncBoardFilters = function syncBoardFilters() {
-    const nextSource = boardOptions.getFilters?.().source || '';
-    if (nextSource === filterSource) return;
-    filterSource = nextSource;
-    if (sourceExplicit) return;
-    selectedSource = nextSource || effectiveTaskSource() || null;
-    buildSourceSelector();
-  };
 
   function currentFields(tags) {
     const categories = [...tags];
@@ -329,13 +275,32 @@ function buildQuickAdd(callbacks, boardOptions) {
     };
   }
 
-  const details = buildTaskQuickAddDetails(function openFullEditor() {
-    const { title, tags } = parseTagsFromTitle(input.value.trim());
-    openTaskModal(
-      { title, due: selectedDue, ...currentFields(tags) },
-      { onSave: (data) => callbacks.onAdd(data), onDelete: () => {} },
-    );
-  });
+  const details = buildTaskQuickAddDetails(
+    function openFullEditor() {
+      const { title, tags } = parseTagsFromTitle(input.value.trim());
+      openTaskModal(
+        { title, due: selectedDue, ...currentFields(tags) },
+        { onSave: (data) => callbacks.onAdd(data), onDelete: () => {} },
+      );
+    },
+    {
+      sources: state.taskSources || [],
+      source: selectedSource,
+      onSourceChange(url) {
+        sourceExplicit = true;
+        selectedSource = url;
+        rememberTaskSource(url);
+      },
+    },
+  );
+  _syncBoardFilters = function syncBoardFilters() {
+    const nextSource = boardOptions.getFilters?.().source || '';
+    if (nextSource === filterSource) return;
+    filterSource = nextSource;
+    if (sourceExplicit) return;
+    selectedSource = nextSource || effectiveTaskSource() || null;
+    details.setSource(selectedSource);
+  };
 
   async function submit() {
     const raw = input.value.trim();
@@ -353,7 +318,7 @@ function buildQuickAdd(callbacks, boardOptions) {
     if (selectedDue) {
       const due = selectedDue;
       selectedDue = null;
-      updateActive();
+      updateDueSelect();
       await callbacks.onAdd({
         title: rawTitle,
         due,
@@ -362,7 +327,7 @@ function buildQuickAdd(callbacks, boardOptions) {
       return;
     }
     selectedDue = null;
-    updateActive();
+    updateDueSelect();
 
     // Run NLP to extract date and recurrence from the title
     try {
@@ -407,11 +372,10 @@ function buildQuickAdd(callbacks, boardOptions) {
   const row = document.createElement('div');
   row.className = 'mt-xs flex gap-sm';
   row.appendChild(inputWrap);
-  row.appendChild(details.trigger);
   row.appendChild(submitBtn);
 
-  bar.appendChild(dates);
-  bar.appendChild(sourceRow);
+  choices.appendChild(details.trigger);
+  bar.appendChild(choices);
   bar.appendChild(details.panel);
   bar.appendChild(row);
   return bar;

@@ -104,6 +104,7 @@ if (process.env.NODECAL_SKIP_DOM_TESTS === '1') {
     const status = /** @type {HTMLSelectElement} */ (
       globalThis.document.querySelector('[aria-label="New task status"]')
     );
+    assert.equal(status.options[1].textContent, 'Doing');
     status.value = 'IN-PROCESS';
     status.dispatchEvent(new Event('change'));
     assert.equal(globalThis.document.querySelector('[aria-label="New task (full form)"]'), null);
@@ -112,6 +113,10 @@ if (process.env.NODECAL_SKIP_DOM_TESTS === '1') {
     );
     more.click();
     assert.equal(more.getAttribute('aria-expanded'), 'true');
+    const source = /** @type {HTMLSelectElement} */ (
+      globalThis.document.querySelector('[aria-label="New task source"]')
+    );
+    assert.equal(source.value, '/work/');
     /** @type {HTMLSelectElement} */ (
       globalThis.document.querySelector('[aria-label="New task priority"]')
     ).value = 'high';
@@ -125,20 +130,41 @@ if (process.env.NODECAL_SKIP_DOM_TESTS === '1') {
       globalThis.document.querySelector('#task-quick-add-input')
     );
     quickInput.value = 'Build report';
-    /** @type {HTMLButtonElement} */ (
-      [...globalThis.document.querySelectorAll('.task-quickadd button')].find(
-        (button) => button.textContent === 'Today',
-      )
-    ).click();
+    const due = /** @type {HTMLSelectElement} */ (
+      globalThis.document.querySelector('[aria-label="New task due date"]')
+    );
+    due.value = [...due.options].find((option) => option.textContent === 'Today').value;
+    due.dispatchEvent(new Event('change'));
     /** @type {HTMLButtonElement} */ (
       globalThis.document.querySelector('[aria-label="Quick add task"]')
     ).click();
     assert.equal(quickAdded.status, 'IN-PROCESS');
+    assert.equal(quickAdded.due, due.options[1].value);
     assert.equal(quickAdded.priority, 1);
     assert.equal(quickAdded.taskReminder, 'on-due');
     assert.equal(quickAdded.description, 'Draft by Friday');
     assert.equal(quickAdded.source, '/work/');
     assert.deepEqual(quickAdded.categories, ['work']);
+    assert.equal(due.value, '');
+
+    const datePicker = /** @type {HTMLInputElement} */ (
+      globalThis.document.querySelector('.task-quickadd input[type="date"]')
+    );
+    due.value = 'pick';
+    due.dispatchEvent(new Event('change'));
+    assert.equal(due.value, '', 'canceling the picker leaves the previous due choice');
+    datePicker.value = '2030-04-12';
+    datePicker.dispatchEvent(new Event('change'));
+    assert.equal(due.value, '2030-04-12');
+    source.value = '/home/';
+    source.dispatchEvent(new Event('change'));
+    quickInput.value = 'Plan next report';
+    /** @type {HTMLButtonElement} */ (
+      globalThis.document.querySelector('[aria-label="Quick add task"]')
+    ).click();
+    assert.equal(quickAdded.due, '2030-04-12');
+    assert.equal(quickAdded.source, '/home/');
+    assert.equal(due.value, '');
 
     layout.value = 'date';
     layout.dispatchEvent(new Event('change'));
