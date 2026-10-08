@@ -10,6 +10,9 @@ import { formatShortDate, localDateStr } from '../app/utils.js';
 import { mountTaskQuickAdd, syncTaskQuickAddBoardFilters } from '../components/taskQuickAdd.js';
 import { renderTaskBoard } from './taskBoard.js';
 import { compareManual } from '../app/manualOrder.js';
+import { placedMove, taskOrderGroup } from '../app/boardOrder.js';
+import { showBoardMoveMenu } from '../components/boardMoveMenu.js';
+import { clearListDnd, initListDnd } from '../components/listDnd.js';
 import { boardForLayout, buildLayoutSelect, readStoredLayout, storeLayout } from './taskLayout.js';
 import { readTaskViewPrefs, storeTaskViewPrefs } from './taskViewPrefs.js';
 
@@ -31,6 +34,7 @@ const _persist = {
   query: '',
   filtersOpen: false,
 };
+let refocusListTaskId = '';
 
 /**
  * Render the tasks view.
@@ -383,6 +387,7 @@ function renderList(
   filterSource,
   callbacks,
 ) {
+  clearListDnd(container);
   container.innerHTML = '';
   const board = boardForLayout(groupBy);
   if (board) {
@@ -429,22 +434,23 @@ function renderList(
   if (filterState.showDone) {
     // "Done" mode: show ONLY completed tasks, newest completion first
     tasks = visibleTasks.filter((t) => t.status === 'COMPLETED');
-    tasks = [...tasks].sort((a, b) => (b.completed || '').localeCompare(a.completed || ''));
+    if (sortOrder === 'manual') tasks = sortTasks(tasks, sortOrder);
+    else tasks = [...tasks].sort((a, b) => (b.completed || '').localeCompare(a.completed || ''));
   } else {
     tasks = visibleTasks.filter((t) => t.status !== 'COMPLETED');
     tasks = sortTasks(tasks, sortOrder);
   }
 
   if (filterState.showDone) {
-    renderByCompletionGroups(container, tasks, callbacks);
+    renderByCompletionGroups(container, tasks, callbacks, sortOrder === 'manual');
   } else if (groupBy === 'category') {
-    renderByCategoryGroups(container, tasks, hidden, callbacks);
+    renderByCategoryGroups(container, tasks, hidden, callbacks, sortOrder === 'manual');
   } else {
-    renderByDateGroups(container, tasks, callbacks);
+    renderByDateGroups(container, tasks, callbacks, sortOrder === 'manual');
   }
 }
 
-function renderByDateGroups(container, tasks, callbacks) {
+function renderByDateGroups(container, tasks, callbacks, ordered) {
   const today = localDateStr(new Date());
   const tomorrow = localDateStr(new Date(Date.now() + 86400000));
 
@@ -485,10 +491,10 @@ function renderByDateGroups(container, tasks, callbacks) {
   }
   if (noDue.length) groups.push({ key: 'none', label: 'No due date', items: noDue });
 
-  renderGroups(container, groups, callbacks, tasks.length, false);
+  renderGroups(container, groups, callbacks, tasks.length, false, ordered);
 }
 
-function renderByCompletionGroups(container, tasks, callbacks) {
+function renderByCompletionGroups(container, tasks, callbacks, ordered) {
   const byDate = new Map();
   const noDate = [];
   for (const task of tasks) {
@@ -505,20 +511,22 @@ function renderByCompletionGroups(container, tasks, callbacks) {
     groups.push({ key: date, label: formatDateHeader(date), items });
   }
   if (noDate.length) groups.push({ key: 'none', label: 'No completion date', items: noDate });
-  renderGroups(container, groups, callbacks, tasks.length, true); // showDue=true: show due date on each card
+  renderGroups(container, groups, callbacks, tasks.length, true, ordered);
 }
 
-function renderByCategoryGroups(container, tasks, hidden, callbacks) {
+function renderByCategoryGroups(container, tasks, hidden, callbacks, ordered) {
   const grouped = groupTasksByCategory(tasks, hidden);
   const groups = [];
   for (const [key, items] of grouped) {
     groups.push({ key: key || '__none__', label: key || 'Uncategorized', items });
   }
-  renderGroups(container, groups, callbacks, tasks.length, true);
+  renderGroups(container, groups, callbacks, tasks.length, true, ordered);
 }
 
-function renderGroups(container, groups, callbacks, totalCount, showDue = false) {
+function renderGroups(container, groups, callbacks, totalCount, showDue = false, ordered = false) {
   let isEmpty = true;
+  const canMove = ordered && !!callbacks.onBoardMove;
+  const itemsBySection = new Map();
   for (const group of groups) {
     if (!group.items.length) continue;
     isEmpty = false;
@@ -533,14 +541,28 @@ function renderGroups(container, groups, callbacks, totalCount, showDue = false)
     section.appendChild(heading);
 
     const ul = document.createElement('ul');
-    ul.className = 'list-none';
-    for (const task of group.items) {
+    ul.className = 'task-list-group list-none';
+    itemsBySection.set(ul, group.items);
+    for (let position = 0; position < group.items.length; position++) {
+      const task = group.items[position];
+      const orderGroup = canMove ? taskOrderGroup(task, group.items, position) : null;
       ul.appendChild(
         buildTaskItem(task, {
           onComplete: callbacks.onComplete ? (t) => callbacks.onComplete(t) : null,
           onStar: callbacks.onStar ? (t) => callbacks.onStar(t) : null,
           onClick: callbacks.onEdit ? (t) => callbacks.onEdit(t) : null,
           onSnooze: callbacks.onSnooze ? (t) => callbacks.onSnooze(t) : null,
+          onMove: orderGroup
+            ? (t) =>
+                showBoardMoveMenu(t, [orderGroup], async function moveFromMenu(target) {
+                  refocusListTaskId = t.id;
+                  try {
+                    await callbacks.onBoardMove(t, target.changes, target.shifts || []);
+                  } finally {
+                    setTimeout(() => (refocusListTaskId = ''), 0);
+                  }
+                })
+            : null,
           showDue,
         }),
       );
@@ -559,6 +581,28 @@ function renderGroups(container, groups, callbacks, totalCount, showDue = false)
     }
     container.appendChild(empty);
   }
+  if (canMove) {
+    initListDnd(container, function dropInSection(id, section, index) {
+      const items = itemsBySection.get(section);
+      const task = items?.find((item) => item.id === id);
+      if (!task) return;
+      const { changes, shifts } = placedMove({}, task, items, index);
+      if (Object.keys(changes).length || shifts.length)
+        callbacks.onBoardMove(task, changes, shifts);
+    });
+  }
+  if (refocusListTaskId) {
+    setTimeout(function restoreListFocus() {
+      if (document.activeElement && document.activeElement !== document.body) return;
+      for (const button of container.querySelectorAll('.task-list-move')) {
+        const move = /** @type {HTMLElement} */ (button);
+        if (move.closest('li')?.dataset.id === refocusListTaskId) {
+          move.focus();
+          break;
+        }
+      }
+    }, 0);
+  }
 }
 
 function sortTasks(tasks, order) {
@@ -566,7 +610,7 @@ function sortTasks(tasks, order) {
   if (order === 'alpha') return copy.sort((a, b) => a.title.localeCompare(b.title));
   if (order === 'created')
     return copy.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
-  // Shared with Tasks.org; set by dragging cards on a board.
+  // Shared with Tasks.org; set by reordering a board or list.
   if (order === 'manual') return copy.sort(compareManual);
   if (order === 'starred') {
     return copy.sort((a, b) => {

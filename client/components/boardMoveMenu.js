@@ -26,7 +26,10 @@ export function showBoardMoveMenu(task, groups, onPick) {
 
   const heading = document.createElement('p');
   heading.className = 'mb-xs truncate px-sm text-sm text-text-muted';
-  heading.textContent = `Move “${task.title}” to`;
+  heading.textContent =
+    groups.length === 1 && groups[0].title === 'Order'
+      ? `Reorder “${task.title}”`
+      : `Move “${task.title}” to`;
   picker.panel.appendChild(heading);
 
   /** @type {HTMLButtonElement|null} */

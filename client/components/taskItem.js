@@ -14,7 +14,10 @@ const PRIORITY_BADGE_CLASSES = {
   low: 'text-text-muted',
 };
 
-export function buildTaskItem(task, { onComplete, onStar, onClick, onSnooze, showDue = false }) {
+export function buildTaskItem(
+  task,
+  { onComplete, onStar, onClick, onSnooze, onMove, showDue = false },
+) {
   const li = document.createElement('li');
   li.className =
     'flex items-start gap-sm border-b border-border px-md py-sm transition-colors duration-100 active:bg-surface';
@@ -130,6 +133,19 @@ export function buildTaskItem(task, { onComplete, onStar, onClick, onSnooze, sho
   }
 
   li.appendChild(star);
+  if (onMove) {
+    const move = document.createElement('button');
+    move.type = 'button';
+    move.className = 'task-list-move';
+    move.textContent = '⠿';
+    move.setAttribute('aria-label', `Reorder ${task.title}`);
+    move.setAttribute('aria-haspopup', 'dialog');
+    move.title = 'Drag to reorder or tap for options';
+    move.addEventListener('click', function openOrderMenu() {
+      onMove(task);
+    });
+    li.appendChild(move);
+  }
   return li;
 }
 

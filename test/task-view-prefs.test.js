@@ -15,9 +15,19 @@ if (process.env.NODECAL_SKIP_DOM_TESTS === '1') {
     dom = new JSDOM('<div id="app"><div id="view"></div><div id="bottom-nav"></div></div>', {
       url: 'http://localhost/',
     });
-    for (const name of ['window', 'document', 'Event', 'HTMLElement', 'Option', 'localStorage']) {
+    for (const name of [
+      'window',
+      'document',
+      'Event',
+      'HTMLElement',
+      'Option',
+      'localStorage',
+      'MutationObserver',
+    ]) {
       globalThis[name] = dom.window[name];
     }
+    globalThis.requestAnimationFrame = (callback) => setTimeout(callback, 0);
+    globalThis.cancelAnimationFrame = (timer) => clearTimeout(timer);
     const { createServer } = await import('vite');
     server = await createServer({
       configFile: false,
@@ -54,9 +64,19 @@ if (process.env.NODECAL_SKIP_DOM_TESTS === '1') {
   test.after(async () => {
     await server?.close();
     dom?.window.close();
-    for (const name of ['window', 'document', 'Event', 'HTMLElement', 'Option', 'localStorage']) {
+    for (const name of [
+      'window',
+      'document',
+      'Event',
+      'HTMLElement',
+      'Option',
+      'localStorage',
+      'MutationObserver',
+    ]) {
       delete globalThis[name];
     }
+    delete globalThis.requestAnimationFrame;
+    delete globalThis.cancelAnimationFrame;
   });
 
   test('a Status board remembers Work filters and sort without filtering the list', () => {
@@ -221,5 +241,62 @@ if (process.env.NODECAL_SKIP_DOM_TESTS === '1') {
       view.querySelector('.tasks-filter-row button[aria-pressed="true"]')?.textContent,
       'Work',
     );
+  });
+
+  test('manual list offers reorder choices within each section', async () => {
+    const view = /** @type {HTMLElement} */ (globalThis.document.querySelector('#view'));
+    state.tasks = [
+      { id: 'a', title: 'First', status: 'NEEDS-ACTION', categories: [], sortOrder: 10 },
+      { id: 'b', title: 'Second', status: 'NEEDS-ACTION', categories: [], sortOrder: 20 },
+      {
+        id: 'c',
+        title: 'Other section',
+        status: 'NEEDS-ACTION',
+        categories: [],
+        due: '2030-01-01',
+        sortOrder: 30,
+      },
+    ];
+    /** @type {any} */
+    let moved = null;
+    renderTasks(view, {
+      onBoardMove: (task, changes, shifts) => {
+        moved = { task, changes, shifts };
+      },
+    });
+    const layout = /** @type {HTMLSelectElement} */ (
+      view.querySelector('select[aria-label="Layout"]')
+    );
+    layout.value = 'date';
+    layout.dispatchEvent(new Event('change'));
+    const sort = /** @type {HTMLSelectElement} */ (view.querySelector('.tasks-sort-control'));
+    sort.value = 'manual';
+    sort.dispatchEvent(new Event('change'));
+
+    assert.deepEqual(
+      [...view.querySelectorAll('.task-list-group')].map((section) =>
+        [...section.querySelectorAll('li[data-id]')].map(
+          (item) => /** @type {HTMLElement} */ (item).dataset.id,
+        ),
+      ),
+      [['c'], ['a', 'b']],
+    );
+    assert.equal(view.querySelectorAll('.task-list-move').length, 2);
+    /** @type {HTMLButtonElement} */ (
+      view.querySelector('li[data-id="b"] .task-list-move')
+    ).click();
+    const menu = /** @type {HTMLElement} */ (globalThis.document.querySelector('#board-move-menu'));
+    assert.match(menu.textContent, /Reorder “Second”/);
+    const top = [...menu.querySelectorAll('button')].find((button) => button.textContent === 'Top');
+    top.click();
+    await Promise.resolve();
+    assert.equal(moved.task.id, 'b');
+    assert.deepEqual(moved.changes, { sortOrder: -1014 });
+    assert.deepEqual(moved.shifts, []);
+    assert.equal(globalThis.document.querySelector('#board-move-menu'), null);
+
+    renderTasks(view, { onBoardMove: null });
+    assert.equal(view.querySelectorAll('.task-list-move').length, 0);
+    await new Promise((resolve) => setTimeout(resolve, 20));
   });
 }

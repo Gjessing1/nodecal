@@ -3,6 +3,38 @@
   overflow-y: hidden;
 }
 /* ── Task item ────────────────────────────────────────────── */
+.task-list-move {
+  align-self: center;
+  flex-shrink: 0;
+  min-width: var(--spacing-xl);
+  min-height: var(--spacing-xl);
+  color: var(--color-text-muted);
+  font-size: var(--text-lg);
+  cursor: grab;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.task-list-move:active {
+  cursor: grabbing;
+}
+.task-list-lifted {
+  display: none;
+}
+.task-list-gap {
+  border: 1px dashed var(--color-accent);
+  background: var(--color-accent-light);
+  pointer-events: none;
+}
+.task-list-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: var(--z-overlay);
+  pointer-events: none;
+  background: var(--color-bg);
+  box-shadow: var(--shadow-popup);
+}
 /* Checkbox */
 .task-check {
   width: 24px;

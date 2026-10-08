@@ -60,8 +60,18 @@ export function orderGroup(board, layout, task, ctx) {
   for (let i = 0; i < cell.length; i++) {
     if (cell[i].id === task.id) position = i;
   }
-  if (position === -1) return null;
+  return taskOrderGroup(task, cell, position);
+}
 
+/**
+ * Order choices for a task in one visible list section or board cell.
+ * @param {Task} task
+ * @param {Task[]} cell
+ * @param {number} position
+ * @returns {MoveGroup|null}
+ */
+export function taskOrderGroup(task, cell, position) {
+  if (position === -1) return null;
   const bottom = cell.length - 1;
   /** @type {MoveTarget[]} */
   const targets = [];
