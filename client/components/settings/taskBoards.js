@@ -1,6 +1,7 @@
 import { BOARD_FIELDS } from '../../app/boardBuckets.js';
 import { boardsFromConfig } from '../../app/boardModel.js';
 import { button, field, help, row, select, textInput } from './fields.js';
+import { buildBoardAxisEditor } from './taskBoardAxis.js';
 
 /**
  * Editor for `draft.taskBoards` — the kanban boards the Tasks view offers in
@@ -55,8 +56,12 @@ function buildBoardRow(host, draft, idx) {
 
   const columns = select(board.columns, BOARD_FIELDS, (value) => {
     board.columns = value;
+    delete board.columnConfig;
     // Lanes by the column field would put every task on the diagonal.
-    if (board.lanes === value) board.lanes = '';
+    if (board.lanes === value) {
+      board.lanes = '';
+      delete board.laneConfig;
+    }
     renderTaskBoards(host, draft);
   });
 
@@ -66,11 +71,21 @@ function buildBoardRow(host, draft, idx) {
   }
   const lanes = select(board.lanes || '', laneOptions, (value) => {
     board.lanes = value;
+    delete board.laneConfig;
+    renderTaskBoards(host, draft);
   });
 
   const fields = document.createElement('div');
   fields.className = 'settings-list-fields';
   fields.append(name, row(field('Columns', columns), field('Lanes', lanes)));
+  fields.appendChild(
+    buildBoardAxisEditor(board, 'columns', draft, () => renderTaskBoards(host, draft)),
+  );
+  if (board.lanes) {
+    fields.appendChild(
+      buildBoardAxisEditor(board, 'lanes', draft, () => renderTaskBoards(host, draft)),
+    );
+  }
 
   const line = document.createElement('div');
   line.className = 'settings-list-row settings-list-row-top';

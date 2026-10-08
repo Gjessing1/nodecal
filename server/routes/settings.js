@@ -42,7 +42,9 @@ const MAX_TASK_BOARDS = 20;
  * grouping by the same field as the columns would be a single diagonal, so they
  * collapse to "no lanes".
  * @param {*} value
- * @returns {Array<{id: string, name: string, columns: string, lanes: string}>}
+ * @returns {Array<{id: string, name: string, columns: string, lanes: string,
+ *   columnConfig?: {order: string[], labels: Record<string, string>, hideEmpty: boolean},
+ *   laneConfig?: {order: string[], labels: Record<string, string>, hideEmpty: boolean}}>}
  */
 function normalizeTaskBoards(value) {
   if (!Array.isArray(value)) return [];
@@ -57,10 +59,40 @@ function normalizeTaskBoards(value) {
     if (BOARD_FIELDS.includes(item.lanes) && item.lanes !== item.columns) lanes = item.lanes;
     const name = String(item.name || '').trim() || 'Board';
     seen.add(id);
-    boards.push({ id, name: name.slice(0, 60), columns: item.columns, lanes });
+    const board = { id, name: name.slice(0, 60), columns: item.columns, lanes };
+    if (item.columnConfig) board.columnConfig = normalizeBoardAxis(item.columnConfig);
+    if (lanes && item.laneConfig) board.laneConfig = normalizeBoardAxis(item.laneConfig);
+    boards.push(board);
     if (boards.length === MAX_TASK_BOARDS) break;
   }
   return boards;
+}
+
+/** @param {*} value */
+function normalizeBoardAxis(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return { order: [], labels: {}, hideEmpty: false };
+  }
+  const order = [];
+  const seen = new Set();
+  if (Array.isArray(value.order)) {
+    for (const key of value.order) {
+      if (typeof key !== 'string' || !key || key.length > 256 || seen.has(key)) continue;
+      order.push(key);
+      seen.add(key);
+      if (order.length === 100) break;
+    }
+  }
+  const labels = {};
+  if (value.labels && typeof value.labels === 'object' && !Array.isArray(value.labels)) {
+    for (const [key, label] of Object.entries(value.labels)) {
+      if (!key || key.length > 256 || typeof label !== 'string') continue;
+      if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
+      const clean = label.trim().slice(0, 60);
+      if (clean && Object.keys(labels).length < 100) labels[key] = clean;
+    }
+  }
+  return { order, labels, hideEmpty: value.hideEmpty === true };
 }
 
 router.get('/settings', (req, res) => {

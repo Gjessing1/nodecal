@@ -169,6 +169,27 @@
   flex-direction: column;
   gap: var(--spacing-xs);
 }
+.settings-board-axis {
+  border-top: var(--spacing-hairline) solid var(--color-border);
+  padding-top: var(--spacing-xs);
+}
+.settings-board-axis summary {
+  cursor: pointer;
+  color: var(--color-accent);
+}
+.settings-board-bucket {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-block: var(--spacing-xs);
+}
+.settings-board-bucket input[type='text'] {
+  min-width: 0;
+  flex: 1;
+}
+.settings-board-bucket .btn {
+  padding-inline: var(--spacing-xs);
+}
 .settings-remove-btn {
   flex-shrink: 0;
   padding: var(--spacing-xs) var(--spacing-sm);

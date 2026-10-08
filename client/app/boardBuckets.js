@@ -19,6 +19,13 @@ import { shiftDateStr } from './dayWindow.js';
  * @property {string} name
  * @property {BoardField} columns
  * @property {BoardField|''} lanes - '' draws one unlabelled lane
+ * @property {BoardAxisConfig} [columnConfig]
+ * @property {BoardAxisConfig} [laneConfig]
+ *
+ * @typedef {Object} BoardAxisConfig
+ * @property {string[]} order - pinned buckets, before the remaining buckets
+ * @property {Record<string, string>} labels - display names keyed by bucket key
+ * @property {boolean} hideEmpty
  *
  * @typedef {Object} BoardBucket
  * @property {string} key

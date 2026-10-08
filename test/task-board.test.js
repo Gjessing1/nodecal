@@ -186,6 +186,85 @@ test('dynamic swim lanes use source-visible open tasks for their buckets', async
   assert.strictEqual(layout.cells.get('errands').get('todo').length, 0);
 });
 
+test('pinned buckets lead, labels change, and empty buckets hide without losing cards', async () => {
+  const { buildBoard } = await load('boardModel.js');
+  const board = {
+    id: 'b',
+    name: 'B',
+    columns: 'category',
+    lanes: 'priority',
+    columnConfig: { order: ['work', 'errands'], labels: { work: 'Work queue' }, hideEmpty: true },
+    laneConfig: { order: ['low', 'high'], labels: { high: 'Urgent' }, hideEmpty: true },
+  };
+  const shown = [
+    task({ title: 'one', categories: ['work'], priority: 1 }),
+    task({ title: 'two', categories: ['home'], priority: 9 }),
+  ];
+  const pool = [...shown, task({ title: 'filtered', categories: ['errands'] })];
+  const layout = buildBoard(shown, board, CTX, pool);
+  assert.deepStrictEqual(
+    layout.columns.map((bucket) => [bucket.key, bucket.label]),
+    [
+      ['work', 'Work queue'],
+      ['errands', 'errands'],
+      ['home', 'home'],
+    ],
+  );
+  assert.deepStrictEqual(
+    layout.lanes.map((bucket) => [bucket.key, bucket.label]),
+    [
+      ['low', 'Low'],
+      ['high', 'Urgent'],
+    ],
+  );
+  assert.deepStrictEqual(
+    layout.cells
+      .get('high')
+      .get('work')
+      .map((item) => item.title),
+    ['one'],
+  );
+  assert.deepStrictEqual(
+    layout.cells
+      .get('low')
+      .get('home')
+      .map((item) => item.title),
+    ['two'],
+  );
+});
+
+test('hide empty keeps a bucket when a board has no tasks', async () => {
+  const { buildBoard } = await load('boardModel.js');
+  const board = {
+    id: 'b',
+    name: 'B',
+    columns: 'status',
+    lanes: '',
+    columnConfig: { order: ['doing'], labels: {}, hideEmpty: true },
+  };
+  const layout = buildBoard([], board, CTX);
+  assert.deepStrictEqual(
+    layout.columns.map((bucket) => bucket.key),
+    ['doing'],
+  );
+});
+
+test('a pinned category remains an add target after its last task disappears', async () => {
+  const { buildBoard } = await load('boardModel.js');
+  const board = {
+    id: 'b',
+    name: 'B',
+    columns: 'category',
+    lanes: '',
+    columnConfig: { order: ['review'], labels: { review: 'Review queue' }, hideEmpty: true },
+  };
+  const layout = buildBoard([], board, CTX);
+  assert.deepStrictEqual(
+    layout.columns.map((bucket) => [bucket.key, bucket.label]),
+    [['review', 'Review queue']],
+  );
+});
+
 test('the no-source bucket survives filters that hide its open tasks', async () => {
   const { buildBoard } = await load('boardModel.js');
   const board = { id: 'b', name: 'B', columns: 'source', lanes: '' };
@@ -337,6 +416,13 @@ test('saved boards fall back to the built-in boards when unusable', async () => 
     boardsFromConfig({ taskBoards: [{ id: 'x', name: 'X', columns: 'due', lanes: 'due' }] }),
     [{ id: 'x', name: 'X', columns: 'due', lanes: '' }],
   );
+  const config = { order: ['today'], labels: { today: 'Now' }, hideEmpty: true };
+  assert.deepStrictEqual(
+    boardsFromConfig({
+      taskBoards: [{ id: 'x', name: 'X', columns: 'due', lanes: '', columnConfig: config }],
+    }),
+    [{ id: 'x', name: 'X', columns: 'due', lanes: '', columnConfig: config }],
+  );
 });
 
 test('the server keeps only drawable boards', () => {
@@ -355,6 +441,34 @@ test('the server keeps only drawable boards', () => {
     ],
   );
   assert.deepStrictEqual(normalizeTaskBoards('nope'), []);
+});
+
+test('the server bounds and cleans board bucket preferences', () => {
+  const { normalizeTaskBoards } = require('../server/routes/settings.js');
+  const [board] = normalizeTaskBoards([
+    {
+      id: 'custom',
+      name: 'Custom',
+      columns: 'category',
+      lanes: 'status',
+      columnConfig: {
+        order: ['work', 'work', '', 42],
+        labels: { work: '  Work queue  ', empty: '' },
+        hideEmpty: true,
+      },
+      laneConfig: { order: ['done'], labels: {}, hideEmpty: 'yes' },
+    },
+  ]);
+  assert.deepStrictEqual(board.columnConfig, {
+    order: ['work'],
+    labels: { work: 'Work queue' },
+    hideEmpty: true,
+  });
+  assert.deepStrictEqual(board.laneConfig, {
+    order: ['done'],
+    labels: {},
+    hideEmpty: false,
+  });
 });
 
 test('VTODO PRIORITY round-trips through the parser', () => {

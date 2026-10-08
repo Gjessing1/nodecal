@@ -1,5 +1,6 @@
 import { shiftDateStr } from './dayWindow.js';
 import { bucketKey, fieldBuckets, isBoardField } from './boardBuckets.js';
+import { configuredBuckets } from './boardConfig.js';
 
 // Assembles a kanban board from saved settings and the task list. DOM-free so
 // node:test can import it; the rules per field live in boardBuckets.js.
@@ -42,7 +43,10 @@ export function boardsFromConfig(config) {
     /** @type {TaskBoard['lanes']} */
     let lanes = '';
     if (isBoardField(board.lanes) && board.lanes !== board.columns) lanes = board.lanes;
-    boards.push({ id: board.id, name: board.name || 'Board', columns: board.columns, lanes });
+    const copy = { id: board.id, name: board.name || 'Board', columns: board.columns, lanes };
+    if (board.columnConfig) copy.columnConfig = board.columnConfig;
+    if (board.laneConfig && lanes) copy.laneConfig = board.laneConfig;
+    boards.push(copy);
   }
   if (!boards.length) return DEFAULT_BOARDS;
   return boards;
@@ -78,9 +82,23 @@ export function buildBoard(tasks, board, ctx, bucketTasks = tasks) {
     if (task.status !== 'COMPLETED') bucketPool.push(task);
   }
 
-  const columns = fieldBuckets(board.columns, bucketPool, ctx);
+  const columns = configuredBuckets(
+    fieldBuckets(board.columns, bucketPool, ctx),
+    board.columnConfig,
+    shown,
+    board.columns,
+    ctx,
+  );
   let lanes = [{ key: '', label: '' }];
-  if (board.lanes) lanes = fieldBuckets(board.lanes, bucketPool, ctx);
+  if (board.lanes) {
+    lanes = configuredBuckets(
+      fieldBuckets(board.lanes, bucketPool, ctx),
+      board.laneConfig,
+      shown,
+      board.lanes,
+      ctx,
+    );
+  }
 
   /** @type {Map<string, Map<string, Task[]>>} */
   const cells = new Map();
@@ -92,10 +110,8 @@ export function buildBoard(tasks, board, ctx, bucketTasks = tasks) {
   for (const task of shown) {
     let laneKey = '';
     if (board.lanes) laneKey = bucketKey(board.lanes, task, ctx);
-    cells
-      .get(laneKey)
-      .get(bucketKey(board.columns, task, ctx))
-      .push(task);
+    const cell = cells.get(laneKey)?.get(bucketKey(board.columns, task, ctx));
+    if (cell) cell.push(task);
   }
   return { columns, lanes, cells };
 }
