@@ -65,7 +65,10 @@ export function renderTaskBoard(
   shell.className = 'task-board-shell';
 
   const el = document.createElement('div');
-  el.className = 'task-board' + (board.lanes ? '' : ' task-board-unlaned');
+  el.className =
+    'task-board' +
+    (board.lanes ? '' : ' task-board-unlaned') +
+    (board.columns === 'status' ? ' task-board-status' : '');
   el.style.setProperty('--board-columns', String(layout.columns.length));
 
   /** @param {Task} task */

@@ -65,6 +65,14 @@
   .task-board-jump-count {
     font-weight: normal;
   }
+  /* Keep each header's horizontal position for the jump bar, while letting
+     the cards begin directly below the status navigation. */
+  .task-board-status .task-board-head {
+    height: 0;
+    overflow: hidden;
+    padding-block: 0;
+    visibility: hidden;
+  }
 }
 /* Columns share one grid with every lane's cells, so a column stays aligned
    from the sticky header down through each swim lane while the whole board

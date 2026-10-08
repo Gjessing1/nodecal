@@ -76,7 +76,11 @@ if (process.env.NODECAL_SKIP_DOM_TESTS === '1') {
 
     layout.value = 'board:status';
     layout.dispatchEvent(new Event('change'));
+    assert.ok(view.querySelector('.tasks-view.is-board'));
     assert.ok(view.querySelector('.task-board-jump-status'));
+    assert.ok(view.querySelector('.task-board-status'));
+    const options = /** @type {HTMLButtonElement} */ (view.querySelector('.tasks-filters-toggle'));
+    assert.equal(options.textContent, 'Options');
     const sourceButtons = /** @type {HTMLButtonElement[]} */ ([
       ...view.querySelectorAll('.tasks-filter-row button'),
     ]);
@@ -87,6 +91,10 @@ if (process.env.NODECAL_SKIP_DOM_TESTS === '1') {
     categoryButtons.find((button) => button.textContent === 'work')?.click();
     sort.value = 'manual';
     sort.dispatchEvent(new Event('change'));
+    assert.equal(options.textContent, 'Options · 3');
+    options.click();
+    assert.equal(options.getAttribute('aria-expanded'), 'true');
+    assert.ok(view.querySelector('.tasks-view.filters-open'));
 
     assert.deepEqual(
       [...view.querySelectorAll('.task-card')].map(
@@ -168,6 +176,7 @@ if (process.env.NODECAL_SKIP_DOM_TESTS === '1') {
 
     layout.value = 'date';
     layout.dispatchEvent(new Event('change'));
+    assert.equal(view.querySelector('.tasks-view.is-board'), null);
     assert.equal(sort.value, 'due');
     assert.equal(view.querySelectorAll('.tasks-list li').length, 2);
     assert.equal(globalThis.document.querySelector('[aria-label="New task status"]'), null);

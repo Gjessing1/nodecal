@@ -13,7 +13,7 @@ import { compareManual } from '../app/manualOrder.js';
 import { boardForLayout, buildLayoutSelect, readStoredLayout, storeLayout } from './taskLayout.js';
 import { readTaskViewPrefs, storeTaskViewPrefs } from './taskViewPrefs.js';
 
-// tasks-filter-row: folded behind the Filters button on landscape phones (tasks.css).
+// tasks-filter-row: folded behind Options on landscape phones and portrait boards (tasks.css).
 const FILTER_ROW_CLASSES =
   'tasks-filter-row flex shrink-0 items-center gap-xs overflow-x-auto border-b border-border px-md py-xs [scrollbar-width:none] empty:hidden';
 const LIST_CLASSES = 'tasks-list min-h-0 flex-1 overflow-y-auto pb-sm';
@@ -54,6 +54,7 @@ export function renderTasks(container, callbacks) {
   const wrap = document.createElement('div');
   wrap.className = 'tasks-view flex h-full flex-col overflow-hidden';
   wrap.classList.toggle('filters-open', _persist.filtersOpen);
+  wrap.classList.toggle('is-board', !!boardForLayout(_persist.groupBy));
 
   const filterState = { showDone: _persist.showDone, starredOnly: _persist.starredOnly };
   let currentGroupBy = _persist.groupBy;
@@ -83,10 +84,10 @@ export function renderTasks(container, callbacks) {
   // ── Controls row ───────────────────────────────────────────
   const controls = document.createElement('div');
   controls.className =
-    'flex shrink-0 items-center justify-between gap-sm border-b border-border px-md py-sm';
+    'tasks-controls flex shrink-0 items-center justify-between gap-sm border-b border-border px-md py-sm';
 
   const leftFilters = document.createElement('div');
-  leftFilters.className = 'flex items-center gap-md';
+  leftFilters.className = 'tasks-left-filters flex items-center gap-md';
 
   const showDoneLabel = document.createElement('label');
   showDoneLabel.className = 'flex cursor-pointer items-center gap-sm text-sm text-text-muted';
@@ -101,7 +102,8 @@ export function renderTasks(container, callbacks) {
   showDoneLabel.appendChild(document.createTextNode(' Done'));
 
   const starredOnlyLabel = document.createElement('label');
-  starredOnlyLabel.className = 'flex cursor-pointer items-center gap-sm text-sm text-text-muted';
+  starredOnlyLabel.className =
+    'tasks-starred-only flex cursor-pointer items-center gap-sm text-sm text-text-muted';
   const starredOnlyCheck = document.createElement('input');
   starredOnlyCheck.type = 'checkbox';
   starredOnlyCheck.checked = _persist.starredOnly;
@@ -117,7 +119,7 @@ export function renderTasks(container, callbacks) {
   leftFilters.appendChild(showDoneLabel);
   leftFilters.appendChild(starredOnlyLabel);
 
-  // Only shown on landscape phones, where the rows it opens are folded away.
+  // Shown where the search and filter rows are folded away.
   const filtersToggle = document.createElement('button');
   filtersToggle.type = 'button';
   filtersToggle.className =
@@ -129,22 +131,25 @@ export function renderTasks(container, callbacks) {
   });
   leftFilters.appendChild(filtersToggle);
 
-  // Folded rows can still be filtering the list, so the button counts them.
+  // Hidden choices can still change the board, so the button counts them.
   function updateFiltersToggle() {
     let active = 0;
     if (_persist.query.trim()) active += 1;
     if (currentSourceFilter) active += 1;
     if (currentFilterCat) active += 1;
-    let label = 'Filters';
-    if (active) label = `Filters · ${active}`;
+    if (filterState.starredOnly) active += 1;
+    if (sortSel.value !== (state.config.taskSortOrder || 'due')) active += 1;
+    let label = 'Options';
+    if (active) label = `Options · ${active}`;
     filtersToggle.textContent = label;
     filtersToggle.setAttribute('aria-expanded', String(_persist.filtersOpen));
   }
 
   const rightControls = document.createElement('div');
-  rightControls.className = 'flex items-center gap-sm';
+  rightControls.className = 'tasks-right-controls flex items-center gap-sm';
 
   const groupSel = buildLayoutSelect();
+  groupSel.classList.add('tasks-layout-control');
   groupSel.addEventListener('change', () => {
     currentGroupBy = _persist.groupBy = groupSel.value;
     storeLayout(groupSel.value);
@@ -154,12 +159,13 @@ export function renderTasks(container, callbacks) {
     currentSourceFilter = _persist.filterSource;
     sortSel.value = _persist.sortOrder || state.config.taskSortOrder || 'due';
     showDoneLabel.hidden = !!boardForLayout(currentGroupBy);
+    wrap.classList.toggle('is-board', !!boardForLayout(currentGroupBy));
     rerender();
     if (callbacks.onAdd) mountTaskQuickAdd(callbacks, quickAddOptions());
   });
 
   const sortSel = document.createElement('select');
-  sortSel.className = 'rounded-sm px-sm py-xs text-sm';
+  sortSel.className = 'tasks-sort-control rounded-sm px-sm py-xs text-sm';
   sortSel.innerHTML = `
     <option value="due">Sort: Due</option>
     <option value="starred">Sort: Starred</option>

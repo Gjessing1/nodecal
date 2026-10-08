@@ -184,10 +184,49 @@
   white-space: nowrap;
 }
 
+/* ── Compact board controls on portrait phones ───────────── */
+@media (max-width: 640px) and (orientation: portrait) {
+  .tasks-view.is-board .tasks-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: var(--spacing-xs);
+  }
+  .tasks-view.is-board .tasks-left-filters,
+  .tasks-view.is-board .tasks-right-controls {
+    display: contents;
+  }
+  .tasks-view.is-board .tasks-layout-control {
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
+    min-width: 0;
+  }
+  .tasks-view.is-board .tasks-filters-toggle {
+    display: inline-flex;
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .tasks-view.is-board .tasks-starred-only,
+  .tasks-view.is-board .tasks-sort-control,
+  .tasks-view.is-board:not(.filters-open) .tasks-filter-row {
+    display: none;
+  }
+  .tasks-view.is-board.filters-open .tasks-starred-only {
+    display: flex;
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .tasks-view.is-board.filters-open .tasks-sort-control {
+    display: block;
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
+
 /* ── Landscape phones ────────────────────────────────────── */
 /* About 270px separate the header from the bottom nav, and the toolbar rows
    plus the quick-add bar used to take all of it. The search and filter rows
-   fold behind a Filters button, and the quick-add bar shows only its input
+   fold behind an Options button, and the quick-add bar shows only its input
    until it has focus. Same query as the landscape rules in main.css. */
 .tasks-filters-toggle {
   display: none;
