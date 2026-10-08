@@ -2,7 +2,7 @@
 
 /**
  * @param {HTMLElement} board
- * @param {{label: string, count: number, head: HTMLElement}[]} columns
+ * @param {{key: string, label: string, count: number, head: HTMLElement}[]} columns
  * @param {boolean} [statusColumns] - the fixed three-column status board
  * @returns {{element: HTMLElement, update: () => void}}
  */
@@ -16,6 +16,7 @@ export function buildBoardJumpBar(board, columns, statusColumns = false) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'task-board-jump-button';
+    button.dataset.column = column.key;
     button.setAttribute('aria-label', `Go to ${column.label} column, ${column.count} tasks`);
     const label = document.createElement('span');
     label.textContent = column.label;

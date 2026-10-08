@@ -9,10 +9,14 @@ if (process.env.NODECAL_SKIP_DOM_TESTS === '1') {
   let dom;
   let server;
   let buildBoardJumpBar;
+  let initBoardDnd;
 
   test.before(async () => {
     dom = new JSDOM('', { url: 'http://localhost/' });
     globalThis.document = dom.window.document;
+    globalThis.window = dom.window;
+    globalThis.requestAnimationFrame = () => 1;
+    globalThis.cancelAnimationFrame = () => {};
     const { createServer } = await import('vite');
     server = await createServer({
       configFile: false,
@@ -21,12 +25,16 @@ if (process.env.NODECAL_SKIP_DOM_TESTS === '1') {
       appType: 'custom',
     });
     ({ buildBoardJumpBar } = await server.ssrLoadModule('/client/components/boardJumpBar.js'));
+    ({ initBoardDnd } = await server.ssrLoadModule('/client/components/boardDnd.js'));
   });
 
   test.after(async () => {
     await server?.close();
     dom?.window.close();
     delete globalThis.document;
+    delete globalThis.window;
+    delete globalThis.requestAnimationFrame;
+    delete globalThis.cancelAnimationFrame;
   });
 
   test('column buttons show counts, jump to a column and follow board scrolling', () => {
@@ -49,6 +57,7 @@ if (process.env.NODECAL_SKIP_DOM_TESTS === '1') {
     });
     const columns = heads.map((head, index) => ({
       head,
+      key: ['todo', 'doing', 'done'][index],
       label: head.textContent,
       count: [2, 1, 0][index],
     }));
@@ -62,6 +71,7 @@ if (process.env.NODECAL_SKIP_DOM_TESTS === '1') {
       ['To do2', 'In progress1', 'Done0'],
     );
     assert.equal(buttons[2].getAttribute('aria-label'), 'Go to Done column, 0 tasks');
+    assert.equal(buttons[2].dataset.column, 'done');
     update();
     assert.equal(buttons[0].getAttribute('aria-current'), 'true');
 
@@ -72,5 +82,63 @@ if (process.env.NODECAL_SKIP_DOM_TESTS === '1') {
     update();
     assert.equal(buttons[0].hasAttribute('aria-current'), false);
     assert.equal(buttons[2].getAttribute('aria-current'), 'true');
+  });
+
+  test('a dragged card can be dropped on a switcher column', () => {
+    const board = globalThis.document.createElement('div');
+    const cell = globalThis.document.createElement('div');
+    cell.className = 'task-board-cell';
+    const card = globalThis.document.createElement('div');
+    card.className = 'task-card';
+    card.dataset.id = 'task-1';
+    cell.append(card);
+    board.append(cell);
+    const jumpBar = globalThis.document.createElement('nav');
+    const target = globalThis.document.createElement('button');
+    target.className = 'task-board-jump-button';
+    target.dataset.column = 'doing';
+    jumpBar.append(target);
+    globalThis.document.body.append(board, jumpBar);
+    globalThis.document.elementFromPoint = () => target;
+    const drops = [];
+    let allowed = true;
+    initBoardDnd(board, {
+      ordered: true,
+      jumpBar,
+      canDropColumn: (_id, key) => allowed && key === 'doing',
+      onDropColumn: (id, key) => drops.push([id, key]),
+      canDrop: () => false,
+      onDrop: () => assert.fail('cell drop was not expected'),
+    });
+
+    function pointer(type, x) {
+      const event = new dom.window.Event(type, { bubbles: true });
+      Object.defineProperties(event, {
+        pointerId: { value: 1 },
+        pointerType: { value: 'mouse' },
+        button: { value: 0 },
+        clientX: { value: x },
+        clientY: { value: 20 },
+      });
+      return event;
+    }
+
+    card.dispatchEvent(pointer('pointerdown', 10));
+    globalThis.window.dispatchEvent(pointer('pointermove', 30));
+    assert.equal(target.classList.contains('is-drop-target'), true);
+    globalThis.window.dispatchEvent(pointer('pointerup', 30));
+    assert.deepEqual(drops, [['task-1', 'doing']]);
+    assert.equal(target.classList.contains('is-drop-target'), false);
+    assert.equal(globalThis.document.querySelector('.task-card-ghost'), null);
+    assert.equal(globalThis.document.querySelector('.task-card-gap'), null);
+    allowed = false;
+    card.dispatchEvent(pointer('pointerdown', 10));
+    globalThis.window.dispatchEvent(pointer('pointermove', 30));
+    assert.equal(target.classList.contains('is-drop-blocked'), true);
+    globalThis.window.dispatchEvent(pointer('pointerup', 30));
+    assert.deepEqual(drops, [['task-1', 'doing']]);
+    assert.equal(target.classList.contains('is-drop-blocked'), false);
+    board.remove();
+    jumpBar.remove();
   });
 }

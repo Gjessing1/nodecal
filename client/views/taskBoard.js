@@ -1,7 +1,8 @@
 import { state } from '../app/state.js';
 import { todayStr } from '../app/dayWindow.js';
 import { buildBoard, DONE_WINDOW_DAYS } from '../app/boardModel.js';
-import { dropChanges } from '../app/boardMoves.js';
+import { dropChanges, moveChanges } from '../app/boardMoves.js';
+import { bucketKey } from '../app/boardBuckets.js';
 import { bucketDraft, moveGroups } from '../app/boardActions.js';
 import { placedMove } from '../app/boardOrder.js';
 import { buildTaskCard } from '../components/taskCard.js';
@@ -97,7 +98,7 @@ export function renderTaskBoard(
     const count = columnCount(layout, column.key);
     const head = buildColumnHead(column.label, count, { hint, onAdd });
     el.appendChild(head);
-    jumpColumns.push({ label: column.label, count, head });
+    jumpColumns.push({ key: column.key, label: column.label, count, head });
   }
   const jumpBar = buildBoardJumpBar(el, jumpColumns, board.columns === 'status');
   shell.appendChild(jumpBar.element);
@@ -175,6 +176,28 @@ export function renderTaskBoard(
   }
   initBoardDnd(el, {
     ordered,
+    jumpBar: jumpBar.element,
+    canDropColumn(id, columnKey) {
+      const task = findTask(id);
+      if (!task || bucketKey(board.columns, task, ctx) === columnKey) return false;
+      return moveChanges(board.columns, task, columnKey, ctx) !== null;
+    },
+    onDropColumn(id, columnKey) {
+      const task = findTask(id);
+      if (!task) return;
+      let changes = moveChanges(board.columns, task, columnKey, ctx);
+      if (!changes) return;
+      /** @type {import('../app/manualOrder.js').OrderWrite[]} */
+      let shifts = [];
+      if (ordered) {
+        let laneKey = '';
+        if (board.lanes) laneKey = bucketKey(board.lanes, { ...task, ...changes }, ctx);
+        const cellTasks = layout.cells.get(laneKey)?.get(columnKey);
+        if (cellTasks)
+          ({ changes, shifts } = placedMove(changes, task, cellTasks, cellTasks.length));
+      }
+      callbacks.onBoardMove(task, changes, shifts);
+    },
     canDrop(id, cell) {
       const task = findTask(id);
       if (!task) return false;

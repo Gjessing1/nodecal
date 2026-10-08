@@ -31,11 +31,17 @@ const EDGE_STEP_PX = 12;
  * @param {HTMLElement} boardEl - the scrolling board; cells are `.task-board-cell`
  * @param {object} opts
  * @param {boolean} [opts.ordered]
+ * @param {HTMLElement} opts.jumpBar
+ * @param {(id: string, columnKey: string) => boolean} opts.canDropColumn
+ * @param {(id: string, columnKey: string) => void} opts.onDropColumn
  * @param {(id: string, cell: HTMLElement) => boolean} opts.canDrop
  * @param {(id: string, cell: HTMLElement, index: number) => void} opts.onDrop - `index`
  *   counts the cell's other cards above the drop; -1 when the board is not ordered
  */
-export function initBoardDnd(boardEl, { ordered = false, canDrop, onDrop }) {
+export function initBoardDnd(
+  boardEl,
+  { ordered = false, jumpBar, canDropColumn, onDropColumn, canDrop, onDrop },
+) {
   let dragging = false;
   let touchPressed = false;
 
@@ -76,6 +82,8 @@ export function initBoardDnd(boardEl, { ordered = false, canDrop, onDrop }) {
     let ghost = null;
     /** @type {HTMLElement|null} */
     let hovered = null;
+    /** @type {HTMLElement|null} */
+    let hoveredJump = null;
     let hoveredIndex = -1;
     /** @type {HTMLElement|null} */
     let gap = null;
@@ -106,6 +114,17 @@ export function initBoardDnd(boardEl, { ordered = false, canDrop, onDrop }) {
     function follow() {
       ghost.style.transform = `translate(${lastX - grabX}px, ${lastY - grabY}px)`;
       const under = document.elementFromPoint(lastX, lastY);
+      const jump = /** @type {HTMLElement|null} */ (
+        under?.closest('.task-board-jump-button') || null
+      );
+      if (jump && jumpBar.contains(jump)) {
+        if (jump === hoveredJump) return;
+        clearHover();
+        hoveredJump = jump;
+        if (canDropColumn(id, jump.dataset.column)) jump.classList.add('is-drop-target');
+        else jump.classList.add('is-drop-blocked');
+        return;
+      }
       let cell = /** @type {HTMLElement|null} */ (under?.closest('.task-board-cell') || null);
       if (cell && !boardEl.contains(cell)) cell = null;
       let index = -1;
@@ -138,6 +157,10 @@ export function initBoardDnd(boardEl, { ordered = false, canDrop, onDrop }) {
 
     function clearHover() {
       if (gap) card.after(gap);
+      if (hoveredJump) {
+        hoveredJump.classList.remove('is-drop-target', 'is-drop-blocked');
+        hoveredJump = null;
+      }
       if (!hovered) return;
       hovered.classList.remove('is-drop-target', 'is-drop-blocked');
       hovered = null;
@@ -148,10 +171,12 @@ export function initBoardDnd(boardEl, { ordered = false, canDrop, onDrop }) {
       const box = boardEl.getBoundingClientRect();
       let dx = 0;
       let dy = 0;
-      if (lastX < box.left + EDGE_PX) dx = -EDGE_STEP_PX;
-      else if (lastX > box.right - EDGE_PX) dx = EDGE_STEP_PX;
-      if (lastY < box.top + EDGE_PX) dy = -EDGE_STEP_PX;
-      else if (lastY > box.bottom - EDGE_PX) dy = EDGE_STEP_PX;
+      if (lastX >= box.left && lastX <= box.right && lastY >= box.top && lastY <= box.bottom) {
+        if (lastX < box.left + EDGE_PX) dx = -EDGE_STEP_PX;
+        else if (lastX > box.right - EDGE_PX) dx = EDGE_STEP_PX;
+        if (lastY < box.top + EDGE_PX) dy = -EDGE_STEP_PX;
+        else if (lastY > box.bottom - EDGE_PX) dy = EDGE_STEP_PX;
+      }
       if (dx || dy) {
         boardEl.scrollBy(dx, dy);
         follow();
@@ -178,6 +203,7 @@ export function initBoardDnd(boardEl, { ordered = false, canDrop, onDrop }) {
       if (ev.pointerId !== down.pointerId) return;
       const lifted = dragging;
       const target = hovered;
+      const jumpTarget = hoveredJump;
       const index = hoveredIndex;
       finish();
       if (!lifted) return;
@@ -186,7 +212,11 @@ export function initBoardDnd(boardEl, { ordered = false, canDrop, onDrop }) {
       setTimeout(function dropStaleSwallow() {
         card.removeEventListener('click', swallowClick, { capture: true });
       }, 0);
-      if (isDrop(target, index) && canDrop(id, target)) onDrop(id, target, index);
+      if (jumpTarget && canDropColumn(id, jumpTarget.dataset.column)) {
+        onDropColumn(id, jumpTarget.dataset.column);
+      } else if (isDrop(target, index) && canDrop(id, target)) {
+        onDrop(id, target, index);
+      }
     }
 
     /** @param {PointerEvent} ev */

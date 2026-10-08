@@ -39,6 +39,15 @@
     background: var(--color-accent-light);
     color: var(--color-accent);
   }
+  .task-board-jump-button.is-drop-target {
+    border-color: var(--color-accent);
+    background: var(--color-accent-light);
+    color: var(--color-accent);
+  }
+  .task-board-jump-button.is-drop-blocked {
+    color: var(--color-text-muted);
+    cursor: not-allowed;
+  }
   .task-board-jump-status {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -58,6 +67,10 @@
     border-bottom-color: var(--color-accent);
     background: var(--color-accent-light);
     font-weight: 600;
+  }
+  .task-board-jump-status .task-board-jump-button.is-drop-target {
+    border-bottom-color: var(--color-accent);
+    background: var(--color-accent-light);
   }
   .task-board-jump-status .task-board-jump-button span:first-child {
     overflow: hidden;
