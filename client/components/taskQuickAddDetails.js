@@ -3,7 +3,7 @@ import { PRIORITY_LEVELS, PRIORITY_VALUES } from '../app/taskUtils.js';
 /**
  * Less-used quick-add fields stay behind one disclosure beside the title.
  * @param {() => void} onFullEditor
- * @param {{sources: import('../app/state.js').TaskSource[], source: string|null, onSourceChange: (url: string) => void}} sourceOptions
+ * @param {{sources: import('../app/state.js').TaskSource[], source: string|null, inlineSource: boolean, onSourceChange: (url: string) => void}} sourceOptions
  */
 export function buildTaskQuickAddDetails(onFullEditor, sourceOptions) {
   const trigger = document.createElement('button');
@@ -47,15 +47,18 @@ export function buildTaskQuickAddDetails(onFullEditor, sourceOptions) {
     source = document.createElement('select');
     source.setAttribute('aria-label', 'New task source');
     for (const item of sourceOptions.sources) {
-      source.appendChild(new Option(item.name || item.url, item.url));
+      const name = item.name || item.url;
+      source.appendChild(new Option(sourceOptions.inlineSource ? `To: ${name}` : name, item.url));
     }
     source.value = sourceOptions.source || '';
     source.addEventListener('change', function changeSource() {
       sourceOptions.onSourceChange(source.value);
     });
-    const sourceField = labelled('Source', source);
-    sourceField.classList.add('col-span-2');
-    fields.appendChild(sourceField);
+    if (!sourceOptions.inlineSource) {
+      const sourceField = labelled('Source', source);
+      sourceField.classList.add('col-span-2');
+      fields.appendChild(sourceField);
+    }
   }
   panel.appendChild(fields);
 
@@ -83,6 +86,7 @@ export function buildTaskQuickAddDetails(onFullEditor, sourceOptions) {
   return {
     trigger,
     panel,
+    sourceControl: sourceOptions.inlineSource ? source : null,
     setSource(url) {
       if (source) source.value = url || '';
     },

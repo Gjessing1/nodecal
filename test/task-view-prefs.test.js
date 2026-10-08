@@ -133,15 +133,19 @@ if (process.env.NODECAL_SKIP_DOM_TESTS === '1') {
     status.value = 'IN-PROCESS';
     status.dispatchEvent(new Event('change'));
     assert.equal(globalThis.document.querySelector('[aria-label="New task (full form)"]'), null);
+    const source = /** @type {HTMLSelectElement} */ (
+      globalThis.document.querySelector('[aria-label="New task source"]')
+    );
+    assert.equal(source.value, '/work/');
+    assert.equal(source.selectedOptions[0].textContent, 'To: Work');
+    assert.ok(source.closest('.task-quickadd-extra'));
+    assert.equal(source.closest('#task-quick-add-details'), null);
     const more = /** @type {HTMLButtonElement} */ (
       globalThis.document.querySelector('[aria-label="More task fields"]')
     );
     more.click();
     assert.equal(more.getAttribute('aria-expanded'), 'true');
-    const source = /** @type {HTMLSelectElement} */ (
-      globalThis.document.querySelector('[aria-label="New task source"]')
-    );
-    assert.equal(source.value, '/work/');
+    assert.equal(globalThis.document.querySelectorAll('[aria-label="New task source"]').length, 1);
     /** @type {HTMLSelectElement} */ (
       globalThis.document.querySelector('[aria-label="New task priority"]')
     ).value = 'high';

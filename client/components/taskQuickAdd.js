@@ -258,9 +258,17 @@ function buildQuickAdd(callbacks, boardOptions) {
   }
 
   // Boards can narrow the source; keep that as the add target until the user
-  // deliberately chooses another source in the expanded fields.
+  // deliberately chooses another source.
   let filterSource = boardOptions.getFilters?.().source || '';
-  let selectedSource = filterSource || effectiveTaskSource() || null;
+  const sources = state.taskSources || [];
+  const visibleSources = sources.filter((source) => !state.hiddenCalendars.has(source.url));
+  const inlineSource = visibleSources.length > 1;
+  function resolveSource() {
+    const wanted = filterSource || effectiveTaskSource();
+    if (sources.some((source) => source.url === wanted)) return wanted;
+    return sources[0]?.url || null;
+  }
+  let selectedSource = resolveSource();
   let sourceExplicit = false;
 
   function currentFields(tags) {
@@ -284,8 +292,9 @@ function buildQuickAdd(callbacks, boardOptions) {
       );
     },
     {
-      sources: state.taskSources || [],
+      sources,
       source: selectedSource,
+      inlineSource,
       onSourceChange(url) {
         sourceExplicit = true;
         selectedSource = url;
@@ -293,12 +302,17 @@ function buildQuickAdd(callbacks, boardOptions) {
       },
     },
   );
+  if (details.sourceControl) {
+    details.sourceControl.className =
+      'task-quickadd-source min-w-0 flex-1 truncate rounded-lg border border-border bg-bg px-sm py-xs text-sm text-text-muted';
+    choices.insertBefore(details.sourceControl, dueSelect);
+  }
   _syncBoardFilters = function syncBoardFilters() {
     const nextSource = boardOptions.getFilters?.().source || '';
     if (nextSource === filterSource) return;
     filterSource = nextSource;
     if (sourceExplicit) return;
-    selectedSource = nextSource || effectiveTaskSource() || null;
+    selectedSource = resolveSource();
     details.setSource(selectedSource);
   };
 
