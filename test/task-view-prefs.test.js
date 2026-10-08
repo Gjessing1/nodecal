@@ -106,6 +106,21 @@ if (process.env.NODECAL_SKIP_DOM_TESTS === '1') {
     );
     status.value = 'IN-PROCESS';
     status.dispatchEvent(new Event('change'));
+    assert.equal(globalThis.document.querySelector('[aria-label="New task (full form)"]'), null);
+    const more = /** @type {HTMLButtonElement} */ (
+      globalThis.document.querySelector('[aria-label="More task fields"]')
+    );
+    more.click();
+    assert.equal(more.getAttribute('aria-expanded'), 'true');
+    /** @type {HTMLSelectElement} */ (
+      globalThis.document.querySelector('[aria-label="New task priority"]')
+    ).value = 'high';
+    /** @type {HTMLSelectElement} */ (
+      globalThis.document.querySelector('[aria-label="New task reminder"]')
+    ).value = 'on-due';
+    /** @type {HTMLTextAreaElement} */ (
+      globalThis.document.querySelector('[aria-label="New task notes"]')
+    ).value = 'Draft by Friday';
     const quickInput = /** @type {HTMLInputElement} */ (
       globalThis.document.querySelector('#task-quick-add-input')
     );
@@ -119,6 +134,9 @@ if (process.env.NODECAL_SKIP_DOM_TESTS === '1') {
       globalThis.document.querySelector('[aria-label="Quick add task"]')
     ).click();
     assert.equal(quickAdded.status, 'IN-PROCESS');
+    assert.equal(quickAdded.priority, 1);
+    assert.equal(quickAdded.taskReminder, 'on-due');
+    assert.equal(quickAdded.description, 'Draft by Friday');
     assert.equal(quickAdded.source, '/work/');
     assert.deepEqual(quickAdded.categories, ['work']);
 

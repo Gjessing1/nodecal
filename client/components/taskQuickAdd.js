@@ -3,6 +3,7 @@ import { getAllCategories, parseTagsFromTitle } from '../app/taskUtils.js';
 import { localDateStr } from '../app/utils.js';
 import { effectiveTaskSource, rememberTaskSource } from '../app/profileTargets.js';
 import { openTaskModal } from './taskModal.js';
+import { buildTaskQuickAddDetails } from './taskQuickAddDetails.js';
 
 const DATE_CHIP_CLASSES =
   'shrink-0 whitespace-nowrap rounded-lg border border-border px-chip-x py-xs text-sm text-text-muted transition-colors duration-100 aria-pressed:border-accent aria-pressed:bg-accent-light aria-pressed:text-accent';
@@ -316,6 +317,26 @@ function buildQuickAdd(callbacks, boardOptions) {
     buildSourceSelector();
   };
 
+  function currentFields(tags) {
+    const categories = [...tags];
+    const boardCategory = boardOptions.getFilters?.().category;
+    if (boardCategory && !categories.includes(boardCategory)) categories.push(boardCategory);
+    return {
+      categories: categories.length ? categories : undefined,
+      source: selectedSource || undefined,
+      status: selectedStatus,
+      ...details.read(),
+    };
+  }
+
+  const details = buildTaskQuickAddDetails(function openFullEditor() {
+    const { title, tags } = parseTagsFromTitle(input.value.trim());
+    openTaskModal(
+      { title, due: selectedDue, ...currentFields(tags) },
+      { onSave: (data) => callbacks.onAdd(data), onDelete: () => {} },
+    );
+  });
+
   async function submit() {
     const raw = input.value.trim();
     if (!raw) return;
@@ -326,15 +347,7 @@ function buildQuickAdd(callbacks, boardOptions) {
     }
     input.value = '';
     nlpFb.classList.add('hidden');
-    const source = selectedSource || undefined;
-    const categories = [...tags];
-    const boardCategory = boardOptions.getFilters?.().category;
-    if (boardCategory && !categories.includes(boardCategory)) categories.push(boardCategory);
-    const taskFields = {
-      categories: categories.length ? categories : undefined,
-      source,
-      status: selectedStatus,
-    };
+    const taskFields = currentFields(tags);
 
     // If user has selected a specific due date, use it and skip NLP date parsing
     if (selectedDue) {
@@ -391,30 +404,15 @@ function buildQuickAdd(callbacks, boardOptions) {
   submitBtn.setAttribute('aria-label', 'Quick add task');
   submitBtn.addEventListener('click', submit);
 
-  const newBtn = document.createElement('button');
-  newBtn.className =
-    'flex size-touch shrink-0 items-center justify-center rounded-full border border-border bg-surface text-xl leading-none text-accent hover:bg-accent-light';
-  newBtn.textContent = '+';
-  newBtn.setAttribute('aria-label', 'New task (full form)');
-  newBtn.addEventListener('click', () => {
-    // Seed the full form with the profile's task source (or the one picked in
-    // the source row) so new tasks — including recurring ones — land there.
-    const source = selectedSource || effectiveTaskSource() || undefined;
-    const boardCategory = boardOptions.getFilters?.().category;
-    openTaskModal(
-      { source, status: selectedStatus, categories: boardCategory ? [boardCategory] : undefined },
-      { onSave: (data) => callbacks.onAdd(data), onDelete: () => {} },
-    );
-  });
-
   const row = document.createElement('div');
   row.className = 'mt-xs flex gap-sm';
   row.appendChild(inputWrap);
+  row.appendChild(details.trigger);
   row.appendChild(submitBtn);
-  row.appendChild(newBtn);
 
   bar.appendChild(dates);
   bar.appendChild(sourceRow);
+  bar.appendChild(details.panel);
   bar.appendChild(row);
   return bar;
 }
