@@ -81,6 +81,23 @@ if (process.env.NODECAL_SKIP_DOM_TESTS === '1') {
     assert.ok(view.querySelector('.task-board-status'));
     const options = /** @type {HTMLButtonElement} */ (view.querySelector('.tasks-filters-toggle'));
     assert.equal(options.textContent, 'Options');
+    const inlineSearch = /** @type {HTMLInputElement} */ (
+      view.querySelector('.tasks-inline-search')
+    );
+    const searchRowInput = /** @type {HTMLInputElement} */ (
+      view.querySelector('.tasks-search-row input')
+    );
+    inlineSearch.focus();
+    assert.ok(view.querySelector('.tasks-controls.search-open'));
+    inlineSearch.value = 'Home';
+    inlineSearch.dispatchEvent(new Event('input'));
+    assert.equal(searchRowInput.value, 'Home');
+    assert.equal(view.querySelectorAll('.task-card').length, 1);
+    inlineSearch.value = '';
+    inlineSearch.dispatchEvent(new Event('input'));
+    inlineSearch.blur();
+    assert.equal(view.querySelector('.tasks-controls.search-open'), null);
+    assert.equal(view.querySelectorAll('.task-card').length, 2);
     const sourceButtons = /** @type {HTMLButtonElement[]} */ ([
       ...view.querySelectorAll('.tasks-filter-row button'),
     ]);

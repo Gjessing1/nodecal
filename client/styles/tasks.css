@@ -184,12 +184,19 @@
   white-space: nowrap;
 }
 
+.tasks-inline-search {
+  display: none;
+}
+
 /* ── Compact board controls on portrait phones ───────────── */
 @media (max-width: 640px) and (orientation: portrait) {
   .tasks-view.is-board .tasks-controls {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) auto;
     row-gap: var(--spacing-xs);
+  }
+  .tasks-view.is-board .tasks-controls.search-open {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto;
   }
   .tasks-view.is-board .tasks-left-filters,
   .tasks-view.is-board .tasks-right-controls {
@@ -201,10 +208,24 @@
     width: 100%;
     min-width: 0;
   }
-  .tasks-view.is-board .tasks-filters-toggle {
-    display: inline-flex;
+  .tasks-view.is-board .tasks-inline-search {
+    display: block;
     grid-column: 2;
     grid-row: 1;
+    width: 100%;
+    min-width: 0;
+  }
+  .tasks-view.is-board .tasks-inline-search:focus {
+    border-color: var(--color-accent);
+    outline-color: var(--color-accent);
+  }
+  .tasks-view.is-board .tasks-filters-toggle {
+    display: inline-flex;
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .tasks-view.is-board .tasks-search-row {
+    display: none;
   }
   .tasks-view.is-board .tasks-starred-only,
   .tasks-view.is-board .tasks-sort-control,
@@ -218,8 +239,10 @@
   }
   .tasks-view.is-board.filters-open .tasks-sort-control {
     display: block;
-    grid-column: 2;
+    grid-column: 2 / 4;
     grid-row: 2;
+    width: 100%;
+    min-width: 0;
   }
 }
 

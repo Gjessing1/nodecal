@@ -194,14 +194,35 @@ export function renderTasks(container, callbacks) {
   // calendars currently checked in the drawer). Created once so typing keeps
   // focus — rerender() never rebuilds this input.
   const searchRow = document.createElement('div');
-  searchRow.className = 'tasks-filter-row shrink-0 border-b border-border px-md py-xs';
+  searchRow.className =
+    'tasks-search-row tasks-filter-row shrink-0 border-b border-border px-md py-xs';
   const searchInput = document.createElement('input');
   searchInput.type = 'search';
   searchInput.className = 'w-full rounded-sm border border-border px-control py-field-y text-sm';
   searchInput.placeholder = 'Search tasks…';
   searchInput.value = _persist.query;
-  searchInput.addEventListener('input', () => {
-    _persist.query = searchInput.value;
+
+  const inlineSearchInput = document.createElement('input');
+  inlineSearchInput.type = 'search';
+  inlineSearchInput.className =
+    'tasks-inline-search rounded-sm border border-border px-control py-field-y text-sm';
+  inlineSearchInput.setAttribute('aria-label', 'Search tasks');
+  inlineSearchInput.placeholder = 'Search…';
+  inlineSearchInput.value = _persist.query;
+  controls.classList.toggle('search-open', !!_persist.query.trim());
+  inlineSearchInput.addEventListener('focus', () => controls.classList.add('search-open'));
+  inlineSearchInput.addEventListener('blur', () => {
+    if (!_persist.query.trim()) controls.classList.remove('search-open');
+  });
+
+  function setQuery(value) {
+    _persist.query = value;
+    searchInput.value = value;
+    inlineSearchInput.value = value;
+    controls.classList.toggle(
+      'search-open',
+      !!value.trim() || document.activeElement === inlineSearchInput,
+    );
     updateFiltersToggle();
     renderList(
       list,
@@ -212,7 +233,10 @@ export function renderTasks(container, callbacks) {
       currentSourceFilter,
       callbacks,
     );
-  });
+  }
+  searchInput.addEventListener('input', () => setQuery(searchInput.value));
+  inlineSearchInput.addEventListener('input', () => setQuery(inlineSearchInput.value));
+  controls.appendChild(inlineSearchInput);
   searchRow.appendChild(searchInput);
 
   // ── Source filter (only when multiple sources) ──────────────
