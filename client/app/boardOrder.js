@@ -1,4 +1,3 @@
-import { bucketKey } from './boardBuckets.js';
 import { placeTask } from './manualOrder.js';
 
 // A card's place inside its cell, for boards drawn in manual order: where a
@@ -6,8 +5,7 @@ import { placeTask } from './manualOrder.js';
 // DOM-free so node:test can import it.
 
 /**
- * @typedef {import('./boardBuckets.js').TaskBoard} TaskBoard
- * @typedef {import('./boardBuckets.js').BoardContext} BoardContext
+ * @typedef {import('./boardBuckets.js').BoardPlace} BoardPlace
  * @typedef {import('./boardModel.js').BoardLayout} BoardLayout
  * @typedef {import('./boardActions.js').MoveGroup} MoveGroup
  * @typedef {import('./boardActions.js').MoveTarget} MoveTarget
@@ -45,17 +43,15 @@ export function placedMove(changes, task, cellTasks, index) {
 /**
  * The menu's order moves for a card, within the cell it sits in. Only moves
  * that go somewhere are listed, and "up one" is left out where it would be the
- * same as "top" (likewise down and bottom).
- * @param {TaskBoard} board
+ * same as "top" (likewise down and bottom). A task drawn in several cells has
+ * one sort order, so reordering it in one cell can shift it in the others.
  * @param {BoardLayout} layout
  * @param {Task} task
- * @param {BoardContext} ctx
+ * @param {BoardPlace} from - the card's cell
  * @returns {MoveGroup|null}
  */
-export function orderGroup(board, layout, task, ctx) {
-  let laneKey = '';
-  if (board.lanes) laneKey = bucketKey(board.lanes, task, ctx);
-  const cell = layout.cells.get(laneKey)?.get(bucketKey(board.columns, task, ctx)) || [];
+export function orderGroup(layout, task, from) {
+  const cell = layout.cells.get(from.lane)?.get(from.column) || [];
   let position = -1;
   for (let i = 0; i < cell.length; i++) {
     if (cell[i].id === task.id) position = i;

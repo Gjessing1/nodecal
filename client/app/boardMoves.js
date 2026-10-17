@@ -1,6 +1,6 @@
 import { PRIORITY_VALUES, visibleCategories } from './taskUtils.js';
 import { shiftDateStr } from './dayWindow.js';
-import { NO_VALUE, bucketKey } from './boardBuckets.js';
+import { NO_VALUE, bucketKey, bucketKeys } from './boardBuckets.js';
 
 // What dropping a task onto a board writes back to it. DOM-free so node:test
 // can import it.
@@ -9,6 +9,7 @@ import { NO_VALUE, bucketKey } from './boardBuckets.js';
  * @typedef {import('./boardBuckets.js').BoardField} BoardField
  * @typedef {import('./boardBuckets.js').TaskBoard} TaskBoard
  * @typedef {import('./boardBuckets.js').BoardContext} BoardContext
+ * @typedef {import('./boardBuckets.js').BoardPlace} BoardPlace
  * @typedef {import('./state.js').Task} Task
  */
 
@@ -22,10 +23,11 @@ import { NO_VALUE, bucketKey } from './boardBuckets.js';
  * @param {Task} task
  * @param {string} toKey
  * @param {BoardContext} ctx
+ * @param {string} [fromKey] - the bucket the moved card is drawn in, where a
+ *   task shown under every category has more than one
  * @returns {Partial<Task>|null}
  */
-export function moveChanges(field, task, toKey, ctx) {
-  const fromKey = bucketKey(field, task, ctx);
+export function moveChanges(field, task, toKey, ctx, fromKey = bucketKey(field, task, ctx)) {
   if (fromKey === toKey) return {};
 
   if (field === 'status') {
@@ -56,20 +58,51 @@ export function moveChanges(field, task, toKey, ctx) {
  * The combined change for dropping a task into a cell, or null if either axis
  * refuses. The lane change is worked out on the task as the column change left
  * it, since both can rewrite categories (a category board with starred lanes).
+ *
+ * A task shown under every category is already in each of its category cells,
+ * so a drop onto another of them is refused rather than merging the two
+ * categories into one.
  * @param {TaskBoard} board
  * @param {Task} task
  * @param {string} laneKey
  * @param {string} columnKey
  * @param {BoardContext} ctx
+ * @param {BoardPlace} [from] - the cell the moved card is drawn in
  * @returns {Partial<Task>|null}
  */
-export function dropChanges(board, task, laneKey, columnKey, ctx) {
-  const columnChanges = moveChanges(board.columns, task, columnKey, ctx);
+export function dropChanges(board, task, laneKey, columnKey, ctx, from) {
+  if (from && columnKey !== from.column && isDrawnIn(board, 'columns', task, columnKey, ctx)) {
+    return null;
+  }
+  if (from && laneKey !== from.lane && isDrawnIn(board, 'lanes', task, laneKey, ctx)) return null;
+  const columnChanges = moveChanges(board.columns, task, columnKey, ctx, from?.column);
   if (!columnChanges) return null;
   if (!board.lanes) return columnChanges;
-  const laneChanges = moveChanges(board.lanes, { ...task, ...columnChanges }, laneKey, ctx);
+  const laneChanges = moveChanges(
+    board.lanes,
+    { ...task, ...columnChanges },
+    laneKey,
+    ctx,
+    from?.lane,
+  );
   if (!laneChanges) return null;
   return { ...columnChanges, ...laneChanges };
+}
+
+/**
+ * Whether one of the task's cards is drawn in bucket `key` of an axis.
+ * @param {TaskBoard} board
+ * @param {'columns'|'lanes'} axis
+ * @param {Task} task
+ * @param {string} key
+ * @param {BoardContext} ctx
+ */
+export function isDrawnIn(board, axis, task, key, ctx) {
+  const field = board[axis];
+  if (!field) return key === '';
+  let config = board.columnConfig;
+  if (axis === 'lanes') config = board.laneConfig;
+  return bucketKeys(field, task, ctx, config).includes(key);
 }
 
 /** @param {string} category */

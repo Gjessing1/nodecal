@@ -1,4 +1,4 @@
-import { NO_VALUE, bucketKey } from './boardBuckets.js';
+import { NO_VALUE, bucketKeys } from './boardBuckets.js';
 
 /**
  * Pinned buckets lead, while new values still appear in their natural order.
@@ -24,8 +24,9 @@ export function configuredBuckets(buckets, config, shown, field, ctx) {
   }
   const counts = new Map();
   for (const task of shown) {
-    const key = bucketKey(field, task, ctx);
-    counts.set(key, (counts.get(key) || 0) + 1);
+    for (const key of bucketKeys(field, task, ctx, config)) {
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
   }
   const ranked = new Map();
   for (let i = 0; i < order.length; i++) ranked.set(order[i], i);

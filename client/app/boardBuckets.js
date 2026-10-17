@@ -26,6 +26,13 @@ import { shiftDateStr } from './dayWindow.js';
  * @property {string[]} order - pinned buckets, before the remaining buckets
  * @property {Record<string, string>} labels - display names keyed by bucket key
  * @property {boolean} hideEmpty
+ * @property {boolean} [everyCategory] - a category axis shows a task under each
+ *   of its visible categories, not only the first
+ *
+ * @typedef {Object} BoardPlace - the cell a card is drawn in; with
+ *   everyCategory one task can be drawn in several
+ * @property {string} lane
+ * @property {string} column
  *
  * @typedef {Object} BoardBucket
  * @property {string} key
@@ -98,6 +105,22 @@ export function bucketKey(field, task, ctx) {
   }
   // category: the first visible one, as "Group: Category" in the list does.
   return visibleCategories(task.categories || [], ctx.hiddenCategories)[0] || NO_VALUE;
+}
+
+/**
+ * Every bucket of `field` a task is drawn in: one, except on a category axis
+ * set to show tasks under each of their categories.
+ * @param {BoardField} field
+ * @param {Task} task
+ * @param {BoardContext} ctx
+ * @param {BoardAxisConfig} [config]
+ * @returns {string[]}
+ */
+export function bucketKeys(field, task, ctx, config) {
+  if (field !== 'category' || !config?.everyCategory) return [bucketKey(field, task, ctx)];
+  const keys = [...new Set(visibleCategories(task.categories || [], ctx.hiddenCategories))];
+  if (!keys.length) return [NO_VALUE];
+  return keys;
 }
 
 /**

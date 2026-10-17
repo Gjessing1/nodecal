@@ -43,8 +43,7 @@ const MAX_TASK_BOARDS = 20;
  * collapse to "no lanes".
  * @param {*} value
  * @returns {Array<{id: string, name: string, columns: string, lanes: string,
- *   columnConfig?: {order: string[], labels: Record<string, string>, hideEmpty: boolean},
- *   laneConfig?: {order: string[], labels: Record<string, string>, hideEmpty: boolean}}>}
+ *   columnConfig?: BoardAxis, laneConfig?: BoardAxis}>}
  */
 function normalizeTaskBoards(value) {
   if (!Array.isArray(value)) return [];
@@ -68,7 +67,15 @@ function normalizeTaskBoards(value) {
   return boards;
 }
 
-/** @param {*} value */
+/**
+ * @typedef {{order: string[], labels: Record<string, string>, hideEmpty: boolean,
+ *   everyCategory?: boolean}} BoardAxis
+ */
+
+/**
+ * @param {*} value
+ * @returns {BoardAxis}
+ */
 function normalizeBoardAxis(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return { order: [], labels: {}, hideEmpty: false };
@@ -83,6 +90,7 @@ function normalizeBoardAxis(value) {
       if (order.length === 100) break;
     }
   }
+  /** @type {Record<string, string>} */
   const labels = {};
   if (value.labels && typeof value.labels === 'object' && !Array.isArray(value.labels)) {
     for (const [key, label] of Object.entries(value.labels)) {
@@ -92,7 +100,11 @@ function normalizeBoardAxis(value) {
       if (clean && Object.keys(labels).length < 100) labels[key] = clean;
     }
   }
-  return { order, labels, hideEmpty: value.hideEmpty === true };
+  /** @type {BoardAxis} */
+  const axis = { order, labels, hideEmpty: value.hideEmpty === true };
+  // Only a category axis reads it; kept off the others' saved shape.
+  if (value.everyCategory === true) axis.everyCategory = true;
+  return axis;
 }
 
 router.get('/settings', (req, res) => {

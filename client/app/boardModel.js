@@ -1,5 +1,5 @@
 import { shiftDateStr } from './dayWindow.js';
-import { bucketKey, fieldBuckets, isBoardField } from './boardBuckets.js';
+import { bucketKeys, fieldBuckets, isBoardField } from './boardBuckets.js';
 import { configuredBuckets } from './boardConfig.js';
 
 // Assembles a kanban board from saved settings and the task list. DOM-free so
@@ -55,7 +55,8 @@ export function boardsFromConfig(config) {
 /**
  * Lay tasks out on a board. Completed tasks only appear when the board groups
  * by status, and then only those finished in the last DONE_WINDOW_DAYS. Input
- * order is kept inside each cell, so the caller sorts.
+ * order is kept inside each cell, so the caller sorts. A category axis set to
+ * everyCategory puts a task in every cell its categories name.
  * @param {Task[]} tasks
  * @param {TaskBoard} board
  * @param {BoardContext} ctx
@@ -108,10 +109,15 @@ export function buildBoard(tasks, board, ctx, bucketTasks = tasks) {
     cells.set(lane.key, row);
   }
   for (const task of shown) {
-    let laneKey = '';
-    if (board.lanes) laneKey = bucketKey(board.lanes, task, ctx);
-    const cell = cells.get(laneKey)?.get(bucketKey(board.columns, task, ctx));
-    if (cell) cell.push(task);
+    let laneKeys = [''];
+    if (board.lanes) laneKeys = bucketKeys(board.lanes, task, ctx, board.laneConfig);
+    const columnKeys = bucketKeys(board.columns, task, ctx, board.columnConfig);
+    for (const laneKey of laneKeys) {
+      for (const columnKey of columnKeys) {
+        const cell = cells.get(laneKey)?.get(columnKey);
+        if (cell) cell.push(task);
+      }
+    }
   }
   return { columns, lanes, cells };
 }

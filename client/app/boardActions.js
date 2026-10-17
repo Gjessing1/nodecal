@@ -1,5 +1,5 @@
 import { BOARD_FIELDS, NO_VALUE, bucketKey } from './boardBuckets.js';
-import { dropChanges, moveChanges } from './boardMoves.js';
+import { dropChanges, isDrawnIn, moveChanges } from './boardMoves.js';
 import { orderGroup } from './boardOrder.js';
 
 // The board's moves that do not need a drag: the "Move to…" menu on a card and
@@ -11,6 +11,7 @@ import { orderGroup } from './boardOrder.js';
  * @typedef {import('./boardBuckets.js').BoardField} BoardField
  * @typedef {import('./boardBuckets.js').TaskBoard} TaskBoard
  * @typedef {import('./boardBuckets.js').BoardContext} BoardContext
+ * @typedef {import('./boardBuckets.js').BoardPlace} BoardPlace
  * @typedef {import('./boardModel.js').BoardLayout} BoardLayout
  * @typedef {import('./state.js').Task} Task
  * @typedef {import('./manualOrder.js').OrderWrite} OrderWrite
@@ -34,25 +35,31 @@ const BLANK_TASK = { id: '', title: '', status: 'NEEDS-ACTION', categories: [] }
  * board with lanes, one for the lanes. Each move changes one axis and keeps
  * the other. Buckets a drop would refuse are left out, and so is a group with
  * nowhere to go, so an empty result means the card has no menu. A board in
- * manual order adds a group that moves the card within its cell.
+ * manual order adds a group that moves the card within its cell. Every bucket
+ * the task is drawn in is marked current, not only the card's own.
  * @param {TaskBoard} board
  * @param {BoardLayout} layout
  * @param {Task} task
  * @param {BoardContext} ctx
  * @param {boolean} [ordered] - the board is drawn in manual order
+ * @param {BoardPlace} [from] - the card's cell; defaults to the task's only one
  * @returns {MoveGroup[]}
  */
-export function moveGroups(board, layout, task, ctx, ordered = false) {
-  const columnKey = bucketKey(board.columns, task, ctx);
-  let laneKey = '';
-  if (board.lanes) laneKey = bucketKey(board.lanes, task, ctx);
-
+export function moveGroups(
+  board,
+  layout,
+  task,
+  ctx,
+  ordered = false,
+  from = taskPlace(board, task, ctx),
+) {
   /** @type {MoveGroup[]} */
   const groups = [];
   /** @type {MoveGroup} */
   const columns = { title: fieldLabel(board.columns), targets: [] };
   for (const column of layout.columns) {
-    const target = moveTarget(board, task, laneKey, column.key, column.key === columnKey, ctx);
+    const current = isDrawnIn(board, 'columns', task, column.key, ctx);
+    const target = moveTarget(board, task, from.lane, column.key, current, ctx, from);
     if (target) columns.targets.push({ ...target, label: column.label });
   }
   if (hasMove(columns)) groups.push(columns);
@@ -61,14 +68,15 @@ export function moveGroups(board, layout, task, ctx, ordered = false) {
     /** @type {MoveGroup} */
     const lanes = { title: fieldLabel(board.lanes), targets: [] };
     for (const lane of layout.lanes) {
-      const target = moveTarget(board, task, lane.key, columnKey, lane.key === laneKey, ctx);
+      const current = isDrawnIn(board, 'lanes', task, lane.key, ctx);
+      const target = moveTarget(board, task, lane.key, from.column, current, ctx, from);
       if (target) lanes.targets.push({ ...target, label: lane.label });
     }
     if (hasMove(lanes)) groups.push(lanes);
   }
 
   if (ordered) {
-    const order = orderGroup(board, layout, task, ctx);
+    const order = orderGroup(layout, task, from);
     if (order) groups.push(order);
   }
   return groups;
@@ -107,17 +115,31 @@ export function bucketDraft(field, key, ctx, filters = { source: '', category: '
 }
 
 /**
+ * The cell a task's card is drawn in when it has only one.
+ * @param {TaskBoard} board
+ * @param {Task} task
+ * @param {BoardContext} ctx
+ * @returns {BoardPlace}
+ */
+export function taskPlace(board, task, ctx) {
+  let lane = '';
+  if (board.lanes) lane = bucketKey(board.lanes, task, ctx);
+  return { lane, column: bucketKey(board.columns, task, ctx) };
+}
+
+/**
  * @param {TaskBoard} board
  * @param {Task} task
  * @param {string} laneKey
  * @param {string} columnKey
  * @param {boolean} current
  * @param {BoardContext} ctx
+ * @param {BoardPlace} from
  * @returns {{current: boolean, changes: Partial<Task>}|null}
  */
-function moveTarget(board, task, laneKey, columnKey, current, ctx) {
+function moveTarget(board, task, laneKey, columnKey, current, ctx, from) {
   if (current) return { current, changes: {} };
-  const changes = dropChanges(board, task, laneKey, columnKey, ctx);
+  const changes = dropChanges(board, task, laneKey, columnKey, ctx, from);
   if (!changes) return null;
   return { current, changes };
 }

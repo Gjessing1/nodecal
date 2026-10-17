@@ -1,8 +1,7 @@
 import { state } from '../app/state.js';
 import { todayStr } from '../app/dayWindow.js';
 import { buildBoard, DONE_WINDOW_DAYS } from '../app/boardModel.js';
-import { dropChanges, moveChanges } from '../app/boardMoves.js';
-import { bucketKey } from '../app/boardBuckets.js';
+import { dropChanges } from '../app/boardMoves.js';
 import { bucketDraft, moveGroups } from '../app/boardActions.js';
 import { placedMove } from '../app/boardOrder.js';
 import { buildTaskCard } from '../components/taskCard.js';
@@ -15,6 +14,7 @@ import { initBoardDnd } from '../components/boardDnd.js';
  * @typedef {import('../app/state.js').Task} Task
  * @typedef {import('../app/boardBuckets.js').TaskBoard} TaskBoard
  * @typedef {import('../app/boardBuckets.js').BoardContext} BoardContext
+ * @typedef {import('../app/boardBuckets.js').BoardPlace} BoardPlace
  * @typedef {import('../app/boardModel.js').BoardLayout} BoardLayout
  */
 
@@ -72,9 +72,12 @@ export function renderTaskBoard(
     (board.columns === 'status' ? ' task-board-status' : '');
   el.style.setProperty('--board-columns', String(layout.columns.length));
 
-  /** @param {Task} task */
-  function openMoveMenu(task) {
-    const groups = moveGroups(board, layout, task, ctx, ordered);
+  /**
+   * @param {Task} task
+   * @param {BoardPlace} from
+   */
+  function openMoveMenu(task, from) {
+    const groups = moveGroups(board, layout, task, ctx, ordered, from);
     showBoardMoveMenu(task, groups, async function moveTo(target) {
       refocusTaskId = task.id;
       try {
@@ -125,10 +128,14 @@ export function renderTaskBoard(
       cell.className = 'task-board-cell';
       cell.dataset.lane = lane.key;
       cell.dataset.column = column.key;
+      /** @type {BoardPlace} */
+      const place = { lane: lane.key, column: column.key };
       for (const task of layout.cells.get(lane.key).get(column.key)) {
         let onMove = null;
-        if (callbacks.onBoardMove && moveGroups(board, layout, task, ctx, ordered).length) {
-          onMove = openMoveMenu;
+        if (callbacks.onBoardMove && moveGroups(board, layout, task, ctx, ordered, place).length) {
+          onMove = function openMoveMenuHere() {
+            openMoveMenu(task, place);
+          };
         }
         cell.appendChild(
           buildTaskCard(task, {
@@ -177,36 +184,38 @@ export function renderTaskBoard(
   initBoardDnd(el, {
     ordered,
     jumpBar: jumpBar.element,
-    canDropColumn(id, columnKey) {
+    canDropColumn(id, columnKey, origin) {
       const task = findTask(id);
-      if (!task || bucketKey(board.columns, task, ctx) === columnKey) return false;
-      return moveChanges(board.columns, task, columnKey, ctx) !== null;
+      const from = cellPlace(origin);
+      if (!task || from.column === columnKey) return false;
+      return dropChanges(board, task, from.lane, columnKey, ctx, from) !== null;
     },
-    onDropColumn(id, columnKey) {
+    onDropColumn(id, columnKey, origin) {
       const task = findTask(id);
       if (!task) return;
-      let changes = moveChanges(board.columns, task, columnKey, ctx);
+      const from = cellPlace(origin);
+      let changes = dropChanges(board, task, from.lane, columnKey, ctx, from);
       if (!changes) return;
       /** @type {import('../app/manualOrder.js').OrderWrite[]} */
       let shifts = [];
       if (ordered) {
-        let laneKey = '';
-        if (board.lanes) laneKey = bucketKey(board.lanes, { ...task, ...changes }, ctx);
-        const cellTasks = layout.cells.get(laneKey)?.get(columnKey);
+        const cellTasks = layout.cells.get(from.lane)?.get(columnKey);
         if (cellTasks)
           ({ changes, shifts } = placedMove(changes, task, cellTasks, cellTasks.length));
       }
       callbacks.onBoardMove(task, changes, shifts);
     },
-    canDrop(id, cell) {
+    canDrop(id, cell, origin) {
       const task = findTask(id);
       if (!task) return false;
-      return dropChanges(board, task, cell.dataset.lane, cell.dataset.column, ctx) !== null;
+      const from = cellPlace(origin);
+      return dropChanges(board, task, cell.dataset.lane, cell.dataset.column, ctx, from) !== null;
     },
-    onDrop(id, cell, index) {
+    onDrop(id, cell, index, origin) {
       const task = findTask(id);
       if (!task) return;
-      let changes = dropChanges(board, task, cell.dataset.lane, cell.dataset.column, ctx);
+      const from = cellPlace(origin);
+      let changes = dropChanges(board, task, cell.dataset.lane, cell.dataset.column, ctx, from);
       if (!changes) return;
       /** @type {import('../app/manualOrder.js').OrderWrite[]} */
       let shifts = [];
@@ -249,6 +258,14 @@ function restorePlace(el, board) {
 }
 
 /**
+ * @param {HTMLElement} cell
+ * @returns {BoardPlace}
+ */
+function cellPlace(cell) {
+  return { lane: cell.dataset.lane || '', column: cell.dataset.column || '' };
+}
+
+/**
  * The "+" handler for a bucket, or null where a new task has no clear place.
  * @param {import('../app/boardBuckets.js').BoardField} field
  * @param {string} key
@@ -267,13 +284,17 @@ function addHandler(field, key, ctx, callbacks, viewFilters) {
 }
 
 /**
+ * Tasks, not cards: a task shown under every category lane is still one task
+ * in its column.
  * @param {BoardLayout} layout
  * @param {string} columnKey
  */
 function columnCount(layout, columnKey) {
-  let count = 0;
-  for (const row of layout.cells.values()) count += row.get(columnKey).length;
-  return count;
+  const ids = new Set();
+  for (const row of layout.cells.values()) {
+    for (const task of row.get(columnKey)) ids.add(task.id);
+  }
+  return ids.size;
 }
 
 /**
@@ -281,7 +302,9 @@ function columnCount(layout, columnKey) {
  * @param {string} laneKey
  */
 function laneCount(layout, laneKey) {
-  let count = 0;
-  for (const tasks of layout.cells.get(laneKey).values()) count += tasks.length;
-  return count;
+  const ids = new Set();
+  for (const tasks of layout.cells.get(laneKey).values()) {
+    for (const task of tasks) ids.add(task.id);
+  }
+  return ids.size;
 }

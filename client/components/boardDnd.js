@@ -32,11 +32,14 @@ const EDGE_STEP_PX = 12;
  * @param {object} opts
  * @param {boolean} [opts.ordered]
  * @param {HTMLElement} opts.jumpBar
- * @param {(id: string, columnKey: string) => boolean} opts.canDropColumn
- * @param {(id: string, columnKey: string) => void} opts.onDropColumn
- * @param {(id: string, cell: HTMLElement) => boolean} opts.canDrop
- * @param {(id: string, cell: HTMLElement, index: number) => void} opts.onDrop - `index`
- *   counts the cell's other cards above the drop; -1 when the board is not ordered
+ * Every callback also gets the cell the card was lifted from: a task can have
+ * a card in more than one cell, and a move changes the one that was dragged.
+ *
+ * @param {(id: string, columnKey: string, origin: HTMLElement) => boolean} opts.canDropColumn
+ * @param {(id: string, columnKey: string, origin: HTMLElement) => void} opts.onDropColumn
+ * @param {(id: string, cell: HTMLElement, origin: HTMLElement) => boolean} opts.canDrop
+ * @param {(id: string, cell: HTMLElement, index: number, origin: HTMLElement) => void} opts.onDrop
+ *   - `index` counts the cell's other cards above the drop; -1 when the board is not ordered
  */
 export function initBoardDnd(
   boardEl,
@@ -63,6 +66,8 @@ export function initBoardDnd(
     if (pressed.closest('button, a, input')) return;
     const card = /** @type {HTMLElement|null} */ (pressed.closest('.task-card'));
     if (!card) return;
+    const originCell = /** @type {HTMLElement|null} */ (card.closest('.task-board-cell'));
+    if (!originCell) return;
 
     const isMouse = down.pointerType === 'mouse';
     // A mouse press would start a text selection; a touch press must keep its
@@ -71,7 +76,6 @@ export function initBoardDnd(
     touchPressed = !isMouse;
 
     const id = card.dataset.id;
-    const originCell = card.closest('.task-board-cell');
     const originIndex = cardsAbove(card);
     const rect = card.getBoundingClientRect();
     const grabX = down.clientX - rect.left;
@@ -121,7 +125,8 @@ export function initBoardDnd(
         if (jump === hoveredJump) return;
         clearHover();
         hoveredJump = jump;
-        if (canDropColumn(id, jump.dataset.column)) jump.classList.add('is-drop-target');
+        if (canDropColumn(id, jump.dataset.column, originCell))
+          jump.classList.add('is-drop-target');
         else jump.classList.add('is-drop-blocked');
         return;
       }
@@ -134,7 +139,7 @@ export function initBoardDnd(
       hovered = cell;
       hoveredIndex = index;
       if (!isDrop(cell, index)) return;
-      if (!canDrop(id, cell)) {
+      if (!canDrop(id, cell, originCell)) {
         cell.classList.add('is-drop-blocked');
         return;
       }
@@ -212,10 +217,10 @@ export function initBoardDnd(
       setTimeout(function dropStaleSwallow() {
         card.removeEventListener('click', swallowClick, { capture: true });
       }, 0);
-      if (jumpTarget && canDropColumn(id, jumpTarget.dataset.column)) {
-        onDropColumn(id, jumpTarget.dataset.column);
-      } else if (isDrop(target, index) && canDrop(id, target)) {
-        onDrop(id, target, index);
+      if (jumpTarget && canDropColumn(id, jumpTarget.dataset.column, originCell)) {
+        onDropColumn(id, jumpTarget.dataset.column, originCell);
+      } else if (isDrop(target, index) && canDrop(id, target, originCell)) {
+        onDrop(id, target, index, originCell);
       }
     }
 

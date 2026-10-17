@@ -54,6 +54,13 @@ export function buildBoardAxisEditor(board, axis, draft, rerender) {
       config.hideEmpty = checked;
     }),
   );
+  if (field === 'category') {
+    details.appendChild(
+      toggle('Show a task under every category', Boolean(config.everyCategory), (checked) => {
+        config.everyCategory = checked;
+      }),
+    );
+  }
 
   for (const bucket of buckets) {
     const line = document.createElement('div');
