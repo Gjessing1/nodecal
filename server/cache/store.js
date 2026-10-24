@@ -165,13 +165,16 @@ function getNonRecurringInRange(from, to) {
     // Overrides are emitted by the recurring expansion instead, in place of the
     // occurrence they replace; returning them here too would double them up.
     if (ev.recurrenceId) continue;
+    if (ev.status === 'CANCELLED') continue;
     if (!ev.rrule && new Date(ev.start) < to && new Date(ev.end) > from) result.push(ev);
   }
   return result;
 }
 
 function getRecurringBases() {
-  return Array.from(events.values()).filter((ev) => ev.rrule && !ev.recurrenceId);
+  return Array.from(events.values()).filter(
+    (ev) => ev.rrule && !ev.recurrenceId && ev.status !== 'CANCELLED',
+  );
 }
 
 function getAllEvents() {

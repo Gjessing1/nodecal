@@ -81,6 +81,7 @@ function expandSeries(base, seriesOverrides, from, to) {
 function emitOverrides(overrides, from, to) {
   const result = [];
   for (const ov of overrides) {
+    if (ov.status === 'CANCELLED') continue;
     if (!(new Date(ov.start) < to && new Date(ov.end) > from)) continue;
     result.push({
       ...ov,

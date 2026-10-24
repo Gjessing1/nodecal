@@ -76,7 +76,12 @@ function overlapsWindow(ev, from, to) {
  * @returns {boolean}
  */
 function isStale(ev) {
-  return !Array.isArray(ev.rawVevent) || ev.zone === undefined || ev.rdates === undefined;
+  return (
+    !Array.isArray(ev.rawVevent) ||
+    ev.zone === undefined ||
+    ev.rdates === undefined ||
+    ev.status === undefined
+  );
 }
 
 /**
@@ -356,7 +361,7 @@ function feedSignature(events) {
   return events
     .map(
       (e) =>
-        `${e.uid}|${e.start}|${e.end}|${e.allDay}|${e.title}|${e.rrule || ''}|${e.location || ''}|${e.description || ''}|${e.zone ?? ''}`,
+        `${e.uid}|${e.recurrenceId || ''}|${e.start}|${e.end}|${e.allDay}|${e.title}|${e.rrule || ''}|${e.status || ''}|${e.location || ''}|${e.description || ''}|${e.zone ?? ''}`,
     )
     .sort()
     .join('\n');

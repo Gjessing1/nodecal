@@ -67,6 +67,7 @@ const RECURRENCE_SET_PROPERTIES = ['EXRULE'];
  * @property {string[]|null} rdates - extra occurrences; Nodecal does not draw
  *   them, but keeps them on the series for the clients that do
  * @property {string|null} recurrenceId - ISO UTC instant this VEVENT replaces
+ * @property {string|null} status - iCalendar STATUS, including CANCELLED
  * @property {number|null} alarmMinutes
  * @property {string[]} rawVevent - unfolded lines, without BEGIN/END
  * @property {string[]} rawTimezones - the document's VTIMEZONE blocks
@@ -250,7 +251,13 @@ function eventFields(body, timezone) {
   }
   const uid = byName.UID?.value;
   if (!uid) return null;
-  const times = eventTimes(byName, timezone);
+  // A cancelled recurrence can contain only RECURRENCE-ID and STATUS. Its
+  // original slot still needs an override record to suppress the master.
+  const timeFields =
+    !byName.DTSTART && byName.STATUS?.value.toUpperCase() === 'CANCELLED'
+      ? { ...byName, DTSTART: byName['RECURRENCE-ID'] }
+      : byName;
+  const times = eventTimes(timeFields, timezone);
   if (!times) return null;
 
   return {
@@ -268,6 +275,7 @@ function eventFields(body, timezone) {
     exdates: exdates.length > 0 ? exdates : null,
     rdates: rdates.length > 0 ? rdates : null,
     recurrenceId: parseRecurrenceId(byName['RECURRENCE-ID'], timezone),
+    status: byName.STATUS?.value.toUpperCase() || null,
     alarmMinutes: alarmMinutes(nested),
   };
 }
