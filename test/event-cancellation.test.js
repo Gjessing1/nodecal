@@ -101,7 +101,7 @@ describe('cancelled events', () => {
   });
 
   it('hides a feed occurrence marked only by a Canceled: title', async () => {
-    const ics = calendar(
+    let ics = calendar(
       event('series').replace('SUMMARY:series', 'RRULE:FREQ=WEEKLY;COUNT=3\nSUMMARY:series'),
       'BEGIN:VEVENT\nUID:series\nRECURRENCE-ID:20260824T100000Z\nDTSTART:20260824T100000Z\nDTEND:20260824T110000Z\nSUMMARY:Canceled: series\nEND:VEVENT',
     );
@@ -116,5 +116,14 @@ describe('cancelled events', () => {
       (await getEvents()).map((ev) => ev.start),
       ['2026-08-17T10:00:00.000Z', '2026-08-31T10:00:00.000Z'],
     );
+
+    // A whole-feed replacement must remove an override by its composite cache
+    // key, even when the new feed no longer contains that occurrence record.
+    ics = calendar(
+      event('series').replace('SUMMARY:series', 'RRULE:FREQ=WEEKLY;COUNT=3\nSUMMARY:series'),
+    );
+    await syncIcsFeed(feed, new Date());
+    assert.equal(store.getOverrides().length, 0);
+    assert.equal(store.getEventsByCalendar(feed.id).length, 1);
   });
 });

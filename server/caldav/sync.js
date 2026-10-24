@@ -348,7 +348,7 @@ async function syncIcsFeed(feed, now) {
   if (feedSignature(existing) === feedSignature(fetched)) return 0;
 
   // Apply removal + insertion atomically (no awaits below this point).
-  for (const ev of existing) store.removeEventSilent(ev.uid);
+  for (const ev of existing) store.removeEventSilent(store.eventKey(ev));
   for (const ev of fetched) {
     store.setEventSilent({ ...ev, lastSyncedAt: now.toISOString() });
   }
