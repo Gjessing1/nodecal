@@ -37,6 +37,11 @@ async function fetchFeed(feed) {
   const text = await res.text();
   const events = [];
   for (const ev of parseIcs(text, { timezone: config.app.timezone })) {
+    // Some Outlook exports cancel an occurrence by naming its override
+    // "Canceled: ..." without writing STATUS:CANCELLED.
+    if (!ev.status && /^\s*(?:Canceled|Cancelled|Avlyst)\s*:/i.test(ev.title)) {
+      ev.status = 'CANCELLED';
+    }
     // Nothing writes a feed event back, so its raw lines would only bloat the cache.
     delete ev.rawVevent;
     delete ev.rawTimezones;

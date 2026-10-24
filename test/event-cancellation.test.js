@@ -99,4 +99,22 @@ describe('cancelled events', () => {
     assert.equal(await syncIcsFeed(feed, new Date()), 2);
     assert.deepEqual(await getEvents(), []);
   });
+
+  it('hides a feed occurrence marked only by a Canceled: title', async () => {
+    const ics = calendar(
+      event('series').replace('SUMMARY:series', 'RRULE:FREQ=WEEKLY;COUNT=3\nSUMMARY:series'),
+      'BEGIN:VEVENT\nUID:series\nRECURRENCE-ID:20260824T100000Z\nDTSTART:20260824T100000Z\nDTEND:20260824T110000Z\nSUMMARY:Canceled: series\nEND:VEVENT',
+    );
+    globalThis.fetch = async function fetchFeed() {
+      return new Response(ics, { headers: { 'Content-Type': 'text/calendar' } });
+    };
+    const feed = { id: 'ics:work', name: 'Work', url: 'https://example.com/work.ics', color: '' };
+    await syncIcsFeed(feed, new Date());
+
+    assert.equal(store.getOverrides()[0].status, 'CANCELLED');
+    assert.deepEqual(
+      (await getEvents()).map((ev) => ev.start),
+      ['2026-08-17T10:00:00.000Z', '2026-08-31T10:00:00.000Z'],
+    );
+  });
 });
