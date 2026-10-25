@@ -33,6 +33,10 @@ app.get(['/auth/status', '/api/auth/status'], (req, res) =>
 // system browser, which does not share the app WebView's login cookie.
 registerAppReleaseRoutes(app, config.app.androidAppDir);
 
+// The Glance widget authenticates with its own bearer token (routes/glance.js),
+// so it is answered before the session gate rather than redirected by it.
+app.use('/api', require('./routes/glance'));
+
 // Auth middleware runs after static files so the login form always loads
 app.use(authMiddleware);
 
@@ -48,6 +52,7 @@ api.use(require('./routes/tasks'));
 api.use(require('./routes/weather'));
 api.use(require('./routes/push'));
 api.use(require('./routes/reminders'));
+api.use(require('./routes/integrations'));
 
 // Canonical namespace like maily's; the client and service worker use /api/*.
 app.use('/api', api);

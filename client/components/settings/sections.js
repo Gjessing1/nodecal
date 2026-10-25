@@ -33,6 +33,7 @@ export const SETTINGS_SECTIONS = [
   { id: 'profiles', label: 'Profiles', hint: 'Personal and work presets' },
   { id: 'weather', label: 'Weather', hint: 'Location and forecast days' },
   { id: 'sync', label: 'Sync & storage', hint: 'Interval, sync window and local cache' },
+  { id: 'integrations', label: 'Integrations', hint: 'Tokens for apps like the Glance widget' },
   { id: 'system', label: 'System', hint: 'Build, Android app and signing out' },
 ];
 

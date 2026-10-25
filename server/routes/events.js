@@ -2,7 +2,7 @@ const { Router } = require('express');
 const { putEvent, putEventAtHref, deleteEvent } = require('../caldav/client');
 const { serializeEvent: serializeWithZone, writtenLines } = require('../caldav/vevent');
 const { splitSeries } = require('../caldav/recurrence');
-const { indexOverrides, expandSeries, emitOverrides } = require('../caldav/overrides');
+const { occurrencesInRange } = require('../caldav/occurrences');
 const {
   overrideAt,
   buildOverride,
@@ -53,22 +53,7 @@ router.get('/events', (req, res) => {
   const to = req.query.to ? new Date(req.query.to) : new Date(Date.now() + 90 * 86400000);
 
   const result = [];
-  for (const ev of store.getNonRecurringInRange(from, to)) {
-    result.push(toApiShape(ev));
-  }
-  // Overrides replace the occurrence their RECURRENCE-ID names, so the series
-  // has to be expanded knowing about them or the occurrence shows up twice —
-  // once at its original time and once at the edited one.
-  const overrides = store.getOverrides();
-  const overridesByUid = indexOverrides(overrides);
-  for (const ev of store.getRecurringBases()) {
-    for (const occ of expandSeries(ev, overridesByUid.get(ev.uid), from, to)) {
-      result.push(toApiShape(occ));
-    }
-  }
-  for (const ov of emitOverrides(overrides, from, to)) {
-    result.push(toApiShape(ov));
-  }
+  for (const ev of occurrencesInRange(from, to)) result.push(toApiShape(ev));
   result.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
   res.json(result);
 });

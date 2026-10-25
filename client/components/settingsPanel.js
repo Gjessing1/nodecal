@@ -12,6 +12,7 @@ import { renderNotificationsSection } from './settings/notifications.js';
 import { renderProfilesSection } from './settings/profiles.js';
 import { renderWeatherSection } from './settings/weather.js';
 import { renderSyncSection } from './settings/sync.js';
+import { renderIntegrationsSection } from './settings/integrations.js';
 import { renderSystemSection } from './settings/system.js';
 
 /** Section id → the function that fills the pane. Keys mirror SETTINGS_SECTIONS. */
@@ -26,6 +27,7 @@ const RENDERERS = {
   profiles: renderProfilesSection,
   weather: renderWeatherSection,
   sync: renderSyncSection,
+  integrations: renderIntegrationsSection,
   system: renderSystemSection,
 };
 
