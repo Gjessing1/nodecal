@@ -2,6 +2,23 @@
 
 Nodecal is a self-hosted, mobile-first CalDAV calendar and task client. It runs in a browser as a PWA and is also available as a private Android app that connects to your Nodecal server.
 
+<table>
+  <tr>
+    <td align="center"><img src="assets/screenshots/agenda.png" width="200" alt="Agenda listing today's and tomorrow's events with category filters"></td>
+    <td align="center"><img src="assets/screenshots/day.png" width="200" alt="Day view with colour-coded work and family events on a time grid"></td>
+    <td align="center"><img src="assets/screenshots/month-dark.png" width="200" alt="Month view in dark mode with event chips and multi-day bars"></td>
+    <td align="center"><img src="assets/screenshots/tasks.png" width="200" alt="Task list grouped by due date with priority and category tags"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Agenda</sub></td>
+    <td align="center"><sub>Day view</sub></td>
+    <td align="center"><sub>Month (dark mode)</sub></td>
+    <td align="center"><sub>Tasks</sub></td>
+  </tr>
+</table>
+
+<sub>Screenshots: Nodecal 0.1.10 (commit <code>a0a105e</code>), taken 28 October 2026 with sample data.</sub>
+
 ## Download the Android app
 
 Open this address on the Android device, replacing the example host with your Nodecal host:
