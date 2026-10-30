@@ -13,8 +13,8 @@ if [[ ! "$version_code" =~ ^[1-9][0-9]*$ || -z "$version_name" ]]; then
   exit 1
 fi
 
-if [[ -z "${NODECAL_ANDROID_APP_DIR:-}" && -d /home/gjessing/docker/Productivity/nodecal/config ]]; then
-  export NODECAL_ANDROID_APP_DIR=/home/gjessing/docker/Productivity/nodecal/config/app
+if [[ -z "${NODECAL_ANDROID_APP_DIR:-}" && -d /home/gjessing/docker/productivity/nodecal/config ]]; then
+  export NODECAL_ANDROID_APP_DIR=/home/gjessing/docker/productivity/nodecal/config/app
 fi
 
 "$root/android/build-apk.sh"

@@ -43,7 +43,7 @@ jobs:
     env:
       # Deploy project (compose file + .env), bind-mounted into the job by the
       # runner via container.options in runner-config.yml.
-      DEPLOY_DIR: /home/gjessing/docker/Productivity/nodecal
+      DEPLOY_DIR: /home/gjessing/docker/productivity/nodecal
     steps:
       - uses: actions/checkout@v4
 

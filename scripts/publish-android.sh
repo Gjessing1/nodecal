@@ -8,9 +8,9 @@ version_code="${2:?Android versionCode (integer)}"
 version_name="${3:?version name, for example 0.2.0}"
 if [[ -n "${NODECAL_ANDROID_APP_DIR:-}" ]]; then
   app_dir="$NODECAL_ANDROID_APP_DIR"
-elif [[ -d /home/gjessing/docker/Productivity/nodecal/config ]]; then
+elif [[ -d /home/gjessing/docker/productivity/nodecal/config ]]; then
   # This host's live Compose project bind-mounts this directory at /config.
-  app_dir="/home/gjessing/docker/Productivity/nodecal/config/app"
+  app_dir="/home/gjessing/docker/productivity/nodecal/config/app"
 elif [[ $(/usr/bin/findmnt -n -o SOURCE -T /mnt/data/nodecal 2>/dev/null || true) == tank/data/nodecal ]]; then
   # Safe fallback for the generic Compose layout, but never create a root-backed
   # /mnt/data/nodecal tree when the ZFS dataset is absent.
