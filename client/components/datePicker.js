@@ -1,5 +1,8 @@
 import { createPickerOverlay } from './pickerOverlay.js';
-import { mountMiniCalGrid } from './miniCalGrid.js';
+import { PICKER_ARROW_CLASSES, PICKER_NAV_CLASSES, mountMiniCalGrid } from './miniCalGrid.js';
+
+const MONTH_CELL_CLASSES =
+  'flex aspect-square items-center justify-center rounded-sm px-xs py-sm text-sm';
 
 const MONTH_NAMES = [
   'Jan',
@@ -49,10 +52,11 @@ export function showMonthYearPicker(currentYear, currentMonth, onSelect) {
 
   function buildNav() {
     const nav = document.createElement('div');
-    nav.className = 'mini-cal-nav';
+    nav.className = PICKER_NAV_CLASSES;
 
     const prev = document.createElement('button');
     prev.type = 'button';
+    prev.className = PICKER_ARROW_CLASSES;
     prev.textContent = '‹';
     prev.setAttribute('aria-label', 'Previous year');
     prev.addEventListener('click', function goPrev() {
@@ -63,11 +67,11 @@ export function showMonthYearPicker(currentYear, currentMonth, onSelect) {
 
     const yearLabel = document.createElement('span');
     yearLabel.textContent = String(viewYear);
-    yearLabel.style.fontWeight = '600';
     yearLabel.setAttribute('aria-live', 'polite');
 
     const next = document.createElement('button');
     next.type = 'button';
+    next.className = PICKER_ARROW_CLASSES;
     next.textContent = '›';
     next.setAttribute('aria-label', 'Next year');
     next.addEventListener('click', function goNext() {
@@ -81,7 +85,7 @@ export function showMonthYearPicker(currentYear, currentMonth, onSelect) {
 
   function buildMonthGrid() {
     const grid = document.createElement('div');
-    grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:8px 4px';
+    grid.className = 'grid grid-cols-3 gap-field-y px-xs py-sm';
     /** @type {HTMLButtonElement|null} */
     let currentBtn = null;
 
@@ -89,13 +93,13 @@ export function showMonthYearPicker(currentYear, currentMonth, onSelect) {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.textContent = MONTH_NAMES[m];
-      btn.className = 'mini-cal-cell';
-      btn.style.cssText = 'padding:8px 4px;border-radius:6px;font-size:13px;text-align:center';
       btn.setAttribute('aria-label', `${MONTH_NAMES[m]} ${viewYear}`);
       if (m === currentMonth && viewYear === currentYear) {
-        btn.classList.add('selected');
+        btn.className = `${MONTH_CELL_CLASSES} bg-accent text-on-accent`;
         btn.setAttribute('aria-current', 'date');
         currentBtn = btn;
+      } else {
+        btn.className = `${MONTH_CELL_CLASSES} text-text hover:bg-surface`;
       }
       btn.addEventListener('click', function pickMonth() {
         picker.close();

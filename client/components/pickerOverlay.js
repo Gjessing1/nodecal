@@ -1,5 +1,10 @@
 import { trapFocus } from './focusTrap.js';
 
+// The backdrop keeps clear of the system bars so the panel never sits under them.
+const OVERLAY_CLASSES =
+  'fixed inset-0 z-150 flex items-center justify-center bg-overlay-soft pt-[calc(var(--spacing-md)+var(--app-safe-area-top))] pr-[calc(var(--spacing-md)+var(--app-safe-area-right))] pb-[calc(var(--spacing-md)+var(--app-safe-area-bottom))] pl-[calc(var(--spacing-md)+var(--app-safe-area-left))]';
+const PANEL_CLASSES = 'w-full max-w-picker rounded-lg bg-bg p-md shadow-popup';
+
 /**
  * The popover shell shared by the date, month/year and time pickers: a
  * full-screen backdrop plus a centred panel. Tapping the backdrop closes it,
@@ -14,10 +19,10 @@ export function createPickerOverlay({ id, label, panelClass = '' }) {
 
   const overlay = document.createElement('div');
   overlay.id = id;
-  overlay.className = 'mini-cal-overlay';
+  overlay.className = OVERLAY_CLASSES;
 
   const panel = document.createElement('div');
-  panel.className = panelClass ? `mini-cal-panel ${panelClass}` : 'mini-cal-panel';
+  panel.className = panelClass ? `${PANEL_CLASSES} ${panelClass}` : PANEL_CLASSES;
 
   /** @param {Event} e */
   function stopPanelClick(e) {

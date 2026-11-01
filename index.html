@@ -83,8 +83,16 @@
 
       <!-- Copy comes from OFFLINE_MESSAGE in client/app/main.js, which is the
            only thing that ever unhides this banner. -->
-      <div id="offline-status" class="offline-status hidden" role="status" aria-live="polite"></div>
-      <div id="sync-error" class="sync-error hidden"></div>
+      <div
+        id="offline-status"
+        class="border-b border-info-border bg-info-bg px-md py-sm text-sm font-medium text-info-text hidden"
+        role="status"
+        aria-live="polite"
+      ></div>
+      <div
+        id="sync-error"
+        class="border-b border-error-border bg-error-bg px-md py-sm text-sm text-error-text hidden"
+      ></div>
 
       <main id="view-container" class="min-h-0 flex-1 overflow-y-auto pb-xl"></main>
 

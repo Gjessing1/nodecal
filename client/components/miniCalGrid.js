@@ -11,6 +11,24 @@ import {
 /** @type {Intl.DateTimeFormatOptions} */
 const LABEL_OPTS = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
 
+// Shared with the month/year picker so both pickers read as one control.
+export const PICKER_NAV_CLASSES = 'mb-sm flex items-center justify-between font-semibold';
+export const PICKER_ARROW_CLASSES = 'px-control py-2xs text-xl text-accent';
+const GRID_CLASSES = 'mb-2xs grid grid-cols-7 gap-2xs';
+const CELL_CLASSES = 'flex aspect-square items-center justify-center rounded-full text-sm';
+
+/**
+ * @param {boolean} isToday
+ * @param {boolean} isSelected
+ */
+function dayCellClasses(isToday, isSelected) {
+  const weight = isToday ? ' font-bold' : '';
+  // Selected wins the colour; today keeps its weight so it still reads as today.
+  if (isSelected) return `${CELL_CLASSES}${weight} bg-accent text-on-accent`;
+  if (isToday) return `${CELL_CLASSES}${weight} text-accent hover:bg-surface`;
+  return `${CELL_CLASSES} text-text hover:bg-surface`;
+}
+
 /**
  * Render the month grid of the date picker into `panel` and keep it in sync as
  * the user moves around. Only the day holding the roving focus is tabbable, so
@@ -71,10 +89,11 @@ export function mountMiniCalGrid(panel, selectedDate, onPick) {
 
   function buildNav() {
     const nav = document.createElement('div');
-    nav.className = 'mini-cal-nav';
+    nav.className = PICKER_NAV_CLASSES;
 
     const prev = document.createElement('button');
     prev.type = 'button';
+    prev.className = PICKER_ARROW_CLASSES;
     prev.textContent = '‹';
     prev.setAttribute('aria-label', 'Previous month');
     prev.addEventListener('click', function goPrev() {
@@ -87,6 +106,7 @@ export function mountMiniCalGrid(panel, selectedDate, onPick) {
 
     const next = document.createElement('button');
     next.type = 'button';
+    next.className = PICKER_ARROW_CLASSES;
     next.textContent = '›';
     next.setAttribute('aria-label', 'Next month');
     next.addEventListener('click', function goNext() {
@@ -99,13 +119,13 @@ export function mountMiniCalGrid(panel, selectedDate, onPick) {
 
   function buildWeekdayHeader() {
     const header = document.createElement('div');
-    header.className = 'mini-cal-grid';
+    header.className = GRID_CLASSES;
     // Every day button announces its full date, so the initials would only add
     // noise for a screen reader.
     header.setAttribute('aria-hidden', 'true');
     for (const name of startOnMonday ? DAY_NAMES_MONDAY : DAY_NAMES_SUNDAY) {
       const cell = document.createElement('div');
-      cell.className = 'mini-cal-wday';
+      cell.className = 'py-xs text-center text-xs font-semibold text-text-muted uppercase';
       cell.textContent = name;
       header.appendChild(cell);
     }
@@ -115,12 +135,12 @@ export function mountMiniCalGrid(panel, selectedDate, onPick) {
   function buildDayGrid() {
     const today = new Date();
     const grid = document.createElement('div');
-    grid.className = 'mini-cal-grid';
+    grid.className = GRID_CLASSES;
 
     const offset = weekColumn(new Date(view.getFullYear(), view.getMonth(), 1), startOnMonday);
     for (let i = 0; i < offset; i++) {
       const empty = document.createElement('div');
-      empty.className = 'mini-cal-cell';
+      empty.className = CELL_CLASSES;
       empty.setAttribute('aria-hidden', 'true');
       grid.appendChild(empty);
     }
@@ -130,15 +150,12 @@ export function mountMiniCalGrid(panel, selectedDate, onPick) {
       const cellDate = new Date(view.getFullYear(), view.getMonth(), d);
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'mini-cal-cell';
+      const isToday = sameDay(cellDate, today);
+      btn.className = dayCellClasses(isToday, sameDay(cellDate, selectedDate));
       btn.textContent = String(d);
       btn.dataset.day = String(d);
       btn.setAttribute('aria-label', cellDate.toLocaleDateString('en-US', LABEL_OPTS));
-      if (sameDay(cellDate, today)) {
-        btn.classList.add('today');
-        btn.setAttribute('aria-current', 'date');
-      }
-      if (sameDay(cellDate, selectedDate)) btn.classList.add('selected');
+      if (isToday) btn.setAttribute('aria-current', 'date');
       if (sameDay(cellDate, focusDate)) {
         btn.tabIndex = 0;
         focusBtn = btn;
