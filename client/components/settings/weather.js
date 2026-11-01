@@ -35,7 +35,8 @@ export function renderWeatherSection(pane, draft) {
   });
 
   const coords = document.createElement('div');
-  coords.className = 'settings-coord-row';
+  coords.className = 'settings-coord-row flex items-end gap-sm';
+  detect.classList.add('shrink-0', 'whitespace-nowrap');
   coords.append(field('Latitude', lat), field('Longitude', lon), detect);
   pane.appendChild(field('Location for weather (met.no)', coords));
 

@@ -97,7 +97,7 @@ function renderPanel() {
   sheet.appendChild(buildHeader(drilled, opened));
 
   const body = document.createElement('div');
-  body.className = 'settings-body';
+  body.className = 'flex min-h-0 flex-1';
   if (!drilled) body.appendChild(buildNav(wide, current));
   if (current && (wide || drilled)) body.appendChild(buildPane(current, wide));
   sheet.appendChild(body);
@@ -107,7 +107,7 @@ function renderPanel() {
 
 function buildHeader(drilled, opened) {
   const header = document.createElement('header');
-  header.className = 'settings-header';
+  header.className = 'flex shrink-0 items-center gap-xs border-b border-border py-sm pr-sm pl-xs';
 
   const back = document.createElement('button');
   back.type = 'button';
@@ -124,7 +124,7 @@ function buildHeader(drilled, opened) {
   });
 
   const title = document.createElement('h2');
-  title.className = 'settings-heading';
+  title.className = 'min-w-0 flex-1 truncate text-lg font-semibold';
   title.textContent = drilled && opened ? opened.label : 'Settings';
 
   header.append(back, title);
@@ -133,32 +133,35 @@ function buildHeader(drilled, opened) {
 
 function buildNav(wide, current) {
   const nav = document.createElement('nav');
-  nav.className = 'settings-nav';
+  nav.className =
+    'min-w-0 flex-1 overflow-y-auto py-xs md:w-settings-nav md:flex-none md:border-r md:border-border';
   nav.setAttribute('aria-label', 'Settings sections');
 
   for (const section of SETTINGS_SECTIONS) {
     const row = document.createElement('button');
     row.type = 'button';
-    row.className = 'settings-nav-row';
+    row.className =
+      'flex w-full cursor-pointer items-center justify-between gap-md px-md py-sm text-left text-text hover:bg-surface';
     if (current && current.id === section.id) {
       row.setAttribute('aria-current', 'page');
-      if (wide) row.classList.add('active');
+      // Only the sidebar highlights it; on a phone the row is about to be replaced.
+      if (wide) row.classList.add('bg-surface');
     }
 
     const label = document.createElement('span');
-    label.className = 'settings-nav-label';
+    label.className = 'text-md';
     label.textContent = section.label;
     const hint = document.createElement('span');
-    hint.className = 'settings-nav-hint';
+    hint.className = 'text-sm text-text-muted';
     hint.textContent = section.hint;
     const text = document.createElement('span');
-    text.className = 'settings-nav-text';
+    text.className = 'flex min-w-0 flex-col gap-2xs';
     text.append(label, hint);
     row.appendChild(text);
 
     if (!wide) {
       const chevron = document.createElement('span');
-      chevron.className = 'settings-nav-chevron';
+      chevron.className = 'shrink-0 text-lg text-text-muted';
       chevron.textContent = '›';
       row.appendChild(chevron);
     }
@@ -174,15 +177,15 @@ function buildNav(wide, current) {
 
 function buildPane(section, wide) {
   const pane = document.createElement('main');
-  pane.className = 'settings-pane';
+  pane.className = 'settings-pane min-w-0 flex-1 overflow-y-auto';
 
   const inner = document.createElement('div');
-  inner.className = 'settings-pane-inner';
+  inner.className = 'mx-auto max-w-settings-pane p-md pb-lg';
   // A phone already names the open section in the header; a sidebar layout
   // needs the pane to say which row it belongs to.
   if (wide) {
     const heading = document.createElement('h3');
-    heading.className = 'settings-pane-heading';
+    heading.className = 'mb-md text-lg font-semibold';
     heading.textContent = section.label;
     inner.appendChild(heading);
   }
@@ -194,7 +197,7 @@ function buildPane(section, wide) {
 
 function buildActions() {
   const actions = document.createElement('footer');
-  actions.className = 'settings-actions';
+  actions.className = 'flex shrink-0 gap-sm border-t border-border px-md py-sm';
 
   const save = document.createElement('button');
   save.type = 'button';

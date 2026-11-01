@@ -9,7 +9,7 @@
 /** Uppercase heading that captions a block of related fields. */
 export function groupLabel(text) {
   const el = document.createElement('div');
-  el.className = 'modal-section-label';
+  el.className = 'pt-md text-sm font-semibold tracking-wider text-text-muted uppercase';
   el.textContent = text;
   return el;
 }
@@ -17,7 +17,9 @@ export function groupLabel(text) {
 /** Small muted paragraph explaining the field above it. */
 export function help(text) {
   const el = document.createElement('div');
-  el.className = 'settings-help';
+  // Callers set data-tone to colour the outcome of an action they report here.
+  el.className =
+    'mt-xs text-sm text-text-muted data-[tone=bad]:text-danger data-[tone=ok]:text-accent';
   el.textContent = text;
   return el;
 }
@@ -52,9 +54,10 @@ export function row(...fields) {
 /** A checkbox with its label, used for every on/off setting. */
 export function toggle(labelText, checked, onChange) {
   const label = document.createElement('label');
-  label.className = 'settings-toggle';
+  label.className = 'flex cursor-pointer items-center gap-sm py-xs text-md';
   const input = document.createElement('input');
   input.type = 'checkbox';
+  input.className = 'size-checkbox cursor-pointer border-none p-0 accent-accent';
   input.checked = !!checked;
   input.addEventListener('change', () => onChange(input.checked, input));
   const span = document.createElement('span');

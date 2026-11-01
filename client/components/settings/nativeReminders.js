@@ -15,7 +15,8 @@ import {
   setNativeRemindersEnabled,
 } from '../../app/nativeAndroid.js';
 import { buildNativeReminderOptions } from './nativeReminderOptions.js';
-import { button, help, toggle } from './fields.js';
+import { help, toggle } from './fields.js';
+import { STATUS_ROW_CLASSES, inlineButton } from './listRows.js';
 
 export function buildNativeReminders() {
   const wrap = document.createElement('div');
@@ -47,7 +48,7 @@ export function buildNativeReminders() {
     },
   );
 
-  const testBtn = button('Test notification', 'ghost', async (el) => {
+  const testBtn = inlineButton('Test notification', 'ghost', async (el) => {
     el.disabled = true;
     try {
       await sendNativeTestNotification();
@@ -58,10 +59,10 @@ export function buildNativeReminders() {
       el.disabled = false;
     }
   });
-  testBtn.classList.add('settings-inline-btn');
 
   const statusRow = document.createElement('div');
-  statusRow.className = 'settings-status-row';
+  statusRow.className = STATUS_ROW_CLASSES;
+  status.classList.add('flex-1');
   statusRow.append(status, testBtn);
 
   // Whether the shell supports reminders can only be settled by asking it.

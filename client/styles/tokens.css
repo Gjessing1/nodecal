@@ -34,7 +34,10 @@
   --spacing-event-dot-offset: 5px;
   --spacing-field-y: 6px;
   --spacing-touch: 44px;
+  --spacing-checkbox: 18px;
+  --spacing-swatch: 34px;
 
+  --text-2xs: 10px;
   --text-sm: 13px;
   --text-xs: 11px;
   --text-caption: 12px;
@@ -53,12 +56,16 @@
   --container-profile: 92px;
   --container-time-field: 72px;
   --container-board-column: 272px;
+  --container-settings: 900px;
+  --container-settings-nav: 260px;
+  --container-settings-pane: 640px;
 
   --shadow-banner: 0 4px 16px rgba(0, 0, 0, 0.12);
   --shadow-drawer: 4px 0 16px rgba(0, 0, 0, 0.15);
   --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.12);
   --shadow-popup: 0 12px 40px rgba(0, 0, 0, 0.25);
   --shadow-floating: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --shadow-sheet: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
 :root {

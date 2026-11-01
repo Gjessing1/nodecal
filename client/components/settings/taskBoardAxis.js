@@ -1,7 +1,9 @@
 import { state } from '../../app/state.js';
 import { todayStr } from '../../app/dayWindow.js';
 import { fieldBuckets } from '../../app/boardBuckets.js';
-import { button, textInput, toggle } from './fields.js';
+import { button, help, textInput, toggle } from './fields.js';
+
+const BUCKET_ROW_CLASSES = 'my-xs flex items-center gap-xs';
 
 const openEditors = new Set();
 
@@ -39,7 +41,7 @@ export function buildBoardAxisEditor(board, axis, draft, rerender) {
   buckets.sort((a, b) => (ranks.get(a.key) ?? Infinity) - (ranks.get(b.key) ?? Infinity));
 
   const details = document.createElement('details');
-  details.className = 'settings-board-axis';
+  details.className = 'border-t border-border pt-xs';
   const editorKey = `${board.id}:${axis}`;
   details.open = openEditors.has(editorKey);
   details.addEventListener('toggle', () => {
@@ -47,6 +49,7 @@ export function buildBoardAxisEditor(board, axis, draft, rerender) {
     else openEditors.delete(editorKey);
   });
   const summary = document.createElement('summary');
+  summary.className = 'cursor-pointer text-accent';
   summary.textContent = axis === 'columns' ? 'Customize columns' : 'Customize lanes';
   details.appendChild(summary);
   details.appendChild(
@@ -64,7 +67,7 @@ export function buildBoardAxisEditor(board, axis, draft, rerender) {
 
   for (const bucket of buckets) {
     const line = document.createElement('div');
-    line.className = 'settings-board-bucket';
+    line.className = BUCKET_ROW_CLASSES;
     const pinned = document.createElement('input');
     pinned.type = 'checkbox';
     pinned.checked = config.order.includes(bucket.key);
@@ -82,21 +85,25 @@ export function buildBoardAxisEditor(board, axis, draft, rerender) {
         else delete config.labels[bucket.key];
       },
     );
+    label.classList.add('min-w-0', 'flex-1');
     label.setAttribute('aria-label', `Label for ${bucket.label}`);
     const up = button('↑', 'ghost', () => movePin(config.order, bucket.key, -1, rerender));
     const down = button('↓', 'ghost', () => movePin(config.order, bucket.key, 1, rerender));
     up.setAttribute('aria-label', `Move ${bucket.label} up`);
     down.setAttribute('aria-label', `Move ${bucket.label} down`);
     up.disabled = !pinned.checked || config.order.indexOf(bucket.key) === 0;
+    up.classList.add('px-xs');
+    down.classList.add('px-xs');
     down.disabled = !pinned.checked || config.order.indexOf(bucket.key) === config.order.length - 1;
     line.append(pinned, label, up, down);
     details.appendChild(line);
   }
   if (field === 'category') {
     const add = document.createElement('div');
-    add.className = 'settings-board-bucket';
+    add.className = BUCKET_ROW_CLASSES;
     const input = document.createElement('input');
     input.type = 'text';
+    input.className = 'min-w-0 flex-1';
     input.placeholder = 'New category bucket';
     input.setAttribute('aria-label', 'New category bucket');
     const addButton = button('Pin', 'ghost', () => {
@@ -105,14 +112,15 @@ export function buildBoardAxisEditor(board, axis, draft, rerender) {
       config.order.push(key);
       rerender();
     });
+    addButton.classList.add('px-xs');
     add.append(input, addButton);
     details.appendChild(add);
   }
-  const hint = document.createElement('p');
-  hint.className = 'settings-help';
-  hint.textContent =
-    'Pinned buckets stay visible and come first. Use arrows to order them; other values follow automatically.';
-  details.appendChild(hint);
+  details.appendChild(
+    help(
+      'Pinned buckets stay visible and come first. Use arrows to order them; other values follow automatically.',
+    ),
+  );
   return details;
 }
 

@@ -1,6 +1,7 @@
 import { BOARD_FIELDS } from '../../app/boardBuckets.js';
 import { boardsFromConfig } from '../../app/boardModel.js';
 import { button, field, help, row, select, textInput } from './fields.js';
+import { LIST_FIELDS_CLASSES, LIST_ROW_TOP_CLASSES, removeButton } from './listRows.js';
 import { buildBoardAxisEditor } from './taskBoardAxis.js';
 
 /**
@@ -76,7 +77,7 @@ function buildBoardRow(host, draft, idx) {
   });
 
   const fields = document.createElement('div');
-  fields.className = 'settings-list-fields';
+  fields.className = LIST_FIELDS_CLASSES;
   fields.append(name, row(field('Columns', columns), field('Lanes', lanes)));
   fields.appendChild(
     buildBoardAxisEditor(board, 'columns', draft, () => renderTaskBoards(host, draft)),
@@ -88,16 +89,15 @@ function buildBoardRow(host, draft, idx) {
   }
 
   const line = document.createElement('div');
-  line.className = 'settings-list-row settings-list-row-top';
+  line.className = LIST_ROW_TOP_CLASSES;
   line.appendChild(fields);
 
   // The Tasks view always needs a board to offer, so the last one stays.
   if (draft.taskBoards.length > 1) {
-    const remove = button('×', 'ghost', () => {
+    const remove = removeButton('×', () => {
       draft.taskBoards.splice(idx, 1);
       renderTaskBoards(host, draft);
     });
-    remove.classList.add('settings-remove-btn');
     remove.setAttribute('aria-label', `Remove board ${board.name}`);
     line.appendChild(remove);
   }

@@ -1,4 +1,5 @@
 import { button, help, textInput } from './fields.js';
+import { LIST_FIELDS_CLASSES, LIST_ROW_CLASSES, removeButton } from './listRows.js';
 
 const ICS_PALETTE = [
   '#4a90d9',
@@ -47,11 +48,11 @@ function newFeedId() {
 
 function buildFeedRow(host, draft, feed, idx) {
   const row = document.createElement('div');
-  row.className = 'settings-list-row';
+  row.className = LIST_ROW_CLASSES;
 
   const color = document.createElement('input');
   color.type = 'color';
-  color.className = 'settings-color-swatch';
+  color.className = 'size-swatch flex-none border-none bg-transparent p-2xs';
   color.value = feed.color || ICS_PALETTE[idx % ICS_PALETTE.length];
   color.title = 'Calendar colour';
   color.addEventListener('input', () => {
@@ -59,7 +60,7 @@ function buildFeedRow(host, draft, feed, idx) {
   });
 
   const fields = document.createElement('div');
-  fields.className = 'settings-list-fields';
+  fields.className = LIST_FIELDS_CLASSES;
   fields.appendChild(
     textInput(feed.name, { placeholder: 'Name (e.g. Work)' }, (v) => {
       feed.name = v;
@@ -71,11 +72,10 @@ function buildFeedRow(host, draft, feed, idx) {
     }),
   );
 
-  const remove = button('×', 'ghost', () => {
+  const remove = removeButton('×', () => {
     draft.icsFeeds.splice(idx, 1);
     renderIcsFeeds(host, draft);
   });
-  remove.classList.add('settings-remove-btn');
 
   row.append(color, fields, remove);
   return row;

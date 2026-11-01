@@ -1,4 +1,11 @@
-import { button, field, groupLabel, help, textInput } from './fields.js';
+import { field, groupLabel, help, textInput } from './fields.js';
+import {
+  LIST_FIELDS_CLASSES,
+  LIST_ROW_CLASSES,
+  STATUS_ROW_CLASSES,
+  inlineButton,
+  removeButton,
+} from './listRows.js';
 
 /**
  * Integrations: bearer tokens for native clients such as the Glance widget,
@@ -22,7 +29,7 @@ export function renderIntegrationsSection(pane) {
   const labelInput = textInput(label, { placeholder: 'Label (e.g. Glance phone)' }, (v) => {
     label = v;
   });
-  const create = button('Create token', 'primary', async (el) => {
+  const create = inlineButton('Create token', 'primary', async (el) => {
     el.disabled = true;
     try {
       const res = await fetch('/api/integrations/tokens', {
@@ -39,10 +46,9 @@ export function renderIntegrationsSection(pane) {
       el.disabled = false;
     }
   });
-  create.classList.add('settings-inline-btn');
 
   const createRow = document.createElement('div');
-  createRow.className = 'settings-status-row';
+  createRow.className = STATUS_ROW_CLASSES;
   createRow.append(labelInput, create);
   pane.appendChild(field('New token', createRow));
   pane.appendChild(created);
@@ -64,7 +70,7 @@ function showCreated(host, result) {
   value.value = result.token;
   value.addEventListener('focus', () => value.select());
 
-  const copy = button('Copy', 'ghost', async (el) => {
+  const copy = inlineButton('Copy', 'ghost', async (el) => {
     try {
       await navigator.clipboard.writeText(result.token);
       el.textContent = 'Copied';
@@ -72,10 +78,9 @@ function showCreated(host, result) {
       value.select();
     }
   });
-  copy.classList.add('settings-inline-btn');
 
   const row = document.createElement('div');
-  row.className = 'settings-status-row';
+  row.className = STATUS_ROW_CLASSES;
   row.append(value, copy);
   const note = help(`Copy the token for “${result.label}” now; it will not be shown again.`);
   note.dataset.tone = 'ok';
@@ -108,22 +113,21 @@ async function loadTokens(list) {
  */
 function tokenRow(list, token) {
   const row = document.createElement('div');
-  row.className = 'settings-list-row';
+  row.className = LIST_ROW_CLASSES;
 
   const text = document.createElement('div');
-  text.className = 'settings-list-fields';
+  text.className = LIST_FIELDS_CLASSES;
   const name = document.createElement('strong');
   name.textContent = token.label;
   const used = token.lastUsedAt ? `last used ${formatWhen(token.lastUsedAt)}` : 'never used';
   text.append(name, help(`Created ${formatWhen(token.createdAt)} · ${used}`));
 
-  const revoke = button('Revoke', 'ghost', async (el) => {
+  const revoke = removeButton('Revoke', async (el) => {
     if (!confirm(`Revoke “${token.label}”? Apps using it stop updating.`)) return;
     el.disabled = true;
     await fetch(`/api/integrations/tokens/${encodeURIComponent(token.id)}`, { method: 'DELETE' });
     await loadTokens(list);
   });
-  revoke.classList.add('settings-remove-btn');
 
   row.append(text, revoke);
   return row;

@@ -44,7 +44,7 @@ function buildCategoryList(title, cats, configKey, draft) {
 
 function buildCategoryRow(cat, configKey, draft) {
   const row = document.createElement('div');
-  row.className = 'settings-category-row';
+  row.className = 'flex items-center justify-between py-xs';
 
   const chip = document.createElement('span');
   chip.className = 'task-cat-chip';
@@ -61,7 +61,7 @@ function buildCategoryRow(cat, configKey, draft) {
   function paint(el) {
     const hidden = (draft[configKey] || []).includes(cat);
     el.textContent = hidden ? 'Unhide' : 'Hide';
-    el.classList.toggle('settings-cat-hidden', hidden);
+    el.classList.toggle('text-accent', hidden);
   }
 
   row.append(chip, toggleBtn);

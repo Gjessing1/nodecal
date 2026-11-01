@@ -1,5 +1,5 @@
 import { state } from '../../app/state.js';
-import { field, help, select, toggle } from './fields.js';
+import { field, groupLabel, help, select, toggle } from './fields.js';
 import { ALL_VIEWS } from './sections.js';
 import { eventCalendars } from '../../app/profileTargets.js';
 
@@ -17,17 +17,16 @@ const ACCENTS = ['', '#2563eb', '#b45309', '#15803d', '#7c3aed', '#db2777', '#08
 export function buildProfileEditor(id, profile, draft) {
   const wrap = document.createElement('div');
 
-  const header = document.createElement('div');
-  header.className = 'modal-section-label settings-collapse-header';
+  const header = groupLabel('');
+  header.classList.add('cursor-pointer', 'select-none', 'hover:text-accent');
   const arrow = document.createElement('span');
-  arrow.className = 'settings-collapse-arrow';
+  arrow.className = 'mr-2xs text-2xs';
   arrow.textContent = '▶';
   const title = document.createElement('span');
   title.textContent = ' ' + (profile.name || id);
   header.append(arrow, title);
 
   const body = document.createElement('div');
-  body.className = 'settings-collapse-body';
   body.hidden = true;
   header.addEventListener('click', () => {
     body.hidden = !body.hidden;
@@ -58,7 +57,7 @@ function buildNameField(profile, id, titleEl) {
 
 function buildAccentField(profile) {
   const row = document.createElement('div');
-  row.className = 'profile-accent-row';
+  row.className = 'flex flex-wrap gap-sm';
   for (const color of ACCENTS) {
     const sw = document.createElement('button');
     sw.type = 'button';

@@ -40,7 +40,7 @@ export function renderSystemSection(pane, draft) {
       await fetch('/api/logout', { method: 'POST' });
       window.location.reload();
     });
-    logout.classList.add('settings-danger-btn');
+    logout.classList.add('text-danger');
     pane.appendChild(field('', logout));
   }
 }
@@ -75,7 +75,8 @@ function buildNativeApp() {
   });
 
   const serverRow = document.createElement('div');
-  serverRow.className = 'native-server-row';
+  serverRow.className = 'flex gap-sm';
+  input.classList.add('min-w-0', 'flex-1');
   serverRow.append(input, apply);
 
   wrap.append(label, serverRow, status, update);

@@ -370,22 +370,26 @@
   flex-shrink: 0;
   line-height: 1;
 }
-.btn {
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-sm);
-  font-weight: 500;
-}
-.btn-primary {
-  background: var(--color-accent);
-  color: #fff;
-  flex: 1;
-}
-.btn-danger {
-  background: var(--color-danger);
-  color: #fff;
-}
-.btn-ghost {
-  color: var(--color-text-muted);
+/* Shared button primitives sit in the components layer so a utility on the
+   same element (a colour, a tighter padding) wins without important modifiers. */
+@layer components {
+  .btn {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+  }
+  .btn-primary {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    flex: 1;
+  }
+  .btn-danger {
+    background: var(--color-danger);
+    color: var(--color-on-accent);
+  }
+  .btn-ghost {
+    color: var(--color-text-muted);
+  }
 }
 
 /* ── Event modal datetime row (start → end) ────────────── */
@@ -739,24 +743,6 @@
 .rec-mode-btn.active {
   background: var(--color-accent);
   color: #fff;
-}
-
-/* ── Settings panel toggles ─────────────────────────────── */
-.settings-toggle {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-xs) 0;
-  cursor: pointer;
-  font-size: var(--text-md);
-}
-.settings-toggle input[type='checkbox'] {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--color-accent);
-  cursor: pointer;
-  border: none;
-  padding: 0;
 }
 
 /* ── NLP quick-add feedback ─────────────────────────────── */

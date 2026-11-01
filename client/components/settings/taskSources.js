@@ -1,5 +1,6 @@
 import { state } from '../../app/state.js';
 import { button, help } from './fields.js';
+import { LIST_FIELDS_CLASSES, LIST_ROW_TOP_CLASSES, removeButton } from './listRows.js';
 
 const CUSTOM = '__custom__';
 
@@ -48,12 +49,13 @@ function buildSourceRow(host, draft, calOptions, src, idx) {
   const isCustom = !calOptions.some((o) => o.value === src.url);
 
   const row = document.createElement('div');
-  row.className = 'settings-list-row settings-list-row-top';
+  row.className = LIST_ROW_TOP_CLASSES;
 
   const radio = document.createElement('input');
   radio.type = 'radio';
   radio.name = 'task-src-default';
-  radio.className = 'settings-default-radio';
+  // The top margin lines the radio up with the first field's text.
+  radio.className = 'mt-control w-auto shrink-0';
   radio.checked = !!src.url && (src.url === defaultUrl || (!defaultUrl && idx === 0));
   radio.title = 'Default source for new tasks';
   radio.addEventListener('change', () => {
@@ -103,14 +105,13 @@ function buildSourceRow(host, draft, calOptions, src, idx) {
   }
 
   const fields = document.createElement('div');
-  fields.className = 'settings-list-fields';
+  fields.className = LIST_FIELDS_CLASSES;
   fields.append(sel, custom);
 
-  const remove = button('×', 'ghost', () => {
+  const remove = removeButton('×', () => {
     draft.taskSources.splice(idx, 1);
     renderTaskSources(host, draft);
   });
-  remove.classList.add('settings-remove-btn');
 
   row.append(radio, fields, remove);
   return row;

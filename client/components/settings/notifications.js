@@ -7,7 +7,8 @@ import {
 } from '../../app/pushClient.js';
 import { isNativeAndroid } from '../../app/nativeAndroid.js';
 import { buildNativeReminders } from './nativeReminders.js';
-import { button, field, groupLabel, help, row, select, toggle } from './fields.js';
+import { field, groupLabel, help, row, select, toggle } from './fields.js';
+import { STATUS_ROW_CLASSES, inlineButton } from './listRows.js';
 import { timeStrToDate } from './timeValue.js';
 
 const EVENT_REMINDERS = [
@@ -133,11 +134,11 @@ function buildBrowserNotifications(draft) {
     },
   );
 
-  const testBtn = button('Test notification', 'ghost', sendTestNotification);
-  testBtn.classList.add('settings-inline-btn');
+  const testBtn = inlineButton('Test notification', 'ghost', sendTestNotification);
 
   const statusRow = document.createElement('div');
-  statusRow.className = 'settings-status-row';
+  statusRow.className = STATUS_ROW_CLASSES;
+  status.classList.add('flex-1');
   statusRow.append(status, testBtn);
 
   paintStatus();
