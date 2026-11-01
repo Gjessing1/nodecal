@@ -19,6 +19,7 @@ import { buildAllDayRow } from './weekAllDay.js';
 import { clipEventToDay } from './eventSegment.js';
 import { layoutTimeGridSegments } from './timeGridLayout.js';
 import { dayWindow, shiftLabel, timeOnDay, todayLabel, todayStr } from '../app/dayWindow.js';
+import { NAV_TITLE_CLASSES, createNavArrow, createNavBar, createTodayButton } from './viewNav.js';
 
 let timerId = null;
 let _container = null;
@@ -215,12 +216,9 @@ export function renderWeek(container, callbacks) {
 
 function buildNavBar(wStart, callbacks) {
   const wEnd = new Date(wStart.getTime() + 6 * 86400000);
-  const nav = document.createElement('div');
-  nav.className = 'view-nav';
+  const nav = createNavBar();
 
-  const prev = document.createElement('button');
-  prev.className = 'nav-arrow';
-  prev.textContent = '‹';
+  const prev = createNavArrow('‹');
   prev.addEventListener('click', () => {
     state.selectedDate = shiftLabel(wStart, -7);
     renderWeek(prev.closest('#view-container'), callbacks);
@@ -229,27 +227,22 @@ function buildNavBar(wStart, callbacks) {
   const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   const weekNum = getISOWeek(wStart);
   const title = document.createElement('span');
-  title.className = 'view-nav-title';
+  title.className = NAV_TITLE_CLASSES;
   title.textContent = `W${weekNum} · ${fmt(wStart)} – ${fmt(wEnd)}`;
 
-  const todayBtn = document.createElement('button');
-  todayBtn.className = 'nav-today-btn';
-  todayBtn.textContent = 'Today';
   // Compare date strings, not a `new Date()` instant against the week's labels:
   // the labels are browser-local midnight and the instant is now, so near
   // midnight in a divergent zone the button hid on the wrong week.
   const tz = state.config.timezone;
   const today = todayStr(tz);
   const thisWeek = today >= localDateStr(wStart) && today <= localDateStr(shiftLabel(wStart, 6));
-  todayBtn.hidden = thisWeek;
+  const todayBtn = createTodayButton(thisWeek);
   todayBtn.addEventListener('click', () => {
     state.selectedDate = todayLabel(tz);
     renderWeek(prev.closest('#view-container'), callbacks);
   });
 
-  const next = document.createElement('button');
-  next.className = 'nav-arrow';
-  next.textContent = '›';
+  const next = createNavArrow('›');
   next.addEventListener('click', () => {
     state.selectedDate = shiftLabel(wStart, 7);
     renderWeek(next.closest('#view-container'), callbacks);
@@ -264,34 +257,56 @@ function buildNavBar(wStart, callbacks) {
 
 function buildDayHeaders(days, todayDateStr, callbacks) {
   const row = document.createElement('div');
-  row.className = 'week-day-headers';
+  row.className = 'flex border-b border-border bg-bg';
   const spacer = document.createElement('div');
-  spacer.className = 'time-col-spacer';
+  spacer.className = 'w-time-col shrink-0';
   row.appendChild(spacer);
   for (const day of days) {
     const dayStr = localDateStr(day);
-    const cell = document.createElement('div');
-    cell.className = 'week-day-header' + (dayStr === todayDateStr ? ' today' : '');
     const wx = weatherBadge(
-      localDateStr(day),
+      dayStr,
       state.weather,
       state.config.weatherDaysWeek ?? state.config.weatherDays ?? 9,
     );
-    cell.innerHTML = `<span class="wdh-name">${day.toLocaleDateString('en-US', { weekday: 'short' })}</span><span class="wdh-date">${day.getDate()}</span>${wx ? `<span class="wdh-weather">${wx}</span>` : ''}`;
-    // Tapping the date number opens the day popup
-    if (callbacks) {
-      const dateSpan = /** @type {HTMLElement|null} */ (cell.querySelector('.wdh-date'));
-      if (dateSpan) {
-        dateSpan.style.cursor = 'pointer';
-        dateSpan.addEventListener('click', (e) => {
-          e.stopPropagation();
-          showDayPopup(day, dayStr, callbacks);
-        });
-      }
-    }
-    row.appendChild(cell);
+    row.appendChild(buildDayHeader(day, dayStr, dayStr === todayDateStr, wx, callbacks));
   }
   return row;
+}
+
+function buildDayHeader(day, dayStr, isToday, wx, callbacks) {
+  const cell = document.createElement('div');
+  cell.className = 'flex flex-1 flex-col items-center py-xs text-sm';
+
+  const name = document.createElement('span');
+  name.className = 'text-xs text-text-muted uppercase';
+  name.textContent = day.toLocaleDateString('en-US', { weekday: 'short' });
+  cell.appendChild(name);
+
+  const date = document.createElement('span');
+  if (isToday) {
+    date.className =
+      'flex size-lg items-center justify-center rounded-full bg-accent text-md font-semibold text-on-accent';
+  } else {
+    date.className = 'text-md font-semibold';
+  }
+  date.textContent = String(day.getDate());
+  // Tapping the date number opens the day popup
+  if (callbacks) {
+    date.classList.add('cursor-pointer');
+    date.addEventListener('click', function openDayPopup(e) {
+      e.stopPropagation();
+      showDayPopup(day, dayStr, callbacks);
+    });
+  }
+  cell.appendChild(date);
+
+  if (wx) {
+    const weather = document.createElement('span');
+    weather.className = 'mt-hairline block text-center text-2xs leading-none text-text-muted';
+    weather.textContent = wx;
+    cell.appendChild(weather);
+  }
+  return cell;
 }
 
 /** Forget the kept scroll position so the next render snaps to the current time again. */

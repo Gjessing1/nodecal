@@ -41,7 +41,7 @@ export function buildAllDayRow(days, events, tasks, cb) {
   row.style.gridTemplateRows = `repeat(${Math.max(1, laneCount + taskRows)}, auto)`;
 
   const spacer = document.createElement('div');
-  spacer.className = 'time-col-spacer';
+  spacer.className = 'w-time-col shrink-0';
   spacer.style.gridRow = '1 / -1';
   row.appendChild(spacer);
 

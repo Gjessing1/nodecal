@@ -1,6 +1,7 @@
 import { state } from '../app/state.js';
 import { showMonthYearPicker } from '../components/datePicker.js';
 import { todayLabel, todayStr } from '../app/dayWindow.js';
+import { NAV_TITLE_CLASSES, createNavArrow, createNavBar, createTodayButton } from './viewNav.js';
 
 // The month view's header: the month being shown with its arrows and Today
 // button, and the weekday labels under it. Moving between months lives here too
@@ -12,16 +13,13 @@ export function goToMonth(year, month, rerender) {
 }
 
 export function buildNavBar(year, month, rerender) {
-  const nav = document.createElement('div');
-  nav.className = 'view-nav';
+  const nav = createNavBar();
 
-  const prev = document.createElement('button');
-  prev.className = 'nav-arrow';
-  prev.textContent = '‹';
+  const prev = createNavArrow('‹');
   prev.addEventListener('click', () => goToMonth(year, month - 1, rerender));
 
   const title = document.createElement('span');
-  title.className = 'view-nav-title clickable-title';
+  title.className = `${NAV_TITLE_CLASSES} cursor-pointer`;
   title.textContent = new Date(year, month, 1).toLocaleDateString('en-US', {
     month: 'long',
     year: 'numeric',
@@ -34,18 +32,15 @@ export function buildNavBar(year, month, rerender) {
   // browser's — they are different months for a few hours around a month
   // boundary, and the grid already marks today with todayStr(tz).
   const tz = state.config.timezone;
-  const todayBtn = document.createElement('button');
-  todayBtn.className = 'nav-today-btn';
-  todayBtn.textContent = 'Today';
-  todayBtn.hidden = todayStr(tz).slice(0, 7) === `${year}-${String(month + 1).padStart(2, '0')}`;
+  const todayBtn = createTodayButton(
+    todayStr(tz).slice(0, 7) === `${year}-${String(month + 1).padStart(2, '0')}`,
+  );
   todayBtn.addEventListener('click', () => {
     state.selectedDate = todayLabel(tz);
     rerender();
   });
 
-  const next = document.createElement('button');
-  next.className = 'nav-arrow';
-  next.textContent = '›';
+  const next = createNavArrow('›');
   next.addEventListener('click', () => goToMonth(year, month + 1, rerender));
 
   nav.append(prev, title, todayBtn, next);

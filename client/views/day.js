@@ -17,6 +17,7 @@ import { HOUR_HEIGHT } from '../components/timeGrid.js';
 import { taskSourceVisible } from '../app/taskUtils.js';
 import { clipEventToDay } from './eventSegment.js';
 import { layoutTimeGridSegments } from './timeGridLayout.js';
+import { NAV_TITLE_CLASSES, createNavArrow, createNavBar, createTodayButton } from './viewNav.js';
 
 let timerId = null;
 let _container = null;
@@ -175,12 +176,9 @@ export function renderDay(container, callbacks) {
 }
 
 function buildNavBar(date, isToday, callbacks) {
-  const nav = document.createElement('div');
-  nav.className = 'view-nav';
+  const nav = createNavBar();
 
-  const prev = document.createElement('button');
-  prev.className = 'nav-arrow';
-  prev.textContent = '‹';
+  const prev = createNavArrow('‹');
   prev.addEventListener('click', () => {
     state.selectedDate = shiftLabel(date, -1);
     renderDay(prev.closest('#view-container'), callbacks);
@@ -196,38 +194,30 @@ function buildNavBar(date, isToday, callbacks) {
   const wxTag = wx ? ` · ${wx}` : '';
 
   // Tap on title opens custom date picker (respects weekStart — native picker ignores it on iOS)
-  const titleWrap = document.createElement('span');
-  titleWrap.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer';
   const title = document.createElement('span');
-  title.className = 'view-nav-title';
+  title.className = `${NAV_TITLE_CLASSES} cursor-pointer`;
   title.textContent = (isToday ? 'Today · ' + fmt(date) : fmt(date)) + weekTag + wxTag;
-  titleWrap.appendChild(title);
-  titleWrap.addEventListener('click', () => {
+  title.addEventListener('click', () => {
     showDatePicker(date, (selected) => {
       state.selectedDate = selected;
       renderDay(prev.closest('#view-container'), callbacks);
     });
   });
 
-  const todayBtn = document.createElement('button');
-  todayBtn.className = 'nav-today-btn';
-  todayBtn.textContent = 'Today';
-  todayBtn.hidden = isToday;
+  const todayBtn = createTodayButton(isToday);
   todayBtn.addEventListener('click', () => {
     state.selectedDate = todayLabel(state.config.timezone);
     renderDay(prev.closest('#view-container'), callbacks);
   });
 
-  const next = document.createElement('button');
-  next.className = 'nav-arrow';
-  next.textContent = '›';
+  const next = createNavArrow('›');
   next.addEventListener('click', () => {
     state.selectedDate = shiftLabel(date, 1);
     renderDay(next.closest('#view-container'), callbacks);
   });
 
   nav.appendChild(prev);
-  nav.appendChild(titleWrap);
+  nav.appendChild(title);
   nav.appendChild(todayBtn);
   nav.appendChild(next);
   return nav;
