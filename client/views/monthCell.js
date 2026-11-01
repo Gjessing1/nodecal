@@ -4,7 +4,7 @@ import { localDateStr, weatherIcon } from '../app/utils.js';
 import { dayTasks } from './dayItems.js';
 import { showDayPopup } from './dayPopup.js';
 import { buildChip } from './monthChip.js';
-import { buildCellFlag, buildTaskPill } from './monthCellFooter.js';
+import { DATE_ROW_BOX_CLASSES, buildCellFlag, buildTaskPill } from './monthCellFooter.js';
 
 // One square of the month grid: the date number, the chip rows the week row
 // handed this cell, a footer for what did not fit, and the taps that open the
@@ -40,10 +40,12 @@ export function buildDayCell(day, curMonth, todayDateStr, layout, cb) {
     (isWeekend ? ' weekend' : '');
   cell.dataset.day = dayStr;
 
-  cell.appendChild(buildDayNum(day, dayStr, isOther, layout, onSelect));
+  cell.appendChild(buildDayNum(day, dayStr, isOther, isToday, layout, onSelect));
 
+  // The only part of the cell allowed to shrink, so a short row loses a chip
+  // rather than cutting the task pill through the middle of a word.
   const items = document.createElement('div');
-  items.className = 'month-day-items';
+  items.className = 'month-day-items min-h-0 flex-auto overflow-hidden';
   for (const ev of layout.slots) {
     // A null slot is a lane another cell's bar is using: an empty chip row keeps
     // the bars in this cell level with the ones on either side of it.
@@ -69,10 +71,16 @@ export function buildDayCell(day, curMonth, todayDateStr, layout, cb) {
   return cell;
 }
 
-function buildDayNum(day, dayStr, isOther, layout, onSelect) {
+function buildDayNum(day, dayStr, isOther, isToday, layout, onSelect) {
   const numWrap = document.createElement('div');
-  numWrap.className = 'month-day-num';
+  numWrap.className =
+    'month-day-num mb-2xs flex shrink-0 cursor-pointer items-center justify-end gap-2xs [-webkit-tap-highlight-color:transparent]';
   const numSpan = document.createElement('span');
+  if (isToday) {
+    numSpan.className = `${DATE_ROW_BOX_CLASSES} bg-accent text-sm font-bold text-on-accent`;
+  } else {
+    numSpan.className = `${DATE_ROW_BOX_CLASSES} text-sm font-medium text-text-muted`;
+  }
   numSpan.textContent = String(day.getDate());
   numWrap.appendChild(numSpan);
 
@@ -83,7 +91,8 @@ function buildDayNum(day, dayStr, isOther, layout, onSelect) {
   );
   if (wx && !isOther) {
     const wxEl = document.createElement('span');
-    wxEl.className = 'month-weather';
+    // order puts the icon left of the date number, which is appended first.
+    wxEl.className = `${DATE_ROW_BOX_CLASSES} -order-1 text-3xs leading-none font-medium text-text-muted`;
     wxEl.textContent = wx;
     numWrap.appendChild(wxEl);
   }
@@ -100,6 +109,8 @@ function buildDayNum(day, dayStr, isOther, layout, onSelect) {
 
 function buildSpacer() {
   const spacer = document.createElement('div');
-  spacer.className = 'month-chip-spacer';
+  // An empty chip row holding open the lane a neighbouring cell's bar uses; the
+  // .month-day chip variables keep it exactly one chip tall.
+  spacer.className = 'h-[var(--month-chip-h)] mb-[var(--month-chip-gap)]';
   return spacer;
 }

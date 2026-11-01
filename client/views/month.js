@@ -92,7 +92,8 @@ function buildGrid(gridStart, month, todayDateStr, monthEvents, cb) {
     const days = weekDays(gridStart, week);
     if (showWN) {
       const wn = document.createElement('div');
-      wn.className = 'month-weeknum-cell';
+      wn.className =
+        'flex items-start justify-center border-r border-b border-border bg-surface pt-xs text-3xs font-semibold text-accent';
       wn.textContent = 'W' + getISOWeek(days[0]);
       grid.appendChild(wn);
     }

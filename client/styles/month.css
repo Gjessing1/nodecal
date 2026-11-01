@@ -1,26 +1,9 @@
-/* ── Month view ──────────────────────────────────────────── */
-.month-weekday-row {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-}
-.month-weekday-row.with-weeknum {
-  grid-template-columns: 28px repeat(7, 1fr);
-}
-.month-weekday-label {
-  text-align: center;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: var(--spacing-xs) 0;
-}
-.month-weeknum-label {
-  color: var(--color-accent);
-  font-size: 10px;
-}
+/*
+ * Month view. The header, week-number column and date row are utilities in
+ * monthNav.js / month.js / monthCell.js; the grid, the cell and its states,
+ * and the chips stay here because neighbouring cells and drag-and-drop all
+ * have to agree on them.
+ */
 
 .month-grid {
   /* One week row at its smallest. Lives here rather than on .month-day because
@@ -44,20 +27,7 @@
   overflow-y: auto;
 }
 .month-grid.with-weeknum {
-  grid-template-columns: 28px repeat(7, 1fr);
-}
-
-.month-weeknum-cell {
-  font-size: 9px;
-  color: var(--color-accent);
-  font-weight: 600;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding-top: 4px;
-  border-bottom: 1px solid var(--color-border);
-  border-right: 1px solid var(--color-border);
-  background: var(--color-surface);
+  grid-template-columns: var(--spacing-weeknum) repeat(7, 1fr);
 }
 
 .month-day {
@@ -104,69 +74,6 @@
   background: var(--color-weekend-bg);
 }
 
-/* Date number + weather icon sit on the same row */
-.month-day-num {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 2px;
-  margin-bottom: 2px;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-.month-day-num span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--color-text-muted);
-  flex-shrink: 0;
-}
-.month-day.today .month-day-num span {
-  background: var(--color-accent);
-  color: #fff;
-  font-weight: 700;
-}
-/* Weather icon: tiny, no background, sits left of the date number */
-.month-weather {
-  font-size: 9px;
-  color: var(--color-text-muted);
-  order: -1; /* put the icon before (left of) the date number */
-  flex-shrink: 0;
-  line-height: 1;
-  background: none !important; /* never inherit the today blue cell tint */
-}
-
-/* How many events the cell had no room for, parked in the empty space to the
-   left of the date. It costs no line of its own there, which leaves the whole
-   bottom line to the task pill — sharing that line left the pill about four
-   characters on a phone (monthCellFooter.js). */
-.month-day-flag {
-  font-size: 9px;
-  color: var(--color-text-muted);
-  order: -2; /* leftmost, ahead of the weather icon */
-  flex-shrink: 0;
-  line-height: 1;
-}
-
-/* The chip rows. This is the only part of the cell allowed to shrink, so a row
-   shorter than its contents loses a chip rather than cutting the footer through
-   the middle of a word. */
-.month-day-items {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
-}
-/* An empty chip row: the lane a bar in the cells either side is occupying. */
-.month-chip-spacer {
-  height: var(--month-chip-h);
-  margin-bottom: var(--month-chip-gap);
-}
 /* The gap belongs between chips, not under the last one — it is a whole pixel
    of a cell that only has about 50 of them. */
 .month-day-items > :last-child {

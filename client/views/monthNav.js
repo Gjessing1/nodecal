@@ -52,19 +52,27 @@ export function buildNavBar(year, month, rerender) {
   return nav;
 }
 
+const WEEKDAY_ROW_CLASSES = 'border-b border-border bg-surface';
+
 export function buildWeekDayHeader() {
   const showWN = state.config.showWeekNumbersMonth ?? state.config.showWeekNumbers;
   const row = document.createElement('div');
-  row.className = 'month-weekday-row' + (showWN ? ' with-weeknum' : '');
+  // The columns must match .month-grid's, so the labels sit over their days.
+  if (showWN) {
+    row.className = 'grid grid-cols-[var(--spacing-weeknum)_repeat(7,1fr)] ' + WEEKDAY_ROW_CLASSES;
+  } else {
+    row.className = 'grid grid-cols-7 ' + WEEKDAY_ROW_CLASSES;
+  }
   if (showWN) {
     const wn = document.createElement('div');
-    wn.className = 'month-weekday-label month-weeknum-label';
+    wn.className = 'py-xs text-center text-2xs font-semibold tracking-caps text-accent uppercase';
     wn.textContent = 'W';
     row.appendChild(wn);
   }
   for (const d of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']) {
     const cell = document.createElement('div');
-    cell.className = 'month-weekday-label';
+    cell.className =
+      'py-xs text-center text-xs font-semibold tracking-caps text-text-muted uppercase';
     cell.textContent = d;
     row.appendChild(cell);
   }

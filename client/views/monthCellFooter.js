@@ -8,6 +8,10 @@
 
 const MAX_TASK_TITLE = 16;
 
+/** The date number and the badges beside it share one box so the row stays level. */
+export const DATE_ROW_BOX_CLASSES =
+  'inline-flex size-month-date shrink-0 items-center justify-center rounded-full';
+
 /**
  * The `+N` beside the date.
  *
@@ -18,7 +22,8 @@ const MAX_TASK_TITLE = 16;
 export function buildCellFlag(count) {
   if (count === 0) return null;
   const flag = document.createElement('span');
-  flag.className = 'month-day-flag';
+  // Leftmost on the date row, ahead of the weather icon.
+  flag.className = `${DATE_ROW_BOX_CLASSES} -order-2 text-3xs leading-none font-medium text-text-muted`;
   flag.textContent = `+${count}`;
   return flag;
 }
